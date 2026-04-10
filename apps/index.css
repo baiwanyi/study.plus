@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom Components */
+@layer components {
+  .card {
+    @apply bg-white rounded-xl shadow-sm border border-gray-100 p-6;
+  }
+
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+
+  .btn-primary {
+    @apply btn bg-blue-600 text-white hover:bg-blue-700 active:bg-blue-800;
+  }
+
+  .btn-success {
+    @apply btn bg-emerald-600 text-white hover:bg-emerald-700;
+  }
+
+  .btn-danger {
+    @apply btn bg-red-600 text-white hover:bg-red-700;
+  }
+
+  .btn-outline {
+    @apply btn border border-gray-300 text-gray-700 hover:bg-gray-50;
+  }
+
+  .btn-sm {
+    @apply px-3 py-1.5 text-xs;
+  }
+
+  .badge {
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
+  }
+
+  .badge-earn {
+    @apply badge bg-emerald-100 text-emerald-800;
+  }
+
+  .badge-deduct {
+    @apply badge bg-red-100 text-red-800;
+  }
+
+  .badge-pending {
+    @apply badge bg-amber-100 text-amber-800;
+  }
+
+  .badge-completed {
+    @apply badge bg-emerald-100 text-emerald-800;
+  }
+
+  .badge-expired {
+    @apply badge bg-gray-100 text-gray-800;
+  }
+
+  .badge-active {
+    @apply badge bg-emerald-100 text-emerald-800;
+  }
+
+  .badge-revoked {
+    @apply badge bg-red-100 text-red-800;
+  }
+
+  .input {
+    @apply w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all;
+  }
+
+  .label {
+    @apply block text-sm font-medium text-gray-700 mb-1;
+  }
+}
+
+/* Snackbar */
+.snackbar {
+  @apply fixed left-6 bottom-6 z-[100] flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white
+    translate-y-20 opacity-0 pointer-events-none;
+  transition: transform 0.3s cubic-bezier(0.4, 0, 0.2, 1), opacity 0.3s ease;
+}
+
+.snackbar-show {
+  @apply translate-y-0 opacity-100 pointer-events-auto;
+}
+
+.snackbar-success {
+  @apply bg-emerald-600;
+}
+
+.snackbar-error {
+  @apply bg-red-600;
+}
+
+.snackbar-info {
+  @apply bg-blue-600;
+}
+
+.snackbar-icon {
+  @apply w-5 h-5 flex items-center justify-center rounded-full bg-white/20 text-xs font-bold shrink-0;
+}

@@ -1,0 +1,267 @@
+import { db } from '../db/index';
+import { ruleConfig } from '../db/schema';
+import type { Rules, GradePoints, ExchangeRate, ExamScoreRule, CustomRule } from '../services/points';
+
+// Convert object format {A+:50, A:20} to array format [{grade:'A+',points:50}]
+function toGradePoints(obj: unknown): GradePoints[] {
+  if (Array.isArray(obj)) return obj as GradePoints[];
+  if (obj && typeof obj === 'object') {
+    return Object.entries(obj as Record<string, unknown>).map(([grade, points]) => ({
+      grade,
+      points: Number(points),
+    }));
+  }
+  return [];
+}
+
+// Convert old {points, minutes/yuan} format or new {points, ratio, unit} format to normalized ExchangeRate
+function normalizeExchangeRateItem(item: Record<string, unknown>): ExchangeRate {
+  // New format with ratio + unit
+  if (item.ratio !== undefined) {
+    return {
+      points: Number(item.points ?? 1),
+      ratio: Number(item.ratio),
+      unit: String(item.unit ?? '次'),
+    };
+  }
+  // Old format with minutes
+  if (item.minutes !== undefined) {
+    return {
+      points: Number(item.points ?? 1),
+      ratio: Number(item.minutes),
+      unit: '分钟',
+      minutes: Number(item.minutes),
+    };
+  }
+  // Old format with yuan
+  if (item.yuan !== undefined) {
+    return {
+      points: Number(item.points ?? 1),
+      ratio: Number(item.yuan),
+      unit: '元',
+      yuan: Number(item.yuan),
+    };
+  }
+  // Old format: parse unit string
+  const unitStr = String(item.unit ?? '');
+  const minMatch = unitStr.match(/(\d+)分钟/);
+  const yuanMatch = unitStr.match(/([\d.]+)元/);
+  if (minMatch) {
+    return { points: Number(item.points ?? 1), ratio: Number(minMatch[1]), unit: '分钟' };
+  }
+  if (yuanMatch) {
+    return { points: Number(item.points ?? 1), ratio: Number(yuanMatch[1]), unit: '元' };
+  }
+  return { points: Number(item.points ?? 1), ratio: 1, unit: '次' };
+}
+
+// Convert exchange data (array or object format) to Record<string, ExchangeRate>
+function normalizeExchangeRates(data: unknown): { [key: string]: ExchangeRate } {
+  const result: Record<string, ExchangeRate> = {};
+
+  if (Array.isArray(data)) {
+    // New array format: [{key, label, points, minutes?, yuan?}]
+    for (const item of data) {
+      const obj = item as Record<string, unknown>;
+      const key = String(obj.key ?? '');
+      if (!key) continue;
+      result[key] = normalizeExchangeRateItem(obj);
+    }
+  } else if (data && typeof data === 'object') {
+    // Old object format: {tv: {points, minutes}, ...}
+    for (const [key, val] of Object.entries(data as Record<string, unknown>)) {
+      result[key] = normalizeExchangeRateItem(val as Record<string, unknown>);
+    }
+  }
+
+  return result;
+}
+
+interface RawRules {
+  homework?: unknown;
+  exam?: unknown;
+  exchange?: unknown;
+  custom?: unknown;
+  system?: unknown;
+}
+
+// Safely parse JSON, returning null on failure
+function safeJsonParse(val: string | undefined): unknown {
+  if (!val) return null;
+  try {
+    return JSON.parse(val);
+  } catch {
+    return null;
+  }
+}
+
+// Single DB query: load all rule_config rows and build a map
+async function loadAllRuleRows(): Promise<Map<string, string>> {
+  const rows = await db.select().from(ruleConfig);
+  const rowMap = new Map<string, string>();
+  for (const row of rows) {
+    rowMap.set(row.key, row.value);
+  }
+  return rowMap;
+}
+
+// Build RawRules from separate keys in the row map
+function buildFromSeparateKeys(rowMap: Map<string, string>): { raw: RawRules | null; exchangeSrc: unknown } {
+  const separateKeys = ['homework', 'exam', 'exchange', 'custom', 'system'];
+  const hasSeparateKeys = separateKeys.some(k => rowMap.has(k));
+  if (!hasSeparateKeys) return { raw: null, exchangeSrc: null };
+
+  const raw: RawRules = {};
+  raw.homework = safeJsonParse(rowMap.get('homework'));
+  raw.exam = safeJsonParse(rowMap.get('exam'));
+  raw.exchange = safeJsonParse(rowMap.get('exchange'));
+  raw.custom = safeJsonParse(rowMap.get('custom'));
+  raw.system = safeJsonParse(rowMap.get('system'));
+
+  return { raw, exchangeSrc: raw.exchange ?? null };
+}
+
+// Build from old single 'default' key in the row map
+function buildFromDefaultKey(rowMap: Map<string, string>): { raw: Record<string, unknown> | null; exchangeSrc: unknown } {
+  const val = rowMap.get('default');
+  if (!val) return { raw: null, exchangeSrc: null };
+
+  const parsed = safeJsonParse(val);
+  if (!parsed || typeof parsed !== 'object') return { raw: null, exchangeSrc: null };
+
+  const src = (parsed as Record<string, unknown>)?.rules ?? (parsed as Record<string, unknown>)?.value ?? parsed;
+  if (!src || typeof src !== 'object') return { raw: null, exchangeSrc: null };
+
+  const srcObj = src as Record<string, unknown>;
+  const exchangeData = srcObj.exchangeRates ?? srcObj.exchange;
+  return { raw: srcObj, exchangeSrc: exchangeData ?? null };
+}
+
+export async function loadRules(): Promise<Rules> {
+  const { rules } = await loadRulesWithSrc();
+  return rules;
+}
+
+// Load rules and raw source data in a single DB query
+// Useful when both rules and exchange labels are needed (e.g. exchanges route)
+export async function loadRulesWithSrc(): Promise<{ rules: Rules; exchangeSrc: unknown }> {
+  // Single DB query for all rows
+  const rowMap = await loadAllRuleRows();
+
+  // Try new separate keys first
+  const separateResult = buildFromSeparateKeys(rowMap);
+  if (separateResult.raw) {
+    const src = separateResult.raw;
+    const homework = toGradePoints(src.homework);
+
+    // Exam: handle both {ranges} and plain array
+    const examSrc = src.exam as Record<string, unknown> | undefined;
+    let examScoreRules: ExamScoreRule[] = [];
+    let monthlyBasePoints = 500;
+    let minimumPointsForPrivileges = 500;
+    if (examSrc) {
+      if (Array.isArray(examSrc)) {
+        examScoreRules = examSrc as ExamScoreRule[];
+      } else if (examSrc.ranges) {
+        examScoreRules = examSrc.ranges as ExamScoreRule[];
+      }
+    }
+
+    // System overrides
+    const systemSrc = src.system as Record<string, unknown> | undefined;
+    if (systemSrc) {
+      if (systemSrc.monthlyBasePoints !== undefined) monthlyBasePoints = Number(systemSrc.monthlyBasePoints);
+      if (systemSrc.minimumPointsForPrivileges !== undefined) minimumPointsForPrivileges = Number(systemSrc.minimumPointsForPrivileges);
+    }
+
+    // Exchange
+    const exchangeSrc = src.exchange ?? null;
+    const exchangeRates = normalizeExchangeRates(exchangeSrc);
+    if (Object.keys(exchangeRates).length === 0) {
+      exchangeRates.tv = { points: 1, ratio: 10, unit: '分钟' };
+      exchangeRates.device = { points: 1, ratio: 10, unit: '分钟' };
+      exchangeRates.cash = { points: 10, ratio: 1, unit: '元' };
+    }
+
+    // Custom
+    const customRules = Array.isArray(src.custom) ? src.custom as CustomRule[] : [];
+
+    return {
+      rules: {
+        monthlyBasePoints,
+        minimumPointsForPrivileges,
+        gradingScale: { homework },
+        examScoreRules,
+        exchangeRates,
+        customRules,
+      },
+      exchangeSrc: separateResult.exchangeSrc,
+    };
+  }
+
+  // Fallback to old single 'default' key
+  const defaultResult = buildFromDefaultKey(rowMap);
+  if (!defaultResult.raw) {
+    return {
+      rules: {
+        monthlyBasePoints: 500,
+        minimumPointsForPrivileges: 500,
+        gradingScale: { homework: [] },
+        examScoreRules: [],
+        exchangeRates: { tv: { points: 1, ratio: 1, unit: '分钟' }, device: { points: 1, ratio: 1, unit: '分钟' }, cash: { points: 10, ratio: 1, unit: '元' } },
+        customRules: [],
+      },
+      exchangeSrc: null,
+    };
+  }
+
+  const src = defaultResult.raw;
+  const gradingScale = src.gradingScale as Record<string, unknown> | undefined;
+  const examObj = src.exam as Record<string, unknown> | undefined;
+
+  // Handle both array format [{grade,points}] and object format {A+:50, A:20}
+  const homework = toGradePoints(gradingScale?.homework ?? src.homework);
+
+  // Handle exchange rates (supports array and object formats)
+  const exchangeRates = normalizeExchangeRates(defaultResult.exchangeSrc);
+  // Only fill defaults when no exchange data exists at all (fresh install)
+  if (Object.keys(exchangeRates).length === 0) {
+    exchangeRates.tv = { points: 1, ratio: 10, unit: '分钟' };
+    exchangeRates.device = { points: 1, ratio: 10, unit: '分钟' };
+    exchangeRates.cash = { points: 10, ratio: 1, unit: '元' };
+  }
+
+  return {
+    rules: {
+      monthlyBasePoints: Number(src.monthlyBasePoints ?? 500),
+      minimumPointsForPrivileges: Number(src.minimumPointsForPrivileges ?? 500),
+      gradingScale: { homework },
+      examScoreRules: (src.examScoreRules ?? examObj?.ranges ?? []) as ExamScoreRule[],
+      exchangeRates,
+      customRules: (src.customRules ?? src.custom ?? []) as CustomRule[],
+    },
+    exchangeSrc: defaultResult.exchangeSrc,
+  };
+}
+
+// Get exchange item label by key from raw source data
+export function getExchangeItemLabel(src: unknown, key: string): string {
+  const defaultLabels: Record<string, string> = { tv: '电视', device: '手机/平板', cash: '现金' };
+
+  if (!src || typeof src !== 'object') return defaultLabels[key] ?? key;
+
+  // Array format: [{key, label, points, ...}]
+  if (Array.isArray(src)) {
+    const item = (src as Record<string, unknown>[]).find(i => i.key === key);
+    const label = item?.label;
+    // Use label only if it's a non-empty string; otherwise fallback
+    if (typeof label === 'string' && label.length > 0) return label;
+    return defaultLabels[key] ?? key;
+  }
+
+  // Object format: {tv: {label, points, ...}, ...}
+  const obj = (src as Record<string, unknown>)[key] as Record<string, unknown> | undefined;
+  const label = obj?.label;
+  if (typeof label === 'string' && label.length > 0) return label;
+  return defaultLabels[key] ?? key;
+}
