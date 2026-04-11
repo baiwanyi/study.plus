@@ -1,6 +1,6 @@
-import { db } from '../db/index';
-import { ruleConfig } from '../db/schema';
-import type { Rules, GradePoints, ExchangeRate, ExamScoreRule, CustomRule } from '../services/points';
+import { db } from '@apps/db/index';
+import { ruleConfig } from '@apps/db/schema';
+import type { Rules, GradePoints, ExchangeRate, ExamScoreRule, CustomRule } from '@apps/services/points';
 
 // Convert object format {A+:50, A:20} to array format [{grade:'A+',points:50}]
 function toGradePoints(obj: unknown): GradePoints[] {
@@ -158,7 +158,7 @@ export async function loadRulesWithSrc(): Promise<{ rules: Rules; exchangeSrc: u
     const examSrc = src.exam as Record<string, unknown> | undefined;
     let examScoreRules: ExamScoreRule[] = [];
     let monthlyBasePoints = 500;
-    let minimumPointsForPrivileges = 500;
+    let minimumPointsForPrivileges = 100;
     if (examSrc) {
       if (Array.isArray(examSrc)) {
         examScoreRules = examSrc as ExamScoreRule[];

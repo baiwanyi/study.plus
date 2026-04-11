@@ -9,7 +9,7 @@ import {
     SlidersHorizontal,
     Bot,
 } from 'lucide-react'
-import quotes from '../../data/quotes.json'
+import quotes from '@/data/quotes.json'
 
 const navItems = [
     { to: '/', label: '首页看板', icon: LayoutGrid },
@@ -40,9 +40,11 @@ export default function Layout() {
                 <div className="flex items-center gap-3 p-5 border-b border-gray-100">
                     <h1 className="text-xl font-bold text-blue-600 flex items-center gap-2">
                         <GraduationCap className="w-7 h-7" strokeWidth={2} />
-                        <span className='sr-only'>学迹PLUS</span>
+                        <span className="sr-only">学迹PLUS</span>
                     </h1>
-                    <div className="flex items-center h-10 text-sm text-gray-700 leading-relaxed">{quote}</div>
+                    <div className="flex items-center h-10 text-sm text-gray-700 leading-relaxed">
+                        {quote}
+                    </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-1">
                     {navItems.map((item) => (

@@ -1,8 +1,8 @@
-import { db } from '../db/index';
-import { pointRecords, monthSummary } from '../db/schema';
+import { db } from '@apps/db/index';
+import { pointRecords, monthSummary } from '@apps/db/schema';
 import { eq, and, gte, lte, sql } from 'drizzle-orm';
-import { loadRules } from './rules-loader';
-import type { MonthSummary } from '../types';
+import { loadRules } from '@apps/routes/rules-loader';
+import type { MonthSummary } from '@apps/types';
 
 interface ComputedSummary extends MonthSummary {
   totalEarn: number;

@@ -42,8 +42,8 @@ const VALID_GRADES: Grade[] = ['A+', 'A', 'B', 'C', 'D', 'E'];
 async function logAiUsage(project: string, usage: DeepSeekUsage | undefined, taskTitle?: string, taskId?: number): Promise<void> {
   if (!usage) return;
   try {
-    const { db } = await import('../db/index');
-    const { aiUsageLogs } = await import('../db/schema');
+    const { db } = await import('@apps/db/index');
+    const { aiUsageLogs } = await import('@apps/db/schema');
     await db.insert(aiUsageLogs).values({
       project,
       taskId: taskId ?? null,

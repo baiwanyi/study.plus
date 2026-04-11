@@ -1,17 +1,13 @@
 import express, { type Express, type Request, type Response } from 'express'
 import path from 'path'
-import { fileURLToPath } from 'url'
-import dotenv from 'dotenv'
-
-const __dirname: string = path.dirname(fileURLToPath(import.meta.url))
-
-dotenv.config({ path: path.resolve(__dirname, '../.env') })
-
-import tasksRouter from './routes/tasks'
-import pointsRouter from './routes/points'
-import exchangesRouter from './routes/exchanges'
-import rulesRouter from './routes/rules'
-import aiUsageRouter from './routes/ai-usage'
+import tasksRouter from '@apps/routes/tasks'
+import pointsRouter from '@apps/routes/points'
+import exchangesRouter from '@apps/routes/exchanges'
+import rulesRouter from '@apps/routes/rules'
+import aiUsageRouter from '@apps/routes/ai-usage'
+import { db } from '@apps/db/index'
+import { ruleConfig } from '@apps/db/schema'
+import { eq } from 'drizzle-orm'
 
 const app: Express = express()
 const PORT: number = Number(process.env.PORT) || 3001
@@ -28,14 +24,36 @@ app.use('/api/ai-usage', aiUsageRouter)
 app.use('/api/rules', rulesRouter)
 
 // Config endpoint (exposes safe client-side config)
-app.get('/api/config', (_req: Request, res: Response) => {
-    res.json({
-        autosaveInterval: Number(process.env.AUTOSAVE_INTERVAL) || 10,
-    })
+app.get('/api/config', async (_req: Request, res: Response) => {
+    // Hardcoded fallbacks (env vars removed, all config comes from DB)
+    const config: Record<string, unknown> = {
+        autosaveInterval: 10,
+        pageSize: 20,
+    }
+    // Override with DB values
+    try {
+        const rows = await db
+            .select()
+            .from(ruleConfig)
+            .where(eq(ruleConfig.key, 'system'))
+        if (rows[0]) {
+            const sys = JSON.parse(rows[0].value) as Record<string, unknown>
+            if (sys.autosaveInterval !== undefined)
+                config.autosaveInterval = Number(sys.autosaveInterval)
+            if (sys.pageSize !== undefined)
+                config.pageSize = Number(sys.pageSize)
+        }
+    } catch (err) {
+        console.error('Failed to load system config from DB:', err)
+    }
+    res.json(config)
 })
 
 // Serve React client in production
-const clientDist = path.resolve(__dirname, '../dist')
+const clientDist = path.resolve(
+    import.meta.dirname,
+    process.env.DIST_PATH || 'dist',
+)
 app.use(express.static(clientDist))
 
 // API 404 fallback — return JSON for unmatched API routes

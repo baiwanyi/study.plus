@@ -1,5 +1,5 @@
 import type { InferSelectModel } from 'drizzle-orm';
-import type { tasks, submissions, pointRecords, exchanges, ruleConfig, monthSummary } from './db/schema';
+import type { tasks, submissions, pointRecords, exchanges, ruleConfig, monthSummary } from '@apps/db/schema';
 
 // ============ 数据库模型类型 ============
 
@@ -44,7 +44,7 @@ export interface SubmitTaskRequest {
 
 export interface SubmitTaskResponse {
   submission: Submission;
-  aiResult: import('./services/ai').AIScoreResult;
+  aiResult: import('@apps/services/ai').AIScoreResult;
   pointsEarned: number;
 }
 

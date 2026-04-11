@@ -1,8 +1,8 @@
 import { Router, type Request, type Response } from 'express';
-import { db } from '../db/index';
-import { ruleConfig } from '../db/schema';
+import { db } from '@apps/db/index';
+import { ruleConfig } from '@apps/db/schema';
 import { eq } from 'drizzle-orm';
-import type { RuleConfig, ApiErrorResponse } from '../types';
+import type { RuleConfig, ApiErrorResponse } from '@apps/types';
 
 const router = Router();
 

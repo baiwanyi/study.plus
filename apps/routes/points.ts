@@ -2,7 +2,7 @@ import { Router, type Request, type Response } from 'express';
 import { db } from '../db/index';
 import { pointRecords } from '../db/schema';
 import { eq, desc, and, gte, lte, sql } from 'drizzle-orm';
-import { getPointsForGrade } from '../services/points';
+import { getPointsForGrade, getPointsForExamScore } from '../services/points';
 import { loadRules } from './rules-loader';
 import { recomputeMonthSummary } from './summary-helper';
 import type {
@@ -83,6 +83,48 @@ router.post('/by-grade', async (req: Request<{}, PointRecord | ApiErrorResponse,
       reason,
       ruleName: `${categoryLabel}-${grade}`,
       relatedType: category as RelatedType,
+    })
+    .returning();
+  await recomputeMonthSummary(new Date().toISOString().slice(0, 7));
+  res.json(result[0] as PointRecord);
+});
+
+// Create a point record by exam score (auto-calculates amount from exam score rules)
+router.post('/by-exam-score', async (req: Request<{}, PointRecord | ApiErrorResponse, { score: number; remark?: string }>, res: Response<PointRecord | ApiErrorResponse>) => {
+  const { score, remark } = req.body;
+  if (score === undefined || score === null) {
+    res.status(400).json({ error: 'score is required' });
+    return;
+  }
+
+  const numScore = Number(score);
+  if (isNaN(numScore)) {
+    res.status(400).json({ error: 'score must be a number' });
+    return;
+  }
+
+  // Load rules
+  const rules = await loadRules();
+
+  const matched = getPointsForExamScore(rules, numScore);
+  if (!matched) {
+    res.status(400).json({ error: `未找到分数 ${numScore} 对应的积分规则` });
+    return;
+  }
+
+  const points = matched.points;
+  const recordType = points >= 0 ? 'earn' : 'deduct';
+  const reason = `单元测评 - ${numScore}分${remark ? ` (${remark})` : ''}`;
+  const ruleName = `${matched.min}-${matched.max}分`;
+
+  const result = await db
+    .insert(pointRecords)
+    .values({
+      type: recordType,
+      amount: Math.abs(points),
+      reason,
+      ruleName,
+      relatedType: 'exam' as RelatedType,
     })
     .returning();
   await recomputeMonthSummary(new Date().toISOString().slice(0, 7));

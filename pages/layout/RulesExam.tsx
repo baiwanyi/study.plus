@@ -1,0 +1,126 @@
+import { useState, useEffect } from 'react'
+import type { ExamRuleRange } from '@apps/lib/types'
+import { rulesApi } from '@apps/lib/api'
+import { useSnackbar } from '@apps/components/Snackbar'
+import { formatErrorMessage } from '@apps/lib/utils'
+import {
+    RulesPage,
+    RenderDeleteButton,
+    RenderInput,
+} from '@apps/components/RulesPage'
+import { DataTable, type Column } from '@apps/components/DataTable'
+
+const defaultRanges: ExamRuleRange[] = []
+
+export function parseExamData(data: unknown): ExamRuleRange[] {
+    if (Array.isArray(data)) return data as ExamRuleRange[]
+    if (data && typeof data === 'object' && 'ranges' in data)
+        return (data as { ranges: ExamRuleRange[] }).ranges
+    return defaultRanges
+}
+
+export function RulesExam() {
+    const [ranges, setRanges] = useState<ExamRuleRange[]>(defaultRanges)
+    const [saving, setSaving] = useState(false)
+    const { showSnackbar } = useSnackbar()
+
+    useEffect(() => {
+        let cancelled = false
+        rulesApi
+            .get('exam')
+            .then((data) => {
+                if (!cancelled) setRanges(parseExamData(data))
+            })
+            .catch(() => showSnackbar('加载失败', 'error'))
+        return () => {
+            cancelled = true
+        }
+    }, [showSnackbar])
+
+    const handleSave = async () => {
+        setSaving(true)
+        try {
+            await rulesApi.update('exam', { ranges })
+            showSnackbar('保存成功！')
+        } catch (err) {
+            showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
+        } finally {
+            setSaving(false)
+        }
+    }
+
+    const handleChange = (
+        index: number,
+        field: keyof ExamRuleRange,
+        value: string | number,
+    ) => {
+        const updated = [...ranges]
+        updated[index] = { ...updated[index], [field]: value }
+        setRanges(updated)
+    }
+
+    const handleAddItem = () => {
+        setRanges([...ranges, { min: 0, max: 0, points: 0 }])
+    }
+
+    const handleRemove = (index: number) => {
+        setRanges(ranges.filter((_, i) => i !== index))
+    }
+
+    const columns: Column<ExamRuleRange>[] = [
+        {
+            key: 'min',
+            header: '最低分',
+            render: (_, i) => (
+                <RenderInput
+                    type="number"
+                    value={ranges[i].min}
+                    onChange={(v) => handleChange(i, 'min', v)}
+                />
+            ),
+        },
+        {
+            key: 'max',
+            header: '最高分',
+            render: (_, i) => (
+                <RenderInput
+                    type="number"
+                    value={ranges[i].max}
+                    onChange={(v) => handleChange(i, 'max', v)}
+                />
+            ),
+        },
+        {
+            key: 'points',
+            header: '积分',
+            render: (_, i) => (
+                <RenderInput
+                    type="number"
+                    value={ranges[i].points}
+                    onChange={(v) => handleChange(i, 'points', v)}
+                />
+            ),
+        },
+        {
+            key: 'action',
+            header: '操作',
+            render: (_, i) => (
+                <RenderDeleteButton onClick={() => handleRemove(i)} />
+            ),
+        },
+    ]
+
+    return (
+        <RulesPage
+            title="单元测评积分"
+            add={handleAddItem}
+            save={handleSave}
+            disabled={saving}>
+            <DataTable
+                data={ranges}
+                columns={columns}
+                rowKey={(_, i) => String(i)}
+            />
+        </RulesPage>
+    )
+}

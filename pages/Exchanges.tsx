@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback } from 'react'
-import { exchangesApi, pointsApi, rulesApi } from '../lib/api'
-import type { Exchange, MonthSummary, ExchangeItemRule } from '../lib/types'
-import { formatDate, exchangeStatusLabels } from '../lib/utils'
-import { useSnackbar, ConfirmModal } from '../components/Snackbar'
+import { exchangesApi, pointsApi, rulesApi } from '@apps/lib/api'
+import type { Exchange, MonthSummary, ExchangeItemRule } from '@apps/lib/types'
+import { formatDate, exchangeStatusLabels, formatErrorMessage } from '@apps/lib/utils'
+import { useSnackbar, ConfirmModal } from '@apps/components/Snackbar'
 import { X } from 'lucide-react'
 
 const PAGE_SIZE = 20
@@ -164,11 +164,7 @@ export default function Exchanges() {
             showSnackbar('兑换成功')
             loadData()
         } catch (err) {
-            showSnackbar(
-                '兑换失败: ' +
-                    (err instanceof Error ? err.message : '未知错误'),
-                'error',
-            )
+            showSnackbar('兑换失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setCreating(false)
         }
@@ -185,11 +181,7 @@ export default function Exchanges() {
             showSnackbar('撤销成功')
             loadData()
         } catch (err) {
-            showSnackbar(
-                '撤销失败: ' +
-                    (err instanceof Error ? err.message : '未知错误'),
-                'error',
-            )
+            showSnackbar('撤销失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setRevokeId(null)
         }

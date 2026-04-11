@@ -1,16 +1,16 @@
 import { Router, type Request, type Response } from 'express';
-import { db } from '../db/index';
-import { exchanges, pointRecords } from '../db/schema';
+import { db } from '@apps/db/index';
+import { exchanges, pointRecords } from '@apps/db/schema';
 import { eq, desc, and, gte, lte } from 'drizzle-orm';
-import { loadRulesWithSrc, getExchangeItemLabel } from './rules-loader';
-import { recomputeMonthSummary } from './summary-helper';
+import { loadRulesWithSrc, getExchangeItemLabel } from '@apps/routes/rules-loader';
+import { recomputeMonthSummary } from '@apps/routes/summary-helper';
 import type {
   Exchange,
   CreateExchangeRequest,
   ExchangeStatus,
   RevokeExchangeResponse,
   ApiErrorResponse,
-} from '../types';
+} from '@apps/types';
 
 const router = Router();
 

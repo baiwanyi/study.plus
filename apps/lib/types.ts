@@ -133,7 +133,7 @@ export interface ExamRuleRange {
     points: number
 }
 
-interface ExamRules {
+export interface ExamRules {
     ranges: ExamRuleRange[]
     monthlyBasePoints: number
     minimumPointsForPrivileges: number

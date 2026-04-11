@@ -46,3 +46,10 @@ function getPointsForHomeworkGrade(rules: Rules, grade: string): number {
 export function getPointsForGrade(rules: Rules, grade: string): number {
   return getPointsForHomeworkGrade(rules, grade);
 }
+
+export function getPointsForExamScore(rules: Rules, score: number): ExamScoreRule | null {
+  const matched = rules.examScoreRules.find(
+    (r: ExamScoreRule) => score >= r.min && score <= r.max
+  );
+  return matched ?? null;
+}

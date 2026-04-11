@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { pointsApi, rulesApi } from '../lib/api'
+import { pointsApi, rulesApi } from '@apps/lib/api'
 import type {
     PointRecord,
     PointStats,
     Grade,
     HomeworkGradeRule,
     CustomRule,
-} from '../lib/types'
-import { formatDate, pointTypeLabels, getCurrentMonth } from '../lib/utils'
-import { useSnackbar } from '../components/Snackbar'
+    ExamRuleRange,
+} from '@apps/lib/types'
+import { formatDate, pointTypeLabels, getCurrentMonth, isAdmin, formatErrorMessage } from '@apps/lib/utils'
+import { useSnackbar } from '@components/Snackbar'
 import { X } from 'lucide-react'
 
 const defaultGradeOptions: Grade[] = ['A+', 'A', 'B', 'C', 'D', 'E']
@@ -45,6 +46,8 @@ export default function Points() {
     const [customRuleTab, setCustomRuleTab] = useState<'earn' | 'deduct'>(
         'earn',
     )
+    const [addExamScore, setAddExamScore] = useState<string>('')
+    const [examRules, setExamRules] = useState<ExamRuleRange[]>([])
     // Remark options
     const [remarkOptions, setRemarkOptions] = useState(() => {
         return localStorage.getItem('remarkOptions') || defaultRemarkOptions
@@ -63,7 +66,7 @@ export default function Points() {
             if (filterType) params.type = filterType
             if (filterMonth) params.month = filterMonth
 
-            const [recordsData, statsData, homeworkData, customData] =
+            const [recordsData, statsData, homeworkData, customData, examData] =
                 await Promise.all([
                     pointsApi.list(
                         Object.keys(params).length > 0 ? params : undefined,
@@ -71,6 +74,7 @@ export default function Points() {
                     pointsApi.stats(filterMonth),
                     rulesApi.get('homework').catch(() => null),
                     rulesApi.get('custom').catch(() => null),
+                    rulesApi.get('exam').catch(() => null),
                 ])
             setRecords(recordsData)
             setStats(statsData)
@@ -90,6 +94,15 @@ export default function Points() {
             // Extract custom rules
             if (customData && Array.isArray(customData)) {
                 setCustomRules(customData as CustomRule[])
+            }
+            // Extract exam rules
+            if (examData) {
+                const ex = examData as unknown
+                if (Array.isArray(ex)) {
+                    setExamRules(ex as ExamRuleRange[])
+                } else if (ex && typeof ex === 'object' && Array.isArray((ex as Record<string, unknown>).ranges)) {
+                    setExamRules((ex as { ranges: ExamRuleRange[] }).ranges)
+                }
             }
         } catch (err) {
             console.error('Failed to load points:', err)
@@ -112,6 +125,17 @@ export default function Points() {
                     return
                 }
                 await pointsApi.createByCustomRule(addCustomRuleId)
+            } else if (addCategory === 'exam') {
+                const score = Number(addExamScore)
+                if (!addExamScore || isNaN(score)) {
+                    showSnackbar('请输入有效分数', 'info')
+                    setAdding(false)
+                    return
+                }
+                await pointsApi.createByExamScore(
+                    score,
+                    addRemark || undefined,
+                )
             } else {
                 await pointsApi.createByGrade(
                     addCategory,
@@ -123,14 +147,11 @@ export default function Points() {
             setAddRemark('')
             setAddGrade(gradeOptions[0] || 'A')
             setAddCustomRuleId('')
+            setAddExamScore('')
             showSnackbar('添加成功')
             load()
         } catch (err) {
-            showSnackbar(
-                '添加失败: ' +
-                    (err instanceof Error ? err.message : '未知错误'),
-                'error',
-            )
+            showSnackbar('添加失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setAdding(false)
         }
@@ -154,11 +175,13 @@ export default function Points() {
                     <h2 className="text-2xl font-bold text-gray-900">
                         积分记录
                     </h2>
-                    <button
-                        onClick={() => setShowAdd(true)}
-                        className="btn-primary">
-                        添加记录
-                    </button>
+                    {isAdmin() && (
+                        <button
+                            onClick={() => setShowAdd(true)}
+                            className="btn-primary">
+                            添加记录
+                        </button>
+                    )}
                 </div>
 
                 {/* Stats Cards */}
@@ -322,6 +345,7 @@ export default function Points() {
                                         onChange={(e) => {
                                             setAddCategory(e.target.value)
                                             setAddCustomRuleId('')
+                                            setAddExamScore('')
                                         }}>
                                         {categoryOptions.map((opt) => (
                                             <option
@@ -456,6 +480,39 @@ export default function Points() {
                                             </>
                                         )}
                                     </div>
+                                ) : addCategory === 'exam' ? (
+                                    <div>
+                                        <label className="label">
+                                            考试分数
+                                        </label>
+                                        <input
+                                            className="input"
+                                            type="number"
+                                            min="0"
+                                            max="100"
+                                            value={addExamScore}
+                                            onChange={(e) =>
+                                                setAddExamScore(e.target.value)
+                                            }
+                                            placeholder="请输入考试分数"
+                                        />
+                                        {addExamScore && !isNaN(Number(addExamScore)) && (() => {
+                                            const score = Number(addExamScore)
+                                            const matched = examRules.find(r => score >= r.min && score <= r.max)
+                                            if (matched) {
+                                                return (
+                                                    <p className={`text-sm mt-1 font-medium ${matched.points >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
+                                                        匹配规则：{matched.min}-{matched.max}分，{matched.points >= 0 ? '+' : ''}{matched.points} 积分
+                                                    </p>
+                                                )
+                                            }
+                                            return (
+                                                <p className="text-xs text-amber-500 mt-1">
+                                                    未找到对应积分规则
+                                                </p>
+                                            )
+                                        })()}
+                                    </div>
                                 ) : (
                                     <>
                                         <div>
@@ -484,97 +541,99 @@ export default function Points() {
                                                 </p>
                                             )}
                                         </div>
-                                        <div>
-                                            <div className="flex items-center justify-between">
-                                                <label className="label">
-                                                    备注（可选）
-                                                </label>
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
+                                    </>
+                                )}
+                                {addCategory !== 'custom' && (
+                                    <div>
+                                        <div className="flex items-center justify-between">
+                                            <label className="label">
+                                                备注（可选）
+                                            </label>
+                                            <button
+                                                type="button"
+                                                onClick={() => {
+                                                    setRemarkSettingsText(
+                                                        remarkOptions,
+                                                    )
+                                                    setShowRemarkSettings(
+                                                        !showRemarkSettings,
+                                                    )
+                                                }}
+                                                className="text-xs text-indigo-500 hover:text-indigo-700">
+                                                {showRemarkSettings
+                                                    ? '收起选项'
+                                                    : '设置选项'}
+                                            </button>
+                                        </div>
+                                        <input
+                                            className="input"
+                                            value={addRemark}
+                                            onChange={(e) =>
+                                                setAddRemark(e.target.value)
+                                            }
+                                            placeholder="请输入备注"
+                                        />
+                                        {showRemarkSettings && (
+                                            <div className="mt-2">
+                                                <textarea
+                                                    className="input min-h-[100px] resize-y text-sm"
+                                                    value={
+                                                        remarkSettingsText
+                                                    }
+                                                    onChange={(e) =>
                                                         setRemarkSettingsText(
-                                                            remarkOptions,
+                                                            e.target.value,
                                                         )
-                                                        setShowRemarkSettings(
-                                                            !showRemarkSettings,
-                                                        )
-                                                    }}
-                                                    className="text-xs text-indigo-500 hover:text-indigo-700">
-                                                    {showRemarkSettings
-                                                        ? '收起选项'
-                                                        : '设置选项'}
-                                                </button>
-                                            </div>
-                                            <input
-                                                className="input"
-                                                value={addRemark}
-                                                onChange={(e) =>
-                                                    setAddRemark(e.target.value)
-                                                }
-                                                placeholder="请输入备注"
-                                            />
-                                            {showRemarkSettings && (
-                                                <div className="mt-2">
-                                                    <textarea
-                                                        className="input min-h-[100px] resize-y text-sm"
-                                                        value={
-                                                            remarkSettingsText
-                                                        }
-                                                        onChange={(e) =>
-                                                            setRemarkSettingsText(
-                                                                e.target.value,
+                                                    }
+                                                    placeholder="每行一个选项"
+                                                    rows={5}
+                                                />
+                                                <div className="flex justify-end mt-1">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => {
+                                                            setRemarkOptions(
+                                                                remarkSettingsText,
                                                             )
-                                                        }
-                                                        placeholder="每行一个选项"
-                                                        rows={5}
-                                                    />
-                                                    <div className="flex justify-end mt-1">
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                setRemarkOptions(
-                                                                    remarkSettingsText,
-                                                                )
-                                                                localStorage.setItem(
-                                                                    'remarkOptions',
-                                                                    remarkSettingsText,
-                                                                )
-                                                                setShowRemarkSettings(
-                                                                    false,
-                                                                )
-                                                            }}
-                                                            className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
-                                                            保存选项
-                                                        </button>
-                                                    </div>
+                                                            localStorage.setItem(
+                                                                'remarkOptions',
+                                                                remarkSettingsText,
+                                                            )
+                                                            setShowRemarkSettings(
+                                                                false,
+                                                            )
+                                                        }}
+                                                        className="text-xs text-indigo-600 hover:text-indigo-800 font-medium">
+                                                        保存选项
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        )}
+                                        {!showRemarkSettings &&
+                                            remarkTags.length > 0 && (
+                                                <div className="flex gap-1.5 flex-wrap mt-2">
+                                                    {remarkTags.map(
+                                                        (tag) => (
+                                                            <button
+                                                                key={tag}
+                                                                type="button"
+                                                                onClick={() =>
+                                                                    setAddRemark(
+                                                                        addRemark
+                                                                            ? addRemark +
+                                                                                  '、' +
+                                                                                  tag
+                                                                            : tag,
+                                                                    )
+                                                                }
+                                                                className="px-2 py-1 text-xs rounded-md border border-gray-200 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
+                                                                {tag}
+                                                            </button>
+                                                        ),
+                                                    )}
                                                 </div>
                                             )}
-                                            {!showRemarkSettings &&
-                                                remarkTags.length > 0 && (
-                                                    <div className="flex gap-1.5 flex-wrap mt-2">
-                                                        {remarkTags.map(
-                                                            (tag) => (
-                                                                <button
-                                                                    key={tag}
-                                                                    type="button"
-                                                                    onClick={() =>
-                                                                        setAddRemark(
-                                                                            addRemark
-                                                                                ? addRemark +
-                                                                                      '、' +
-                                                                                      tag
-                                                                                : tag,
-                                                                        )
-                                                                    }
-                                                                    className="px-2 py-1 text-xs rounded-md border border-gray-200 text-gray-500 hover:bg-indigo-50 hover:text-indigo-600 hover:border-indigo-300 transition-colors">
-                                                                    {tag}
-                                                                </button>
-                                                            ),
-                                                        )}
-                                                    </div>
-                                                )}
-                                        </div>
-                                    </>
+                                    </div>
                                 )}
                                 <div className="flex justify-end gap-3 pt-2">
                                     <button
@@ -587,7 +646,10 @@ export default function Points() {
                                         disabled={
                                             adding ||
                                             (addCategory === 'custom' &&
-                                                !addCustomRuleId)
+                                                !addCustomRuleId) ||
+                                            (addCategory === 'exam' &&
+                                                (!addExamScore ||
+                                                    isNaN(Number(addExamScore))))
                                         }
                                         className="btn-primary">
                                         {adding ? '添加中...' : '确认添加'}
