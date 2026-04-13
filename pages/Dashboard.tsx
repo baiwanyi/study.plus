@@ -66,7 +66,6 @@ export default function Dashboard() {
             {/* Net Change & Balance */}
             <WidgetBalance
                 summary={summary}
-                totalEarn={stats?.totalEarn ?? 0}
                 month={month}
             />
 
