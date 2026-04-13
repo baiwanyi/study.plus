@@ -41,7 +41,7 @@
         "noUncheckedSideEffectImports": true,
 
         // 其他 / 废弃兼容 (Other / Deprecations)
-        "ignoreDeprecations": "6.0"
+        "ignoreDeprecations": "6.0",
     },
     "include": ["vite.config.ts", "apps", "pages"]
 }

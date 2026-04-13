@@ -17,26 +17,22 @@ export default function WidgetStats({
             {
                 label: '本月积分',
                 value: stats?.totalEarn ?? 0,
-                color: 'text-emerald-600',
-                bg: 'bg-emerald-50',
+                color: 'text-success'
             },
             {
                 label: '本月兑换',
-                value: stats?.totalDeduct ?? 0,
-                color: 'text-red-600',
-                bg: 'bg-red-50',
+                value: stats?.totalExchanges ?? 0,
+                color: 'text-warning',
             },
             {
                 label: '待完成作业',
                 value: pendingTasks.length,
-                color: 'text-amber-600',
-                bg: 'bg-amber-50',
+                color: 'text-danger',
             },
             {
                 label: '总作业数',
                 value: totalTasks.length,
-                color: 'text-indigo-600',
-                bg: 'bg-indigo-50',
+                color: 'text-primary',
             },
         ],
         [stats, pendingTasks.length, totalTasks.length],

@@ -9,45 +9,64 @@ import {
     SlidersHorizontal,
     Bot,
 } from 'lucide-react'
-import quotes from '@/data/quotes.json'
+import { quotesApi } from '@apps/lib/api'
+import { defaultQuotes } from '@apps/db/default'
+import { isAdmin } from '@apps/lib/utils'
 
-const navItems = [
+const baseNavItems = [
     { to: '/', label: '首页看板', icon: LayoutGrid },
     { to: '/tasks', label: '作业管理', icon: ClipboardList },
     { to: '/points', label: '积分记录', icon: Database },
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
-    { to: '/rules', label: '规则配置', icon: SlidersHorizontal },
     { to: '/usage', label: 'AI使用量', icon: Bot },
 ]
 
-function getRandomQuote(): string {
+const adminNavItems = [
+    { to: '/options', label: '配置选项', icon: SlidersHorizontal },
+]
+
+function getRandomQuote(quotes: string[]): string {
     return quotes[Math.floor(Math.random() * quotes.length)]
 }
 
 export default function Layout() {
-    const [quote, setQuote] = useState(getRandomQuote)
+    const [quotes, setQuotes] = useState<string[]>(defaultQuotes as string[])
+    const [quote, setQuote] = useState('')
+    const [isAdminUser, setIsAdminUser] = useState(false)
 
     useEffect(() => {
+        // 初始化
+        setIsAdminUser(isAdmin())
+        quotesApi.get().then((data) => {
+            setQuotes(Array.isArray(data) ? data : defaultQuotes)
+        })
+    }, [])
+
+    useEffect(() => {
+        // 初始化
+        setQuote(getRandomQuote(quotes))
+        // 定时轮换
         const timer = setInterval(() => {
-            setQuote(getRandomQuote())
+            setQuote(getRandomQuote(quotes))
         }, 30000)
         return () => clearInterval(timer)
-    }, [])
+    }, [quotes])
+
     return (
-        <div className="flex min-h-screen bg-gray-50">
+        <div className="flex min-h-screen bg-background">
             {/* Sidebar */}
-            <aside className="w-56 bg-white border-r border-gray-200 flex flex-col fixed h-full">
-                <div className="flex items-center gap-3 p-5 border-b border-gray-100">
-                    <h1 className="text-xl font-bold text-blue-600 flex items-center gap-2">
+            <aside className="w-56 bg-sidebar border-r border-gray-200 flex flex-col fixed h-full">
+                <div className="flex items-center gap-3 p-5 border-b border-gray-800">
+                    <h1 className="text-background">
                         <GraduationCap className="w-7 h-7" strokeWidth={2} />
                         <span className="sr-only">学迹PLUS</span>
                     </h1>
-                    <div className="flex items-center h-10 text-sm text-gray-700 leading-relaxed">
+                    <div className="flex items-center h-10 text-sm text-sidebar-link leading-relaxed">
                         {quote}
                     </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-1">
-                    {navItems.map((item) => (
+                    {[...baseNavItems, ...(isAdminUser ? adminNavItems : [])].map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}
@@ -55,8 +74,8 @@ export default function Layout() {
                             className={({ isActive }) =>
                                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                                     isActive
-                                        ? 'bg-blue-50 text-blue-700'
-                                        : 'text-gray-600 hover:bg-gray-50 hover:text-gray-900'
+                                        ? 'bg-primary text-background hover:bg-primary-foreground'
+                                        : 'text-sidebar-link hover:bg-sidebar-hover hover:text-background'
                                 }`
                             }>
                             <item.icon

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { HomeworkGradeRule } from '@apps/lib/types'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import { useSnackbar } from '@apps/components/Snackbar'
 import { formatErrorMessage } from '@apps/lib/utils'
 import {
@@ -33,7 +33,7 @@ export function RulesHomework() {
 
     useEffect(() => {
         let cancelled = false
-        rulesApi
+        optionsAPI
             .get('homework')
             .then((data) => {
                 if (!cancelled) setHomework(parseHomeworkData(data))
@@ -47,7 +47,7 @@ export function RulesHomework() {
     const handleSave = async () => {
         setSaving(true)
         try {
-            await rulesApi.update('homework', homework)
+            await optionsAPI.update('homework', homework)
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')

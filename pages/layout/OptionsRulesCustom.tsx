@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { CustomRule } from '@apps/lib/types'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import { useSnackbar } from '@components/Snackbar'
 import { formatErrorMessage } from '@apps/lib/utils'
 import {
@@ -24,7 +24,7 @@ export function RulesCustom() {
 
     useEffect(() => {
         let cancelled = false
-        rulesApi
+        optionsAPI
             .get('custom')
             .then((data) => {
                 if (!cancelled) setCustom(parseCustomData(data))
@@ -49,7 +49,7 @@ export function RulesCustom() {
     const handleSave = async () => {
         setSaving(true)
         try {
-            await rulesApi.update('custom', custom)
+            await optionsAPI.update('custom', custom)
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
@@ -86,7 +86,7 @@ export function RulesCustom() {
             header: '类型',
             render: (_, i) => (
                 <select
-                    className="input"
+                    className="regular-text"
                     value={custom[i].type}
                     onChange={(e) =>
                         handleChange(

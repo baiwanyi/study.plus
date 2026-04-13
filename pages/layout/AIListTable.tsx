@@ -1,12 +1,7 @@
 import { useState, useMemo, useEffect } from 'react'
 import { DataTable, type Column } from '@components/DataTable'
 import type { AIUsageLog } from '@apps/lib/types'
-import { formatDate, formatNumber, paginate } from '@apps/lib/utils'
-
-const projectLabels: Record<string, string> = {
-    'ai-score': 'AI评分',
-    'ai-title': 'AI起名',
-}
+import { formatDate, formatNumber, paginate, taskAILabels } from '@apps/lib/utils'
 
 interface AIListTableProps {
     logs: AIUsageLog[]
@@ -28,7 +23,7 @@ export default function AIListTable({ logs }: AIListTableProps) {
             header: '使用项目',
             render: (log) => (
                 <span className="font-medium text-gray-900">
-                    {projectLabels[log.project] || log.project}
+                    {taskAILabels[log.project as keyof typeof taskAILabels] || log.project}
                 </span>
             ),
         },
@@ -68,7 +63,7 @@ export default function AIListTable({ logs }: AIListTableProps) {
             key: 'totalTokens',
             header: '总 Token',
             render: (log) => (
-                <span className="font-medium text-indigo-600">
+                <span className="font-medium text-primary">
                     {formatNumber(log.totalTokens)}
                 </span>
             ),
@@ -85,14 +80,16 @@ export default function AIListTable({ logs }: AIListTableProps) {
     ]
 
     return (
-        <DataTable<AIUsageLog>
-            data={pagedLogs}
-            columns={AIColumns}
-            pagination={{
-                current: page,
-                total: logs.length,
-                onChange: setPage,
-            }}
-        />
+        <div className="card">
+            <DataTable<AIUsageLog>
+                data={pagedLogs}
+                columns={AIColumns}
+                pagination={{
+                    current: page,
+                    total: logs.length,
+                    onChange: setPage,
+                }}
+            />
+        </div>
     )
 }

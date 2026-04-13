@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import Tabs from '@components/Tabs'
 import type { TabItem } from '@components/Tabs'
-import { RulesHomework } from '@layout/RulesHomework'
-import { RulesExam } from '@layout/RulesExam'
-import { RulesExchange } from '@layout/RulesExchange'
-import { RulesCustom } from '@layout/RulesCustom'
-import { RulesSystem } from '@layout/RulesSystem'
+import { RulesHomework } from '@/pages/layout/OptionsRulesHomework'
+import { RulesExam } from '@/pages/layout/OptionsRulesExam'
+import { RulesExchange } from '@/pages/layout/OptionsRulesExchange'
+import { RulesCustom } from '@/pages/layout/OptionsRulesCustom'
+import { RulesSystem } from '@/pages/layout/OptionsSystem'
 
 type TabKey = 'homework' | 'exam' | 'exchange' | 'custom' | 'system'
 
@@ -22,7 +22,7 @@ export default function Rules() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">规则配置</h2>
+            <h2>配置选项</h2>
 
             {/* Tabs */}
             <Tabs tabs={tabs} active={activeTab} onChange={setActiveTab} />

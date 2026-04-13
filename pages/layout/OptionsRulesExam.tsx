@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ExamRuleRange } from '@apps/lib/types'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import { useSnackbar } from '@apps/components/Snackbar'
 import { formatErrorMessage } from '@apps/lib/utils'
 import {
@@ -26,7 +26,7 @@ export function RulesExam() {
 
     useEffect(() => {
         let cancelled = false
-        rulesApi
+        optionsAPI
             .get('exam')
             .then((data) => {
                 if (!cancelled) setRanges(parseExamData(data))
@@ -40,7 +40,7 @@ export function RulesExam() {
     const handleSave = async () => {
         setSaving(true)
         try {
-            await rulesApi.update('exam', { ranges })
+            await optionsAPI.update('exam', ranges)
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')

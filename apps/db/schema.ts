@@ -1,10 +1,17 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import {
+    defaultGradeValues,
+    taskTypeValues,
+    taskStatus,
+    relatedTypeValues,
+    exchangeStatusValues,
+} from '@apps/lib/utils'
 
 export const tasks = sqliteTable('tasks', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     title: text('title').notNull(),
-    type: text('type', { enum: ['composition', 'mindmap'] }).notNull(),
-    status: text('status', { enum: ['pending', 'completed', 'expired'] })
+    type: text('type', { enum: taskTypeValues }).notNull(),
+    status: text('status', { enum: taskStatus })
         .notNull()
         .default('pending'),
     createdAt: text('created_at')
@@ -18,7 +25,7 @@ export const submissions = sqliteTable('submissions', {
         .notNull()
         .references(() => tasks.id),
     content: text('content').notNull(),
-    grade: text('grade', { enum: ['A+', 'A', 'B', 'C', 'D', 'E'] }),
+    grade: text('grade', { enum: defaultGradeValues }),
     aiScore: text('ai_score'),
     scoredAt: text('scored_at'),
     createdAt: text('created_at')
@@ -34,7 +41,7 @@ export const pointRecords = sqliteTable('point_records', {
     ruleName: text('rule_name'),
     relatedId: integer('related_id'),
     relatedType: text('related_type', {
-        enum: ['task', 'submission', 'exam', 'extra', 'custom'],
+        enum: relatedTypeValues,
     }),
     createdAt: text('created_at')
         .notNull()
@@ -46,7 +53,7 @@ export const exchanges = sqliteTable('exchanges', {
     itemType: text('item_type').notNull(),
     pointsCost: integer('points_cost').notNull(),
     detail: text('detail').notNull(),
-    status: text('status', { enum: ['active', 'revoked'] })
+    status: text('status', { enum: exchangeStatusValues })
         .notNull()
         .default('active'),
     createdAt: text('created_at')
@@ -54,7 +61,7 @@ export const exchanges = sqliteTable('exchanges', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const ruleConfig = sqliteTable('rule_config', {
+export const options = sqliteTable('options', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     key: text('key').notNull().unique(),
     value: text('value').notNull(),

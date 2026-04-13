@@ -1,14 +1,15 @@
 import { useState, useEffect } from 'react'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import type { HomeworkGradeRule } from '@apps/lib/types'
-import { parseHomeworkData } from '@layout/RulesHomework'
+import { parseHomeworkData } from '@/pages/layout/OptionsRulesHomework'
 import { DataTable, type Column } from '@apps/components/DataTable'
+import { pointColors, pointSymbol } from '@apps/lib/utils'
 
 export default function WidgetHomeworkGradeRules() {
     const [homeworkRules, setHomeworkRules] = useState<HomeworkGradeRule[]>([])
 
     useEffect(() => {
-        rulesApi
+        optionsAPI
             .get('homework')
             .then((data) => {
                 setHomeworkRules(parseHomeworkData(data))
@@ -23,29 +24,27 @@ export default function WidgetHomeworkGradeRules() {
             key: 'grade',
             header: '等级',
             render: (rule) => (
-                <span className="badge bg-purple-100 text-purple-800">
-                    {rule.grade}
-                </span>
+                <span className="badge-primary">{rule.grade}</span>
             ),
         },
         {
             key: 'points',
             header: '积分',
-            render: (rule) => (
-                <span
-                    className={`font-medium ${rule.points >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                    {rule.points >= 0 ? '+' : ''}
-                    {rule.points}
-                </span>
-            ),
+            render: (rule) => {
+                const type = rule.points >= 0 ? 'earn' : 'deduct'
+                return (
+                    <span className={pointColors[type]}>
+                        {pointSymbol[type]}
+                        {Math.abs(rule.points)}
+                    </span>
+                )
+            },
         },
     ]
 
     return (
-        <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                作业评分积分
-            </h3>
+        <div className="card space-y-4">
+            <h3>作业评分积分规则</h3>
             <DataTable data={homeworkRules} columns={columns} rowKey="grade" />
         </div>
     )

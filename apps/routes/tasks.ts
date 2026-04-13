@@ -2,7 +2,11 @@ import { Router, type Request, type Response } from 'express'
 import { db } from '@apps/db/index'
 import { tasks, submissions, pointRecords } from '@apps/db/schema'
 import { eq, desc, and, inArray } from 'drizzle-orm'
-import { scoreComposition, generateTitle } from '@apps/services/ai'
+import {
+    scoreComposition,
+    generateTitle,
+    generateTaskTitle,
+} from '@apps/services/ai'
 import { getPointsForGrade } from '@apps/services/points'
 import { loadRules } from '@apps/routes/rules-loader'
 import { recomputeMonthSummary } from '@apps/routes/summary-helper'
@@ -17,7 +21,8 @@ import type {
     TaskStatus,
     ApiErrorResponse,
     ApiSuccessResponse,
-} from '@apps/types'
+} from '@apps/lib/types'
+import { toTaskType } from '@apps/lib/utils'
 
 const router = Router()
 
@@ -337,12 +342,34 @@ router.post(
         const title = await generateTitle(
             submission.content,
             task.type === 'mindmap' ? 'mindmap' : 'composition',
-            task.title,
             taskId,
         )
 
         // Update task title
         await db.update(tasks).set({ title }).where(eq(tasks.id, taskId))
+
+        res.json({ title })
+    },
+)
+
+// AI-generate a task title given type and grade
+router.post(
+    '/ai-generate-title',
+    async (
+        req: Request<
+            {},
+            { title: string } | ApiErrorResponse,
+            { type: string; grade: number }
+        >,
+        res: Response<{ title: string } | ApiErrorResponse>,
+    ) => {
+        const { type, grade } = req.body
+        if (!type || !grade) {
+            res.status(400).json({ error: 'type 和 grade 为必填项' })
+            return
+        }
+
+        const title = await generateTaskTitle(toTaskType(type), grade)
 
         res.json({ title })
     },
@@ -386,8 +413,8 @@ router.post(
         // AI scoring
         const aiResult = await scoreComposition(
             submission.content,
+            task.type,
             task.title,
-            task.type === 'mindmap' ? 'mindmap' : 'composition',
             taskId,
         )
 

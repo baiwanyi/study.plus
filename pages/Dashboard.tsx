@@ -63,29 +63,27 @@ export default function Dashboard() {
                 totalTasks={tasks}
             />
 
-            {/* Net Change & Balance */}
-            <WidgetBalance
-                summary={summary}
-                month={month}
-            />
-
-            {/* Pending Tasks */}
-            <WidgetPendingTasks pendingTasks={pendingTasks} />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Net Change & Balance */}
+                <WidgetBalance summary={summary} month={month} />
+                {/* Pending Tasks */}
+                <WidgetPendingTasks pendingTasks={pendingTasks} />
+            </div>
 
             {/* All Rules List */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                {/* Homework Grade Rules */}
-                <WidgetHomeworkGradeRules />
-
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
                 {/* Exam Score Rules */}
                 <WidgetExamScoreRules />
 
-                {/* Custom Rules */}
-                <WidgetCustomRules />
+                {/* Homework Grade Rules */}
+                <WidgetHomeworkGradeRules />
+
+                {/* Exchange Rules */}
+                <WidgetExchangeRules />
             </div>
 
-            {/* Exchange Rules */}
-            <WidgetExchangeRules />
+            {/* Custom Rules */}
+            <WidgetCustomRules />
         </div>
     )
 }

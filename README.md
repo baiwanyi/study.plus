@@ -21,18 +21,28 @@
 
 ## 技术栈
 
-| 类别     | 技术选型                       | 说明                            |
-|----------|--------------------------------|---------------------------------|
-| 前端框架 | React 19 + Vite 6 + TypeScript | SPA 单页应用                    |
-| UI 组件  | Tailwind CSS 3                 | 原子化 CSS，响应式设计          |
-| 图标库   | Lucide React                   | 轻量级 SVG 图标库               |
-| Markdown | @uiw/react-md-editor           | Markdown 编辑器+实时预览        |
-| 思维导图 | Mermaid.js 11                  | Markdown 语法渲染思维导图       |
-| 路由     | React Router 7                 | 客户端路由                      |
-| 后端服务 | Node.js + Express + TypeScript | Web 服务 + RESTful API          |
-| AI 评分  | DeepSeek API                   | 作文/思维导图 AI 评分 + AI 起名 |
+| 类别     | 技术选型                         | 说明                            |
+|----------|----------------------------------|---------------------------------|
+| 前端框架 | React 19 + Vite 6 + TypeScript   | SPA 单页应用                    |
+| UI 组件  | Tailwind CSS 3                   | 原子化 CSS，响应式设计          |
+| 图标库   | Lucide React                     | 轻量级 SVG 图标库               |
+| Markdown | @uiw/react-md-editor             | Markdown 编辑器+实时预览        |
+| 思维导图 | Mermaid.js 11                    | Markdown 语法渲染思维导图       |
+| 路由     | React Router 7                   | 客户端路由                      |
+| 后端服务 | Node.js + Express + TypeScript   | Web 服务 + RESTful API          |
+| AI 评分  | DeepSeek API                     | 作文/思维导图 AI 评分 + AI 起名 |
 | 数据库   | SQLite (libSQL / @libsql/client) | 轻量级本地数据库，兼容 Turso 云 |
-| ORM      | Drizzle ORM                    | 类型安全的 SQL 查询构建器       |
+| ORM      | Drizzle ORM                      | 类型安全的 SQL 查询构建器       |
+
+### 项目架构
+
+这是一个**前后端一体化**的单仓库项目，采用以下架构：
+
+- **前端**：React 19 + Vite 6，运行在端口 5173
+- **后端**：Express + TypeScript，运行在端口 3001
+- **数据库**：SQLite 本地数据库，使用 Drizzle ORM 进行数据操作
+- **开发模式**：通过 Vite 代理配置将 `/api` 请求转发到 Express 后端
+- **构建部署**：Vite 构建前端，TypeScript 编译后端，统一部署
 
 ## 功能需求
 
@@ -111,7 +121,7 @@
 
 - 所有规则在页面使用表格展示，支持在线编辑
 - 月初始积分、特权最低积分、兑换比例均可自定义修改
-- 存储在数据库 `rule_config` 表，按类别分 key 存储（homework、exam、exchange、custom、system）
+- 存储在数据库 `options` 表，按类别分 key 存储（homework、exam、exchange、custom、system）
 
 ### 3. 页面功能
 
@@ -156,6 +166,19 @@
 - 按项目汇总统计（AI评分/AI起名）
 - 总调用次数与总 Token 消耗概览
 
+#### 3.7 规则配置
+
+- 所有规则在页面使用表格展示，支持在线编辑
+- 月初始积分、特权最低积分、兑换比例均可自定义修改
+- 存储在数据库 `options` 表，按类别分 key 存储（homework、exam、exchange、custom、system）
+- 规则分类展示：作业评分规则、考试分数规则、兑换规则、自定义规则、系统规则
+
+#### 3.8 设置选项
+
+- 系统设置配置
+- 规则配置页面入口
+- 帮助文档链接
+
 ### 4. 数据看板
 
 - 月度积分趋势图
@@ -172,7 +195,7 @@ tasks          -> id, title, type(composition/mindmap), status(pending/completed
 submissions    -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
 point_records  -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType(task/submission/exam/extra/custom), createdAt
 exchanges      -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
-rule_config    -> id, key(unique), value
+options    -> id, key(unique), value
 ai_usage_logs  -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
 month_summary  -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500)
 ```
@@ -181,61 +204,91 @@ month_summary  -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(
 
 ```
 study.webian.dev/
-├── client/                        # React + Vite 前端项目
-│   ├── public/                    # 静态资源
-│   │   ├── favicon.svg            # 网站图标
-│   │   ├── faq.md                 # 常见问题文档
-│   │   ├── markdown.md            # Markdown 语法参考文档
-│   │   └── mermaid.md             # Mermaid 图表语法参考文档
-│   ├── src/
-│   │   ├── components/           # 公共组件
-│   │   │   ├── Layout.tsx        # 布局（侧边栏+主内容区+随机名言）
-│   │   │   └── Snackbar.tsx     # 全局消息提示组件
-│   │   ├── pages/                # 页面组件
-│   │   │   ├── Dashboard.tsx     # 首页看板
-│   │   │   ├── Tasks.tsx         # 作业管理 + Markdown 编辑器 + AI 起名
-│   │   │   ├── Points.tsx        # 积分记录
-│   │   │   ├── Exchanges.tsx     # 兑换记录
-│   │   │   ├── AIUsage.tsx       # DeepSeek API 使用记录
-│   │   │   └── Rules.tsx         # 规则配置
-│   │   ├── lib/                  # 工具库
-│   │   │   ├── api.ts            # API 请求封装
-│   │   │   ├── types.ts          # TypeScript 类型定义
-│   │   │   └── utils.ts          # 工具函数
-│   │   ├── data/                  # 静态数据
-│   │   │   └── quotes.json       # 学习名言名句集（30条）
-│   │   ├── App.tsx               # 路由配置
-│   │   ├── main.tsx              # 入口
-│   │   └── index.css             # 全局样式
-│   ├── index.html
-│   ├── vite.config.ts
-│   ├── tsconfig.json
-│   └── package.json
-├── server/                        # Express 后端项目
-│   ├── src/
-│   │   ├── routes/               # 路由定义
-│   │   │   ├── tasks.ts          # 作业 API（含 AI 评分/起名）
-│   │   │   ├── points.ts         # 积分 API
-│   │   │   ├── exchanges.ts      # 兑换记录 API
-│   │   │   ├── rules.ts          # 规则配置 API
-│   │   │   ├── rules-loader.ts   # 规则加载与初始化
-│   │   │   ├── ai-usage.ts       # AI 使用记录 API
-│   │   │   └── summary-helper.ts # 月度汇总辅助
-│   │   ├── db/                   # 数据库
-│   │   │   ├── schema.ts         # Drizzle ORM Schema
-│   │   │   ├── migrate.ts        # 迁移脚本
-│   │   │   └── index.ts          # 数据库连接
-│   │   ├── services/             # 业务逻辑
-│   │   │   ├── ai.ts             # DeepSeek API 封装（评分+起名+使用记录）
-│   │   │   └── points.ts         # 积分计算服务
-│   │   ├── types.ts              # 类型定义
-│   │   └── index.ts              # 服务入口
-│   ├── data/                     # SQLite 数据文件目录
-│   ├── package.json
-│   └── tsconfig.json
-├── .env                          # 环境变量（不提交到仓库）
-├── .gitignore
-└── package.json
+├── apps/                         # 后端代码和共享组件
+│   ├── components/              # 共享组件
+│   │   ├── DataTable.tsx       # 数据表格组件
+│   │   ├── Layout.tsx          # 布局（侧边栏+主内容区+随机名言）
+│   │   ├── Loading.tsx         # 加载组件
+│   │   ├── Modal.tsx           # 模态框组件
+│   │   ├── RulesPage.tsx       # 规则配置页面
+│   │   ├── Snackbar.tsx        # 全局消息提示组件
+│   │   └── Tabs.tsx            # 标签页组件
+│   ├── db/                     # 数据库相关
+│   │   ├── default.ts          # 默认配置
+│   │   ├── index.ts            # 数据库连接
+│   │   ├── migrate.ts          # 迁移脚本
+│   │   └── schema.ts           # Drizzle ORM Schema
+│   ├── lib/                    # 工具库
+│   │   ├── api.ts              # API请求封装
+│   │   ├── react-md-editor.d.ts # Markdown编辑器类型定义
+│   │   ├── types.ts            # TypeScript类型定义
+│   │   └── utils.ts            # 工具函数
+│   ├── routes/                 # API路由
+│   │   ├── ai-usage.ts         # AI使用记录API
+│   │   ├── exchanges.ts        # 兑换记录API
+│   │   ├── options.ts          # 选项配置API
+│   │   ├── points.ts           # 积分记录API
+│   │   ├── rules-loader.ts     # 规则加载与初始化
+│   │   ├── summary-helper.ts   # 月度汇总辅助
+│   │   └── tasks.ts            # 作业API（含AI评分/起名）
+│   ├── services/               # 业务逻辑
+│   │   ├── ai.ts               # DeepSeek API封装（评分+起名+使用记录）
+│   │   └── points.ts           # 积分计算服务
+│   ├── index.tsx               # React入口（前端）
+│   └── server.ts               # Express服务器入口
+├── pages/                       # 前端页面组件
+│   ├── layout/                 # 布局和子组件
+│   │   ├── AIListTable.tsx     # AI记录列表表格
+│   │   ├── AISummaryCards.tsx  # AI使用统计卡片
+│   │   ├── AISummaryTable.tsx  # AI使用汇总表格
+│   │   ├── ExchangesListTable.tsx # 兑换记录列表表格
+│   │   ├── ExchangesModalAdd.tsx # 添加兑换记录模态框
+│   │   ├── ExchangesStatsCards.tsx # 兑换统计卡片
+│   │   ├── Help.tsx            # 帮助组件
+│   │   ├── OptionsRulesCustom.tsx # 自定义规则组件
+│   │   ├── OptionsRulesExam.tsx # 考试规则组件
+│   │   ├── OptionsRulesExchange.tsx # 兑换规则组件
+│   │   ├── OptionsRulesHomework.tsx # 作业规则组件
+│   │   ├── OptionsSystem.tsx   # 系统设置组件
+│   │   ├── PointsListTable.tsx # 积分记录列表表格
+│   │   ├── PointsModalAdd.tsx  # 添加积分记录模态框
+│   │   ├── PointsStatsCards.tsx # 积分统计卡片
+│   │   ├── TaskEdit.tsx        # 作业编辑组件
+│   │   ├── TaskListTable.tsx   # 作业列表表格
+│   │   ├── TaskModalAIResult.tsx # AI评分结果模态框
+│   │   ├── TaskModalAIScore.tsx # AI评分模态框
+│   │   ├── TaskModalCreate.tsx # 创建作业模态框
+│   │   ├── TaskModalEdit.tsx   # 编辑作业模态框
+│   │   ├── WidgetBalance.tsx   # 余额组件
+│   │   ├── WidgetCustomRules.tsx # 自定义规则组件
+│   │   ├── WidgetExamScoreRules.tsx # 考试分数规则组件
+│   │   ├── WidgetExchangeRules.tsx # 兑换规则组件
+│   │   ├── WidgetHomeworkGradeRules.tsx # 作业评分规则组件
+│   │   ├── WidgetPendingTasks.tsx # 待处理作业组件
+│   │   └── WidgetStats.tsx     # 统计组件
+│   ├── AIUsage.tsx             # AI使用记录页面
+│   ├── Dashboard.tsx           # 首页看板
+│   ├── Exchanges.tsx           # 兑换记录页面
+│   ├── index.css               # 全局样式
+│   ├── Options.tsx             # 设置选项页面
+│   ├── Points.tsx              # 积分记录页面
+│   └── Tasks.tsx               # 作业管理页面
+├── data/                        # SQLite数据库文件
+├── public/                      # 静态资源
+│   ├── docs/                   # 文档
+│   │   ├── faq.md              # 常见问题文档
+│   │   ├── markdown.md         # Markdown语法参考文档
+│   │   └── mermaid.md          # Mermaid图表语法参考文档
+│   └── favicon.svg             # 网站图标
+├── .env                         # 环境变量（不提交到仓库）
+├── .gitignore                   # Git忽略配置
+├── eslint.config.js            # ESLint配置
+├── index.html                   # HTML入口文件
+├── package.json                 # 项目配置
+├── postcss.config.js           # PostCSS配置
+├── tailwind.config.js          # Tailwind CSS配置
+├── tsconfig.json               # TypeScript配置
+└── vite.config.ts              # Vite构建配置
 ```
 
 ## 开发计划
@@ -270,15 +323,15 @@ study.webian.dev/
 
 ### Phase 4 - 文档与体验优化
 
-- [x] Markdown 语法参考文档（client/public/markdown.md）
-- [x] Mermaid 图表语法参考文档（client/public/mermaid.md）
-- [x] 常见问题文档（client/public/faq.md）
+- [x] Markdown 语法参考文档（public/docs/markdown.md）
+- [x] Mermaid 图表语法参考文档（public/docs/mermaid.md）
+- [x] 常见问题文档（public/docs/faq.md）
 
 ## 本地开发
 
 ```bash
 # 安装依赖
-npm run install:all
+npm install
 
 # 配置环境变量
 cp .env.example .env
@@ -291,8 +344,8 @@ npm run db:migrate
 npm run dev:all
 
 # 或分别启动
-npm run dev              # 启动后端
-npm run dev:client       # 启动前端
+npm run start            # 启动后端（端口3001）
+npm run dev              # 启动前端（端口5173）
 ```
 
 ### 环境变量

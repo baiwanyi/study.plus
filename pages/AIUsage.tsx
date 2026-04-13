@@ -27,9 +27,7 @@ export default function AIUsage() {
 
     return (
         <div className="space-y-6">
-            <h2 className="text-2xl font-bold text-gray-900">
-                DeepSeek API 使用记录
-            </h2>
+            <h2>DeepSeek API 使用记录</h2>
 
             {/* Summary Cards */}
             <AISummaryCards summary={summary} />

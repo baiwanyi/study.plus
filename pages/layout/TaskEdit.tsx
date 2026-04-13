@@ -2,7 +2,7 @@ import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import mermaid from 'mermaid'
 import { Sparkles, Loader2, Check } from 'lucide-react'
-import { tasksApi, configApi } from '@apps/lib/api'
+import { tasksApi, systemAPI } from '@apps/lib/api'
 import type { Task } from '@apps/lib/types'
 import {
     taskTypeLabels,
@@ -13,10 +13,10 @@ import { useSnackbar } from '@components/Snackbar'
 
 export interface EditTaskProps {
     task: Task | null
-    onClose: () => void
+    onCancel: () => void
 }
 
-export default function EditTask({ task, onClose }: EditTaskProps) {
+export default function EditTask({ task, onCancel }: EditTaskProps) {
     const { showSnackbar } = useSnackbar()
 
     const [mdContent, setMdContent] = useState('')
@@ -50,7 +50,7 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
 
     // Fetch autosave config on mount
     useEffect(() => {
-        configApi
+        systemAPI
             .get()
             .then((cfg) => {
                 const interval = Number(cfg.autosaveInterval)
@@ -99,7 +99,7 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
                 content: mdContent.trim(),
             })
             showSnackbar('保存成功')
-            onClose()
+            onCancel()
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
         } finally {
@@ -153,7 +153,7 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
     const hasSuggestions =
         currentTask.aiSuggestions && currentTask.aiSuggestions.length > 0
 
-    const autosaveText =
+    const autoconfirmLabel =
         autosaveStatus === 'saving'
             ? '自动保存中...'
             : autosaveStatus === 'error'
@@ -165,7 +165,7 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
     return (
         <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
             <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center justify-between gap-3">
                     <span
                         className={`badge ${taskTypeColors[currentTask.type]}`}>
                         {taskTypeLabels[currentTask.type]}
@@ -177,13 +177,13 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
                         <button
                             onClick={handleAiTitle}
                             disabled={generatingTitle}
-                            className="btn-outline">
+                            className="btn-outline btn-sm">
                             {generatingTitle ? 'AI起名中...' : 'AI起名'}
                         </button>
                     )}
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={onClose} className="btn-outline">
+                    <button onClick={onCancel} className="btn-outline">
                         取消
                     </button>
                     <button
@@ -197,14 +197,12 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
 
             {/* AI 改进建议 */}
             {hasSuggestions && (
-                <div className="bg-amber-50 border-b border-amber-200 px-6 py-3 flex-shrink-0">
+                <div className="bg-amber-50 border-b border-warning-background px-6 py-3 flex-shrink-0">
                     <div className="flex items-start gap-2">
-                        <Sparkles className="w-5 h-5 text-amber-500 flex-shrink-0 mt-0.5" />
-                        <div>
-                            <p className="text-sm font-medium text-amber-800">
-                                改进建议
-                            </p>
-                            <ul className="text-sm text-amber-700 list-disc list-inside mt-1">
+                        <Sparkles className="w-5 h-5 text-warning flex-shrink-0" />
+                        <div className="space-y-1 text-sm font-medium text-warning">
+                            <h6 className="text-warning">改进建议</h6>
+                            <ul className="list-disc list-inside">
                                 {currentTask.aiSuggestions!.map((s, i) => (
                                     <li key={i}>{s}</li>
                                 ))}
@@ -229,7 +227,7 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
                 <div className="flex items-center gap-4">
                     <span>{mdContent.length} 字符</span>
                     <span
-                        className={`flex items-center gap-1 ${autosaveStatus === 'saving' ? 'text-amber-500' : autosaveStatus === 'saved' ? 'text-emerald-600' : autosaveStatus === 'error' ? 'text-red-500' : 'text-gray-400'}`}>
+                        className={`flex items-center gap-1 ${autosaveStatus === 'saving' ? 'text-warning' : autosaveStatus === 'saved' ? 'text-success' : autosaveStatus === 'error' ? 'text-danger' : 'text-muted'}`}>
                         {autosaveStatus === 'saving' && (
                             <Loader2 className="w-3 h-3 animate-spin" />
                         )}
@@ -238,7 +236,7 @@ export default function EditTask({ task, onClose }: EditTaskProps) {
                         )}
                     </span>
                 </div>
-                <span>{autosaveText}</span>
+                <span>{autoconfirmLabel}</span>
             </div>
         </div>
     )
@@ -308,7 +306,7 @@ const MermaidCodeBlock = memo(function MermaidCodeBlock({
 
     if (error) {
         return (
-            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-red-600 my-2">
+            <div className="bg-red-50 border border-red-200 rounded-lg p-3 text-sm text-danger my-2">
                 <p className="font-medium">思维导图渲染失败</p>
                 <p className="text-xs mt-1">{error}</p>
                 <pre className="text-xs mt-2 bg-red-100 p-2 rounded overflow-x-auto">

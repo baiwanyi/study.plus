@@ -3,10 +3,10 @@ import path from 'path'
 import tasksRouter from '@apps/routes/tasks'
 import pointsRouter from '@apps/routes/points'
 import exchangesRouter from '@apps/routes/exchanges'
-import rulesRouter from '@apps/routes/rules'
+import rulesRouter from '@/apps/routes/options'
 import aiUsageRouter from '@apps/routes/ai-usage'
 import { db } from '@apps/db/index'
-import { ruleConfig } from '@apps/db/schema'
+import { options } from '@apps/db/schema'
 import { eq } from 'drizzle-orm'
 
 const app: Express = express()
@@ -21,10 +21,10 @@ app.use('/api/tasks', tasksRouter)
 app.use('/api/points', pointsRouter)
 app.use('/api/exchanges', exchangesRouter)
 app.use('/api/ai-usage', aiUsageRouter)
-app.use('/api/rules', rulesRouter)
+app.use('/api/options', rulesRouter)
 
-// Config endpoint (exposes safe client-side config)
-app.get('/api/config', async (_req: Request, res: Response) => {
+// Options endpoint (exposes safe client-side config)
+app.get('/api/system', async (_req: Request, res: Response) => {
     // Hardcoded fallbacks (env vars removed, all config comes from DB)
     const config: Record<string, unknown> = {
         autosaveInterval: 10,
@@ -34,14 +34,14 @@ app.get('/api/config', async (_req: Request, res: Response) => {
     try {
         const rows = await db
             .select()
-            .from(ruleConfig)
-            .where(eq(ruleConfig.key, 'system'))
+            .from(options)
+            .where(eq(options.key, 'system'))
         if (rows[0]) {
-            const sys = JSON.parse(rows[0].value) as Record<string, unknown>
-            if (sys.autosaveInterval !== undefined)
-                config.autosaveInterval = Number(sys.autosaveInterval)
-            if (sys.pageSize !== undefined)
-                config.pageSize = Number(sys.pageSize)
+            const option = JSON.parse(rows[0].value) as Record<string, unknown>
+            if (option.autosaveInterval !== undefined)
+                config.autosaveInterval = Number(option.autosaveInterval)
+            if (option.pageSize !== undefined)
+                config.pageSize = Number(option.pageSize)
         }
     } catch (err) {
         console.error('Failed to load system config from DB:', err)
@@ -52,6 +52,7 @@ app.get('/api/config', async (_req: Request, res: Response) => {
 // Serve React client in production
 const clientDist = path.resolve(
     import.meta.dirname,
+    '..',
     process.env.DIST_PATH || 'dist',
 )
 app.use(express.static(clientDist))
@@ -69,10 +70,10 @@ app.get('*', (_req: Request, res: Response) => {
 // Global error handler
 app.use((err: Error, _req: Request, res: Response, _next: unknown) => {
     console.error('Unhandled error:', err)
-    const isDev = process.env.NODE_ENV !== 'production'
+    const isDEV = process.env.NODE_ENV !== 'production'
     res.status(500).json({
-        error: isDev ? err.message : 'Internal Server Error',
-        ...(isDev && { stack: err.stack }),
+        error: isDEV ? err.message : 'Internal Server Error',
+        ...(isDEV && { stack: err.stack }),
     })
 })
 

@@ -1,31 +1,28 @@
 import type {
     TaskType,
     TaskStatus,
-    Grade,
+    TaskGrade,
+    TaskClass,
+    TaskAI,
     ExchangeStatus,
     PointRecordType,
 } from '@apps/lib/types'
-import { configApi } from '@apps/lib/api'
+import { systemAPI } from '@apps/lib/api'
 
 export function formatDate(iso: string | null): string {
     if (!iso) return '-'
     const d = new Date(iso)
-    return d.toLocaleDateString('zh-CN', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit',
-    })
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${d.getFullYear()}年${pad(d.getMonth() + 1)}月${pad(d.getDate())}日 ${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
 
 export function formatNumber(n: number): string {
     return n.toLocaleString()
 }
 
-export const taskTypeLabels: Record<TaskType, string> = {
-    composition: '作文',
-    mindmap: '思维导图',
+/** Normalize any value to a valid TaskType, defaulting to 'composition' */
+export function toTaskType(value: unknown): TaskType {
+    return value === 'mindmap' ? 'mindmap' : 'composition'
 }
 
 export const taskTypeColors: Record<TaskType, string> = {
@@ -33,13 +30,20 @@ export const taskTypeColors: Record<TaskType, string> = {
     mindmap: 'bg-pink-100 text-pink-800',
 }
 
+export const taskStatus = ['pending', 'completed', 'expired'] as const
 export const taskStatusLabels: Record<TaskStatus, string> = {
     pending: '待完成',
     completed: '已完成',
     expired: '已过期',
 }
+export const taskStatusColors: Record<TaskStatus, string> = {
+    pending: 'badge-pending',
+    completed: 'badge-completed',
+    expired: 'badge-expired',
+}
 
-export const gradeColors: Record<Grade, string> = {
+export const defaultGradeValues = ['A+', 'A', 'B', 'C', 'D', 'E'] as const
+export const defaultGradeColors: Record<TaskGrade, string> = {
     'A+': 'bg-purple-100 text-purple-800',
     A: 'bg-emerald-100 text-emerald-800',
     B: 'bg-blue-100 text-blue-800',
@@ -53,9 +57,65 @@ export const exchangeStatusLabels: Record<ExchangeStatus, string> = {
     revoked: '已撤销',
 }
 
+export const exchangeStatusColors: Record<ExchangeStatus, string> = {
+    active: 'badge-active',
+    revoked: 'badge-revoked',
+}
+
 export const pointTypeLabels: Record<PointRecordType, string> = {
     earn: '加分',
     deduct: '扣分',
+}
+
+export const pointTypeColors: Record<PointRecordType, string> = {
+    earn: 'badge-earn',
+    deduct: 'badge-deduct',
+}
+
+export const pointColors: Record<PointRecordType, string> = {
+    earn: 'text-success',
+    deduct: 'text-danger',
+}
+
+export const pointSymbol: Record<PointRecordType, string> = {
+    earn: '+',
+    deduct: '-',
+}
+export const exchangeStatusValues = ['active', 'revoked'] as const
+export const relatedTypeValues = [
+    'task',
+    'submission',
+    'exam',
+    'extra',
+    'custom',
+    'revoked',
+] as const
+
+export const taskTypeValues = ['composition', 'mindmap'] as const
+export const taskTypeLabels: Record<TaskType, string> = {
+    composition: '作文',
+    mindmap: '思维导图',
+}
+
+export const taskTypeDefaultTitles: Record<TaskType, string> = {
+    mindmap: '未命名思维导图',
+    composition: '未命名作文',
+}
+
+export const taskClassLabels: TaskClass[] = [
+    '未定级',
+    '一年级',
+    '二年级',
+    '三年级',
+    '四年级',
+    '五年级',
+    '六年级',
+]
+
+export const taskAILabels: Record<TaskAI, string> = {
+    'ai-score': 'AI评分',
+    'ai-title': 'AI起名',
+    'ai-task': 'AI出题',
 }
 
 export function getCurrentMonth(): string {
@@ -70,7 +130,7 @@ let _configLoaded = false
 export async function loadConfig(): Promise<void> {
     if (_configLoaded) return
     try {
-        _runtimeConfig = await configApi.get()
+        _runtimeConfig = await systemAPI.get()
         _configLoaded = true
     } catch {
         console.error('Failed to load runtime config from server')
@@ -88,8 +148,12 @@ export function paginate<T>(items: T[], page: number, pageSize?: number): T[] {
 }
 
 export function isAdmin(): boolean {
-    const adminDomain = import.meta.env.VITE_ADMIN_DOMAIN || ''
-    return adminDomain ? window.location.hostname === adminDomain : false
+    const currentHostname = window.location.hostname
+    return (
+        currentHostname === 'localhost' ||
+        currentHostname === '127.0.0.1' ||
+        currentHostname === (import.meta.env.VITE_ADMIN_DOMAINS || '')
+    )
 }
 
 export function formatErrorMessage(err: unknown): string {

@@ -1,15 +1,15 @@
 import { useState, useEffect } from 'react'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import type { ExchangeItemRule } from '@apps/lib/types'
 import { DataTable, type Column } from '@apps/components/DataTable'
-import { parseExchangeData } from '@layout/RulesExchange'
+import { parseExchangeData } from '@/pages/layout/OptionsRulesExchange'
 
 export default function WidgetExchangeRules() {
     const [exchangeRules, setExchangeRules] = useState<ExchangeItemRule[]>([])
 
     useEffect(() => {
         let cancelled = false
-        rulesApi
+        optionsAPI
             .get('exchange')
             .then((data) => {
                 if (!cancelled) setExchangeRules(parseExchangeData(data))
@@ -27,7 +27,7 @@ export default function WidgetExchangeRules() {
             key: 'label',
             header: '项目',
             render: (rule) => (
-                <span className="badge bg-indigo-100 text-indigo-800">
+                <span className="badge-primary">
                     {rule.label}
                 </span>
             ),
@@ -36,14 +36,14 @@ export default function WidgetExchangeRules() {
             key: 'points',
             header: '积分',
             render: (rule) => (
-                <span className="text-gray-700">{rule.points} 积分</span>
+                <span className="text-heading">{rule.points} 积分</span>
             ),
         },
         {
             key: 'ratio',
             header: '可兑换',
             render: (rule) => (
-                <span className="text-gray-700">
+                <span className="text-heading">
                     {rule.ratio} {rule.unit}
                 </span>
             ),
@@ -52,7 +52,7 @@ export default function WidgetExchangeRules() {
             key: 'rate',
             header: '比例',
             render: (rule) => (
-                <span className="text-gray-500">
+                <span className="text-muted">
                     {rule.points} 积分 = {rule.ratio} {rule.unit}
                 </span>
             ),
@@ -60,10 +60,8 @@ export default function WidgetExchangeRules() {
     ]
 
     return (
-        <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                兑换规则
-            </h3>
+        <div className="card space-y-4">
+            <h3>积分兑换规则</h3>
             <DataTable data={exchangeRules} columns={columns} rowKey="key" />
         </div>
     )

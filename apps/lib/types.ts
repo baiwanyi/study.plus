@@ -1,9 +1,26 @@
-// ===== Enum Types =====
 export type TaskType = 'composition' | 'mindmap'
+
+
+
 export type TaskStatus = 'pending' | 'completed' | 'expired'
-export type Grade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'E'
+export type TaskClass =
+    | '未定级'
+    | '一年级'
+    | '二年级'
+    | '三年级'
+    | '四年级'
+    | '五年级'
+    | '六年级'
+export type TaskGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'E'
+export type TaskAI = 'ai-score' | 'ai-title' | 'ai-task'
 export type PointRecordType = 'earn' | 'deduct'
-export type RelatedType = 'task' | 'submission' | 'exam' | 'extra' | 'custom'
+export type RelatedType =
+    | 'task'
+    | 'submission'
+    | 'exam'
+    | 'extra'
+    | 'custom'
+    | 'revoked'
 export type ExchangeItemType = string
 export type ExchangeStatus = 'active' | 'revoked'
 
@@ -11,7 +28,7 @@ export type ExchangeStatus = 'active' | 'revoked'
 interface TaskSubmission {
     id: number
     content: string
-    grade: Grade | null
+    grade: TaskGrade | null
     aiScore: string | null
     scoredAt: string | null
     createdAt: string
@@ -36,14 +53,14 @@ export interface Submission {
     id: number
     taskId: number
     content: string
-    grade: Grade | null
-    aiScore: AIScoreResult | null
+    grade: TaskGrade | null
+    aiScore: string | null
     scoredAt: string | null
     createdAt: string
 }
 
 export interface AIScoreResult {
-    grade: Grade
+    grade: TaskGrade
     score: number
     comment: string
     suggestions: string[]
@@ -78,7 +95,7 @@ export interface MonthSummary {
     balance: number
     /** Available points for exchange (this month's earnings excluded) */
     availableBalance: number
-    /** Minimum points required to use privileges (from rule_config) */
+    /** Minimum points required to use privileges (from options) */
     minimumPointsForPrivileges: number
 }
 
@@ -113,12 +130,33 @@ export interface CreateExchangeRequest {
     detail?: string
 }
 
+export interface RevokeExchangeResponse {
+    success: boolean
+}
+
 // ===== API Response Types =====
+export interface SubmitTaskResponse {
+    submission: Submission
+    aiResult: AIScoreResult
+    pointsEarned: number
+}
+
 export interface PointStats {
     month: string
     totalEarn: number
     totalDeduct: number
+    totalExchanges: number
     net: number
+}
+
+// ===== Common API Response Types =====
+export interface ApiErrorResponse {
+    error: string
+    balance?: number
+}
+
+export interface ApiSuccessResponse {
+    success: boolean
 }
 
 // ===== Rules Types =====
@@ -133,10 +171,9 @@ export interface ExamRuleRange {
     points: number
 }
 
+/** @deprecated Use ExamRuleRange[] directly instead */
 export interface ExamRules {
     ranges: ExamRuleRange[]
-    monthlyBasePoints: number
-    minimumPointsForPrivileges: number
 }
 
 export interface ExchangeItemRule {
@@ -157,7 +194,7 @@ export interface CustomRule {
 
 export interface AllRules {
     homework: HomeworkGradeRule[]
-    exam: ExamRules
+    exam: ExamRuleRange[]
     exchange: ExchangeItemRule[]
     custom: CustomRule[]
 }

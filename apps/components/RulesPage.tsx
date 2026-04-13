@@ -19,7 +19,7 @@ export function RulesPage({
     return (
         <div className="space-y-6">
             <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-900">{title}</h3>
+                <h3>{title}</h3>
                 <div className="flex items-center gap-3">
                     {add && (
                         <button onClick={add} className="btn-outline">
@@ -44,7 +44,7 @@ export function RenderDeleteButton({ onClick }: { onClick: () => void }) {
     return (
         <button
             onClick={onClick}
-            className="text-red-500 hover:text-red-900 transition-colors">
+            className="text-danger/70 hover:text-danger transition-colors">
             <Trash2 className="w-4 h-4" />
         </button>
     )
@@ -63,11 +63,13 @@ export function RenderInput({
 }) {
     return (
         <input
-            className="input"
+            className="regular-text"
             type={type}
             value={value}
             onChange={(e) =>
-                onChange(type === 'number' ? Number(e.target.value) : e.target.value)
+                onChange(
+                    type === 'number' ? Number(e.target.value) : e.target.value,
+                )
             }
             placeholder={placeholder}
         />

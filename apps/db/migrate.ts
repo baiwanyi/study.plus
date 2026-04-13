@@ -1,4 +1,11 @@
 import { client } from '@apps/db/index'
+import {
+    defaultQuotes,
+    defaultHomeworkRules,
+    defaultExamRules,
+    defaultExchangeRules,
+    defaultSystemSettings,
+} from '@apps/db/default'
 
 console.log('Running database migration...')
 
@@ -69,7 +76,7 @@ async function migrate(): Promise<void> {
       reason TEXT NOT NULL,
       rule_name TEXT,
       related_id INTEGER,
-      related_type TEXT CHECK(related_type IN ('task', 'submission', 'exam', 'extra', 'custom')),
+      related_type TEXT CHECK(related_type IN ('task', 'submission', 'exam', 'extra', 'custom', 'revoked')),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
@@ -179,7 +186,7 @@ async function migrate(): Promise<void> {
     }
 
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS rule_config (
+    CREATE TABLE IF NOT EXISTS options (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       key TEXT NOT NULL UNIQUE,
       value TEXT NOT NULL
@@ -232,7 +239,7 @@ async function migrate(): Promise<void> {
     // Migrate from single 'default' key to separate keys
     // If old 'default' key exists, split it into separate rows
     const oldDefault = await client.execute(
-        "SELECT value FROM rule_config WHERE key = 'default'",
+        "SELECT value FROM options WHERE key = 'default'",
     )
     if (oldDefault.rows.length > 0) {
         try {
@@ -249,11 +256,8 @@ async function migrate(): Promise<void> {
 
             // exam
             const examScoreRules = src?.examScoreRules ?? src?.exam?.ranges
-            const examData: Record<string, unknown> = {}
-            if (examScoreRules) examData.ranges = examScoreRules
-            // basePoints/privilegeMinPoints are no longer stored in exam; they go to system key
-            if (Object.keys(examData).length > 0)
-                separateKeys.push({ key: 'exam', value: examData })
+            if (Array.isArray(examScoreRules) && examScoreRules.length > 0)
+                separateKeys.push({ key: 'exam', value: examScoreRules })
 
             // exchange
             const exchange = src?.exchangeRates ?? src?.exchange
@@ -280,12 +284,12 @@ async function migrate(): Promise<void> {
 
             for (const item of separateKeys) {
                 const existing = await client.execute({
-                    sql: 'SELECT id FROM rule_config WHERE key = ?',
+                    sql: 'SELECT id FROM options WHERE key = ?',
                     args: [item.key],
                 })
                 if (existing.rows.length === 0) {
                     await client.execute({
-                        sql: 'INSERT INTO rule_config (key, value) VALUES (?, ?)',
+                        sql: 'INSERT INTO options (key, value) VALUES (?, ?)',
                         args: [item.key, JSON.stringify(item.value)],
                     })
                     console.log(`Migrated rule key: ${item.key}`)
@@ -293,9 +297,7 @@ async function migrate(): Promise<void> {
             }
 
             // Delete old default key
-            await client.execute(
-                "DELETE FROM rule_config WHERE key = 'default'",
-            )
+            await client.execute("DELETE FROM options WHERE key = 'default'")
             console.log(
                 'Migrated rules from single default key to separate keys.',
             )
@@ -309,45 +311,20 @@ async function migrate(): Promise<void> {
     // Insert default separate rules if they don't exist
     const defaultRules: { key: string; value: string }[] = [
         {
+            key: 'quotes',
+            value: JSON.stringify(defaultQuotes),
+        },
+        {
             key: 'homework',
-            value: JSON.stringify([
-                { grade: 'A+', points: 50 },
-                { grade: 'A', points: 20 },
-                { grade: 'B', points: 10 },
-                { grade: 'C', points: -10 },
-                { grade: 'D', points: -20 },
-                { grade: 'E', points: -50 },
-            ]),
+            value: JSON.stringify(defaultHomeworkRules),
         },
         {
             key: 'exam',
-            value: JSON.stringify([
-                { min: 0, max: 59, points: -50 },
-                { min: 60, max: 69, points: -20 },
-                { min: 70, max: 79, points: -10 },
-                { min: 80, max: 89, points: 10 },
-                { min: 90, max: 95, points: 20 },
-                { min: 95, max: 100, points: 50 },
-            ]),
+            value: JSON.stringify(defaultExamRules),
         },
         {
             key: 'exchange',
-            value: JSON.stringify([
-                {
-                    key: 'game',
-                    label: '娱乐时间',
-                    points: 1,
-                    ratio: 10,
-                    unit: '分钟',
-                },
-                {
-                    key: 'cash',
-                    label: '现金兑换',
-                    points: 10,
-                    ratio: 1,
-                    unit: '元',
-                },
-            ]),
+            value: JSON.stringify(defaultExchangeRules),
         },
         {
             key: 'custom',
@@ -355,23 +332,18 @@ async function migrate(): Promise<void> {
         },
         {
             key: 'system',
-            value: JSON.stringify({
-                pageSize: 20,
-                autosaveInterval: 10,
-                monthlyBasePoints: 500,
-                minimumPointsForPrivileges: 100,
-            }),
+            value: JSON.stringify(defaultSystemSettings),
         },
     ]
 
     for (const rule of defaultRules) {
         const existing = await client.execute({
-            sql: 'SELECT id FROM rule_config WHERE key = ?',
+            sql: 'SELECT id FROM options WHERE key = ?',
             args: [rule.key],
         })
         if (existing.rows.length === 0) {
             await client.execute({
-                sql: 'INSERT INTO rule_config (key, value) VALUES (?, ?)',
+                sql: 'INSERT INTO options (key, value) VALUES (?, ?)',
                 args: [rule.key, rule.value],
             })
             console.log(`Default rule inserted: ${rule.key}`)
@@ -381,7 +353,7 @@ async function migrate(): Promise<void> {
     // Migrate exam key: remove basePoints/privilegeMinPoints from exam data, ensure they are in system key
     try {
         const examRow = await client.execute({
-            sql: "SELECT value FROM rule_config WHERE key = 'exam'",
+            sql: "SELECT value FROM options WHERE key = 'exam'",
             args: [],
         })
         if (examRow.rows.length > 0) {
@@ -394,7 +366,7 @@ async function migrate(): Promise<void> {
             ) {
                 // Move to system key
                 const systemRow = await client.execute({
-                    sql: "SELECT value FROM rule_config WHERE key = 'system'",
+                    sql: "SELECT value FROM options WHERE key = 'system'",
                     args: [],
                 })
                 let systemVal: Record<string, unknown> = {}
@@ -420,17 +392,17 @@ async function migrate(): Promise<void> {
                 delete examVal.basePoints
                 delete examVal.privilegeMinPoints
                 await client.execute({
-                    sql: "UPDATE rule_config SET value = ? WHERE key = 'exam'",
+                    sql: "UPDATE options SET value = ? WHERE key = 'exam'",
                     args: [JSON.stringify(examVal)],
                 })
                 if (systemRow.rows.length > 0) {
                     await client.execute({
-                        sql: "UPDATE rule_config SET value = ? WHERE key = 'system'",
+                        sql: "UPDATE options SET value = ? WHERE key = 'system'",
                         args: [JSON.stringify(systemVal)],
                     })
                 } else {
                     await client.execute({
-                        sql: "INSERT INTO rule_config (key, value) VALUES ('system', ?)",
+                        sql: "INSERT INTO options (key, value) VALUES ('system', ?)",
                         args: [JSON.stringify(systemVal)],
                     })
                 }

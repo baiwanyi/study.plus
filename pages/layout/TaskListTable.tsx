@@ -4,10 +4,13 @@ import {
     taskTypeLabels,
     taskTypeColors,
     taskStatusLabels,
-    gradeColors,
+    taskStatusColors,
+    defaultGradeColors,
     formatDate,
     paginate,
     isAdmin,
+    pointColors,
+    pointSymbol,
 } from '@apps/lib/utils'
 import { DataTable, type Column } from '@components/DataTable'
 
@@ -41,8 +44,11 @@ export default function ListTask({
             render: (task) => (
                 <button
                     onClick={() => isAdminRole && onEdit(task)}
-                    className={`font-medium ${isAdminRole ? 'text-gray-900 hover:text-indigo-600 hover:underline cursor-pointer' : 'text-gray-900 cursor-default'}`}>
-                    {task.title}
+                    className={`font-medium text-headline truncate max-w-[300px] ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
+                    title={task.title}>
+                    {task.title.length > 16
+                        ? `${task.title.slice(0, 16)}...`
+                        : task.title}
                 </button>
             ),
         },
@@ -61,7 +67,7 @@ export default function ListTask({
             render: (task) =>
                 task.submission?.grade ? (
                     <span
-                        className={`badge ${gradeColors[task.submission.grade]}`}>
+                        className={`badge ${defaultGradeColors[task.submission.grade]}`}>
                         {task.submission.grade}
                     </span>
                 ) : (
@@ -82,11 +88,13 @@ export default function ListTask({
                     <span
                         className={
                             task.pointsEarned >= 0
-                                ? 'text-emerald-600 font-medium'
-                                : 'text-red-600 font-medium'
+                                ? pointColors.earn
+                                : pointColors.deduct
                         }>
-                        {task.pointsEarned >= 0 ? '+' : ''}
-                        {task.pointsEarned}
+                        {task.pointsEarned >= 0
+                            ? pointSymbol.earn
+                            : pointSymbol.deduct}
+                        {Math.abs(task.pointsEarned)}
                     </span>
                 ) : (
                     <span className="text-gray-400">-</span>
@@ -96,7 +104,7 @@ export default function ListTask({
             key: 'status',
             header: '状态',
             render: (task) => (
-                <span className={`badge-${task.status}`}>
+                <span className={taskStatusColors[task.status]}>
                     {taskStatusLabels[task.status]}
                 </span>
             ),
@@ -151,7 +159,7 @@ export default function ListTask({
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2 className="text-2xl font-bold text-gray-900">作业管理</h2>
+                <h2>作业管理</h2>
                 <button onClick={onAdd} className="btn-primary">
                     添加作业
                 </button>

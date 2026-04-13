@@ -3,12 +3,12 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import Layout from '@components/Layout'
 import { SnackbarProvider } from '@components/Snackbar'
-import { loadConfig } from '@apps/lib/utils'
+import { loadConfig, isAdmin } from '@apps/lib/utils'
 import Dashboard from '@pages/Dashboard'
 import Tasks from '@pages/Tasks'
 import Points from '@pages/Points'
 import Exchanges from '@pages/Exchanges'
-import Rules from '@pages/Rules'
+import Options from '@/pages/Options'
 import AIUsage from '@pages/AIUsage'
 import '@pages/index.css'
 
@@ -23,7 +23,7 @@ const AppRoutes = () => (
                 <Route path="tasks" element={<Tasks />} />
                 <Route path="points" element={<Points />} />
                 <Route path="exchanges" element={<Exchanges />} />
-                <Route path="rules" element={<Rules />} />
+                {isAdmin() && <Route path="options" element={<Options />} />}
                 <Route path="usage" element={<AIUsage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

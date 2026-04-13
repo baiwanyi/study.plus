@@ -1,3 +1,8 @@
+import {
+    defaultExamRemark,
+    defaultHomeworkRemark,
+    defaultQuotes,
+} from '@apps/db/default'
 import type {
     Task,
     Submission,
@@ -64,6 +69,11 @@ export const tasksApi = {
         }>(`/tasks/${id}/ai-score`, { method: 'POST' }),
     aiTitle: (id: number) =>
         request<{ title: string }>(`/tasks/${id}/ai-title`, { method: 'POST' }),
+    aiGenerateTitle: (type: string, grade: number) =>
+        request<{ title: string }>('/tasks/ai-generate-title', {
+            method: 'POST',
+            body: JSON.stringify({ type, grade }),
+        }),
 }
 
 // ===== Points =====
@@ -109,19 +119,72 @@ export const exchangesApi = {
         request<Exchange>(`/exchanges/${id}/revoke`, { method: 'POST' }),
 }
 
-// ===== Rules =====
-export const rulesApi = {
-    get: (key: string) => request<unknown>(`/rules/${key}`),
+// ===== Options =====
+export const optionsAPI = {
+    get: (key: string) => request<unknown>(`/options/${key}`),
     update: (key: string, value: unknown) =>
-        request<{ success: boolean }>(`/rules/${key}`, {
+        request<{ success: boolean }>(`/options/${key}`, {
             method: 'PUT',
             body: JSON.stringify(value),
         }),
 }
 
-// ===== Config =====
-export const configApi = {
-    get: () => request<AppConfig>('/config'),
+// ===== Remark =====
+interface RemarkOptions {
+    exam: string
+    homework: string
+}
+
+const defaultRemark: RemarkOptions = {
+    exam: defaultExamRemark.join('\n'),
+    homework: defaultHomeworkRemark.join('\n'),
+}
+
+export const remarkApi = {
+    get: async (): Promise<RemarkOptions> => {
+        try {
+            const data = await optionsAPI.get('remark')
+            if (data && typeof data === 'object') {
+                const option = data as Partial<RemarkOptions>
+                return {
+                    exam: option.exam ?? defaultRemark.exam,
+                    homework: option.homework ?? defaultRemark.homework,
+                }
+            }
+        } catch {
+            // Return defaults on error
+        }
+        return defaultRemark
+    },
+    update: async (options: RemarkOptions) => {
+        await optionsAPI.update('remark', options)
+    },
+}
+
+// ===== Quotes =====
+export const quotesApi = {
+    get: async (): Promise<string[]> => {
+        try {
+            const data = await optionsAPI.get('quotes')
+            // Handle both plain array and {quotes: [...]} format
+            if (Array.isArray(data)) return data as string[]
+            if (data && typeof data === 'object' && 'quotes' in data) {
+                const option = data as { quotes: string[] }
+                if (Array.isArray(option.quotes)) return option.quotes
+            }
+        } catch {
+            // Return defaults on error
+        }
+        return defaultQuotes
+    },
+    update: async (quotes: string[]) => {
+        await optionsAPI.update('quotes', quotes)
+    },
+}
+
+// ===== System =====
+export const systemAPI = {
+    get: () => request<AppConfig>('/system'),
 }
 
 // ===== AI Usage =====

@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import type { ExamRuleRange } from '@apps/lib/types'
-import { parseExamData } from '@layout/RulesExam'
+import { pointColors, pointSymbol } from '@apps/lib/utils'
+import { parseExamData } from '@/pages/layout/OptionsRulesExam'
 import { DataTable, type Column } from '@apps/components/DataTable'
 
 const columns: Column<ExamRuleRange>[] = [
@@ -9,7 +10,7 @@ const columns: Column<ExamRuleRange>[] = [
         key: 'range',
         header: '分数区间',
         render: (rule) => (
-            <span className="text-gray-700">
+            <span className="text-heading">
                 {rule.min} ~ {rule.max} 分
             </span>
         ),
@@ -17,13 +18,15 @@ const columns: Column<ExamRuleRange>[] = [
     {
         key: 'points',
         header: '积分',
-        render: (rule) => (
-            <span
-                className={`font-medium ${rule.points >= 0 ? 'text-emerald-600' : 'text-red-600'}`}>
-                {rule.points >= 0 ? '+' : ''}
-                {rule.points}
-            </span>
-        ),
+        render: (rule) => {
+            const type = rule.points >= 0 ? 'earn' : 'deduct'
+            return (
+                <span className={pointColors[type]}>
+                    {pointSymbol[type]}
+                    {Math.abs(rule.points)}
+                </span>
+            )
+        },
     },
 ]
 
@@ -31,7 +34,7 @@ export default function WidgetExamScoreRules() {
     const [examRules, setExamRules] = useState<ExamRuleRange[]>([])
 
     useEffect(() => {
-        rulesApi
+        optionsAPI
             .get('exam')
             .then((data) => {
                 setExamRules(parseExamData(data))
@@ -42,10 +45,8 @@ export default function WidgetExamScoreRules() {
     }, [])
 
     return (
-        <div className="card">
-            <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                单元测评积分
-            </h3>
+        <div className="card space-y-4">
+            <h3>单元测评积分规则</h3>
             <DataTable
                 data={examRules}
                 columns={columns}

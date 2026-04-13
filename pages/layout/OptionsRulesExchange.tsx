@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import type { ExchangeItemRule } from '@apps/lib/types'
-import { rulesApi } from '@apps/lib/api'
+import { optionsAPI } from '@apps/lib/api'
 import { useSnackbar } from '@apps/components/Snackbar'
 import {
     RulesPage,
@@ -98,7 +98,7 @@ export function RulesExchange() {
 
     useEffect(() => {
         let cancelled = false
-        rulesApi
+        optionsAPI
             .get('exchange')
             .then((data) => {
                 if (!cancelled) setExchange(parseExchangeData(data))
@@ -112,7 +112,7 @@ export function RulesExchange() {
     const handleSave = async () => {
         setSaving(true)
         try {
-            await rulesApi.update('exchange', exchange)
+            await optionsAPI.update('exchange', exchange)
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
