@@ -138,6 +138,7 @@
 - Markdown 编辑器编辑提交内容
 - AI 评分（DeepSeek 自动评分+积分计算）
 - AI 起名（根据内容自动生成任务标题，仅限「未命名」开头的任务）
+- AI 出题（根据年级和作业类型进行随机出题）
 - 作业创建/编辑/删除
 - 作业名称为空时自动命名为「未命名作文作业」或「未命名思维导图作业」
 
@@ -163,7 +164,7 @@
 #### 3.6 AI 使用记录
 
 - DeepSeek API 调用记录（使用项目/任务名称/使用时间/Token 用量）
-- 按项目汇总统计（AI评分/AI起名）
+- 按项目汇总统计（AI评分/AI起名/AI出题）
 - 总调用次数与总 Token 消耗概览
 
 #### 3.7 规则配置
@@ -191,13 +192,13 @@
 ### 核心数据模型
 
 ```
-tasks          -> id, title, type(composition/mindmap), status(pending/completed/expired), createdAt
-submissions    -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
-point_records  -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType(task/submission/exam/extra/custom), createdAt
-exchanges      -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
-options    -> id, key(unique), value
-ai_usage_logs  -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
-month_summary  -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500)
+tasks           -> id, title, type(composition/mindmap), status(pending/completed/expired), createdAt
+submissions     -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
+point_records   -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType(task/submission/exam/extra/custom), createdAt
+exchanges       -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
+options         -> id, key(unique), value
+ai_usage_logs   -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
+month_summary   -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500)
 ```
 
 ## 项目结构
@@ -306,6 +307,7 @@ study.webian.dev/
 - [x] 作业提交与自评
 - [x] DeepSeek AI 评分集成
 - [x] DeepSeek AI 起名功能
+- [x] DeepSeek AI 出题功能
 - [x] DeepSeek API 使用记录
 - [x] Markdown 编辑器集成（@uiw/react-md-editor）
 - [x] 思维导图编辑支持（Mermaid.js）
