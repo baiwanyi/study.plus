@@ -49,9 +49,7 @@ export function DataTable<T extends Record<string, any>>({
                 <tbody>
                     {data.length === 0 ? (
                         <tr>
-                            <td
-                                colSpan={columns.length}
-                                className="py-8 text-center text-muted">
+                            <td colSpan={columns.length} className="text-none">
                                 {emptyText}
                             </td>
                         </tr>

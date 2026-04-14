@@ -2,14 +2,12 @@ import { useState, useEffect, useCallback } from 'react'
 import { pointsApi, optionsAPI } from '@apps/lib/api'
 import type {
     PointRecord,
-    PointStats,
     HomeworkGradeRule,
     CustomRule,
     ExamRuleRange,
 } from '@apps/lib/types'
 import { getCurrentMonth, isAdmin, formatErrorMessage } from '@apps/lib/utils'
 import { useSnackbar } from '@components/Snackbar'
-import PointsStatsCards from '@layout/PointsStatsCards'
 import PointsListTable from '@layout/PointsListTable'
 import PointsModalAdd from '@/pages/layout/PointsModalAdd'
 import Loading from '@components/Loading'
@@ -17,7 +15,6 @@ import Loading from '@components/Loading'
 export default function Points() {
     const { showSnackbar } = useSnackbar()
     const [records, setRecords] = useState<PointRecord[]>([])
-    const [stats, setStats] = useState<PointStats | null>(null)
     const [loading, setLoading] = useState(true)
     const [filterType, setFilterType] = useState<string>('')
     const [filterMonth, setFilterMonth] = useState(getCurrentMonth())
@@ -36,18 +33,16 @@ export default function Points() {
             if (filterType) params.type = filterType
             if (filterMonth) params.month = filterMonth
 
-            const [recordsData, statsData, homeworkData, customData, examData] =
+            const [recordsData, homeworkData, customData, examData] =
                 await Promise.all([
                     pointsApi.list(
                         Object.keys(params).length > 0 ? params : undefined,
                     ),
-                    pointsApi.stats(filterMonth),
                     optionsAPI.get('homework').catch(() => null),
                     optionsAPI.get('custom').catch(() => null),
                     optionsAPI.get('exam').catch(() => null),
                 ])
             setRecords(recordsData)
-            setStats(statsData)
             // Extract grade options from homework rules
             if (homeworkData) {
                 const hw = homeworkData as unknown
@@ -98,27 +93,28 @@ export default function Points() {
             examScore: string
         }) => {
             try {
+                const remark = params.remark || ''
                 if (params.category === 'custom') {
                     if (!params.customRuleId) {
                         showSnackbar('请选择一条自定义规则', 'info')
                         return
                     }
-                    await pointsApi.createByCustomRule(params.customRuleId)
+                    await pointsApi.createByCustomRule(
+                        params.customRuleId,
+                        remark,
+                    )
                 } else if (params.category === 'exam') {
                     const score = Number(params.examScore)
                     if (!params.examScore || isNaN(score)) {
                         showSnackbar('请输入有效分数', 'info')
                         return
                     }
-                    await pointsApi.createByExamScore(
-                        score,
-                        params.remark || undefined,
-                    )
+                    await pointsApi.createByExamScore(score, remark)
                 } else {
                     await pointsApi.createByGrade(
                         params.category,
                         params.grade,
-                        params.remark || undefined,
+                        remark,
                     )
                 }
                 showSnackbar('添加成功')
@@ -148,7 +144,7 @@ export default function Points() {
                     )}
                 </div>
 
-                <PointsStatsCards stats={stats} />
+
 
                 {/* Filters */}
                 <div className="card">

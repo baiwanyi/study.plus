@@ -1,7 +1,5 @@
 export type TaskType = 'composition' | 'mindmap'
 
-
-
 export type TaskStatus = 'pending' | 'completed' | 'expired'
 export type TaskClass =
     | '未定级'
@@ -13,6 +11,7 @@ export type TaskClass =
     | '六年级'
 export type TaskGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'E'
 export type TaskAI = 'ai-score' | 'ai-title' | 'ai-task'
+export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =
     | 'task'

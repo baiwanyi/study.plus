@@ -1,6 +1,6 @@
 export const defaultExamRemark = ['语文', '数学', '英语', '试卷订正']
 
-export const defaultHomeworkRemark = [
+export const defaultSubmissionRemark = [
     '数学同步',
     '语文同步',
     '英语同步',
@@ -9,6 +9,8 @@ export const defaultHomeworkRemark = [
     '阅读打卡',
     '写字练习',
 ]
+
+export const defaultCustomRemark = []
 
 export const defaultQuotes = [
     '学海无涯苦作舟。',
@@ -127,3 +129,20 @@ export const defaultSystemSettings = {
     monthlyBasePoints: 500,
     minimumPointsForPrivileges: 100,
 }
+
+export const defaultTaskTitle = {
+    mindmap: '围绕成长的思维导图',
+    composition: '记一件有意义的事',
+}
+
+export const defaultPromptTaskTitleMindmap =
+    '请为{taskGrade}学生出一道独特的思维导图题目。要求：1. 主题必须从以下10个类别中随机选择一个独特的切入点（每次必须选择不同类别，避免重复）：- 阅读感悟：书中的故事、阅读启示、人物分析、情节联想- 自然观察：季节变化、天气现象、动植物世界、环境保护- 科学探索：物理现象、化学实验、科技应用、天文知识- 社会生活：家庭温馨、校园故事、社区活动、人际交往- 文化体验：传统节日、民俗技艺、诗词歌赋、民间故事- 成长感悟：克服困难、学习新技能、友谊故事、自我认识- 艺术创作：绘画手工、音乐舞蹈、戏剧表演、创意设计- 身心健康：运动健身、心理健康、饮食习惯、作息规律- 未来想象：职业梦想、科创幻想、社会变化、环球旅行- 跨学科融合：数学在生活中、历史故事与现实、诗词中的科学2. 题目要新颖独特，避免泛泛而谈，角度要具体化3. 只返回题目文本，不要加引号或其他符号'
+
+export const defaultPromptTaskTitleComposition =
+    '请为{taskGrade}学生出一道有创意的作文题目。要求：1. 题目类型从以下形式中随机选择：命题作文、半命题作文、材料作文（需附50字以内的材料/情境）2. 主题必须从以下领域中随机选择一个独特角度：校园生活、家庭温情、自然观察、成长故事、奇思妙想、社会见闻、读书感悟、人物描写、艺术欣赏、科技探索3. 避免老套的题目（如"难忘的一件事"、"我的妈妈"等），确保题目有新鲜感4. 只返回题目文本，不要加引号或其他符号'
+
+export const defaultPromptGenerateTitle =
+    '请根据以下{taskType}内容，生成一个简洁恰当的标题（不超过15个字，只返回标题文本，不要加引号或其他符号）：{taskContent}'
+
+export const defaultPromptScoreComposition =
+    '请对以下{taskType}进行评分。{taskTitle}。内容：{taskContent}请按以下格式返回：1. 评分等级（A+/A/B/C/D/E）2. 百分制分数3. 评语（50字以内）4. 改进建议（1-3条）请严格按以下 JSON 格式返回：{"grade":"等级","score":分数,"comment":"评语","suggestions":["建议1","建议2"]}'

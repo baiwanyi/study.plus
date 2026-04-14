@@ -27,9 +27,7 @@ export default function WidgetExchangeRules() {
             key: 'label',
             header: '项目',
             render: (rule) => (
-                <span className="badge-primary">
-                    {rule.label}
-                </span>
+                <span className="badge-primary">{rule.label}</span>
             ),
         },
         {
@@ -43,17 +41,8 @@ export default function WidgetExchangeRules() {
             key: 'ratio',
             header: '可兑换',
             render: (rule) => (
-                <span className="text-heading">
+                <span className="text-heading font-semibold text-danger">
                     {rule.ratio} {rule.unit}
-                </span>
-            ),
-        },
-        {
-            key: 'rate',
-            header: '比例',
-            render: (rule) => (
-                <span className="text-muted">
-                    {rule.points} 积分 = {rule.ratio} {rule.unit}
                 </span>
             ),
         },

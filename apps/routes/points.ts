@@ -145,7 +145,7 @@ router.post(
                   : category
 
         const recordType = points >= 0 ? 'earn' : 'deduct'
-        const reason = `${categoryLabel} - ${grade}${remark ? ` (${remark})` : ''}`
+        const reason = `${categoryLabel} - ${grade}${remark ? `（${remark}）` : ''}`
 
         const result = await db
             .insert(pointRecords)
@@ -205,7 +205,7 @@ router.post(
 
         const points = matched.points
         const recordType = points >= 0 ? 'earn' : 'deduct'
-        const reason = `单元测评 - ${numScore}分${remark ? ` (${remark})` : ''}`
+        const reason = `单元测评 - ${numScore}分${remark ? `（${remark}）` : ''}`
         const ruleName = `${matched.min}-${matched.max}分`
 
         const result = await db
@@ -231,13 +231,22 @@ router.post(
         req: Request<
             {},
             PointRecord | ApiErrorResponse,
-            { ruleId: string; relatedId?: string }
+            { ruleId: string; remark?: string; relatedId?: string }
         >,
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
-        const { ruleId, relatedId } = req.body
+        const { ruleId, remark, relatedId } = req.body
         if (!ruleId) {
             res.status(400).json({ error: 'ruleId 为必填项' })
+            return
+        }
+        // Validate relatedId if provided
+        if (
+            relatedId !== undefined &&
+            relatedId !== null &&
+            isNaN(Number(relatedId))
+        ) {
+            res.status(400).json({ error: 'relatedId 必须为有效数字' })
             return
         }
 
@@ -260,22 +269,29 @@ router.post(
         const recordType: PointRecordType =
             customRule.type === 'earn' ? 'earn' : 'deduct'
         const reason = customRule.description
-            ? `${customRule.name} - ${customRule.description}`
-            : customRule.name
+            ? `${customRule.name} - ${customRule.description}${remark ? `（${remark}）` : ''}`
+            : `${customRule.name}${remark ? `（${remark}）` : ''}`
 
-        const result = await db
-            .insert(pointRecords)
-            .values({
-                type: recordType,
-                amount: customRule.points,
-                reason,
-                ruleName: customRule.name,
-                relatedType: 'custom' as RelatedType,
-                relatedId: relatedId ? Number(relatedId) : null,
-            })
-            .returning()
-        await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
-        res.json(result[0] as PointRecord)
+        try {
+            const result = await db
+                .insert(pointRecords)
+                .values({
+                    type: recordType,
+                    amount: customRule.points,
+                    reason,
+                    ruleName: customRule.name,
+                    relatedType: 'custom' as RelatedType,
+                    relatedId: relatedId ? Number(relatedId) : null,
+                })
+                .returning()
+            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            res.json(result[0] as PointRecord)
+        } catch (err) {
+            console.error('Error in POST /points/by-custom-rule:', err)
+            res.status(500).json({
+                error: '服务器内部错误',
+            } as ApiErrorResponse)
+        }
     },
 )
 
@@ -304,7 +320,9 @@ router.get(
             const end = endDate.toISOString()
 
             const earnResult = await db
-                .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
+                .select({
+                    total: sql`COALESCE(SUM(${pointRecords.amount}), 0)`,
+                })
                 .from(pointRecords)
                 .where(
                     and(
@@ -316,7 +334,9 @@ router.get(
                 )
 
             const deductResult = await db
-                .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
+                .select({
+                    total: sql`COALESCE(SUM(${pointRecords.amount}), 0)`,
+                })
                 .from(pointRecords)
                 .where(
                     and(
@@ -332,7 +352,9 @@ router.get(
 
             // Count exchanges with status='active' in this month
             const exchangesResult = await db
-                .select({ total: sql`COALESCE(SUM(${exchanges.pointsCost}), 0)` })
+                .select({
+                    total: sql`COALESCE(SUM(${exchanges.pointsCost}), 0)`,
+                })
                 .from(exchanges)
                 .where(
                     and(
@@ -341,7 +363,8 @@ router.get(
                         lte(exchanges.createdAt, end),
                     ),
                 )
-            const totalExchanges: number = Number(exchangesResult[0]?.total) || 0
+            const totalExchanges: number =
+                Number(exchangesResult[0]?.total) || 0
             res.json({
                 month: targetMonth,
                 totalEarn,

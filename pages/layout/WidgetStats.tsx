@@ -15,24 +15,24 @@ export default function WidgetStats({
     const statCards = useMemo(
         () => [
             {
-                label: '本月积分',
+                label: '本月获取积分',
                 value: stats?.totalEarn ?? 0,
-                color: 'text-success'
+                color: 'text-success',
             },
             {
-                label: '本月兑换',
+                label: '本月兑换积分',
                 value: stats?.totalExchanges ?? 0,
-                color: 'text-warning',
+                color: 'text-danger',
             },
             {
                 label: '待完成作业',
                 value: pendingTasks.length,
-                color: 'text-danger',
+                color: 'text-warning',
             },
             {
                 label: '总作业数',
                 value: totalTasks.length,
-                color: 'text-primary',
+                color: 'text-info',
             },
         ],
         [stats, pendingTasks.length, totalTasks.length],

@@ -6,6 +6,7 @@ import type {
     TaskAI,
     ExchangeStatus,
     PointRecordType,
+    RelatedType,
 } from '@apps/lib/types'
 import { systemAPI } from '@apps/lib/api'
 
@@ -21,8 +22,16 @@ export function formatNumber(n: number): string {
 }
 
 /** Normalize any value to a valid TaskType, defaulting to 'composition' */
-export function toTaskType(value: unknown): TaskType {
+export function toTaskType(value: string): TaskType {
     return value === 'mindmap' ? 'mindmap' : 'composition'
+}
+
+export function toPointType(value: number): string {
+    return value >= 0 ? 'text-success' : 'text-danger'
+}
+
+export function toPointSymbol(value: number): string {
+    return value >= 0 ? '+' : '-'
 }
 
 export const taskTypeColors: Record<TaskType, string> = {
@@ -77,6 +86,11 @@ export const pointColors: Record<PointRecordType, string> = {
     deduct: 'text-danger',
 }
 
+export const pointBackgroundColors: Record<PointRecordType, string> = {
+    earn: 'text-success bg-success-background',
+    deduct: 'text-danger bg-danger-background',
+}
+
 export const pointSymbol: Record<PointRecordType, string> = {
     earn: '+',
     deduct: '-',
@@ -90,6 +104,15 @@ export const relatedTypeValues = [
     'custom',
     'revoked',
 ] as const
+
+export const relatedTypeLabels: Record<RelatedType, string> = {
+    task: '作业',
+    submission: '作业批改',
+    exam: '单元测评',
+    extra: '额外',
+    custom: '自定义',
+    revoked: '已撤销',
+}
 
 export const taskTypeValues = ['composition', 'mindmap'] as const
 export const taskTypeLabels: Record<TaskType, string> = {

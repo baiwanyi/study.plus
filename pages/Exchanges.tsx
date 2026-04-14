@@ -45,6 +45,7 @@ export default function Exchanges() {
     }, [loadData])
 
     const availableBalance = summary?.availableBalance ?? 0
+    const minPrivilege = summary?.minimumPointsForPrivileges ?? 100
 
     const handleCreate = async (itemType: string, pointsCost: number) => {
         try {
@@ -88,6 +89,7 @@ export default function Exchanges() {
                     <h2>兑换记录</h2>
                     {isAdmin() && (
                         <button
+                            disabled={availableBalance < minPrivilege}
                             onClick={() => setShowCreate(true)}
                             className="btn-primary">
                             添加兑换

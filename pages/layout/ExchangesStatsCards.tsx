@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import type { MonthSummary } from '@apps/lib/types'
 
 interface ExchangesStatsCardsProps {
@@ -10,48 +11,57 @@ export default function ExchangesStatsCards({
     const availableBalance = summary?.availableBalance ?? 0
     const totalBalance = summary?.balance ?? 0
     const minPrivilege = summary?.minimumPointsForPrivileges ?? 100
-
+    const exchangesCards = useMemo(
+        () => [
+            {
+                label: '当前可用积分',
+                value: availableBalance ?? 0,
+                color:
+                    availableBalance >= minPrivilege
+                        ? 'text-primary'
+                        : 'text-danger',
+            },
+            {
+                label: '本月消耗积分（含扣分）',
+                value: summary?.totalDeduct ?? 0,
+                color: 'text-danger',
+            },
+            {
+                label: '本月待结积分',
+                value: summary?.totalEarn ?? 0,
+                color: 'text-success',
+            },
+            {
+                label: '上月结余',
+                value: summary?.basePoints ?? 0,
+                color: 'text-gray-700',
+            },
+        ],
+        [availableBalance, minPrivilege, summary],
+    )
     return (
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="card space-y-2">
-                <p className="text-sm text-muted">当前可用积分</p>
-                <p
-                    className={`text-4xl font-bold ${availableBalance >= minPrivilege ? 'text-primary' : 'text-danger'}`}>
-                    {availableBalance}
-                </p>
-                {availableBalance < minPrivilege && (
-                    <p className="text-xs text-danger">
-                        余额不足 {minPrivilege}，兑换特权暂不可用
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {exchangesCards.map((card, i) => (
+                <div key={i} className="card space-y-2">
+                    <p className="text-sm text-muted">{card.label}</p>
+                    <p className={`text-4xl font-bold ${card.color}`}>
+                        {card.value}
                     </p>
-                )}
-            </div>
-            <div className="card space-y-2">
-                <div className="flex justify-between text-xs">
-                    <span>上月结余</span>
-                    <span className="text-gray-700">
-                        {summary?.basePoints ?? 0}
-                    </span>
+                    {i === 0 && (
+                        <p className="text-sm">总积分 {totalBalance}</p>
+                    )}
+                    {i === 0 && (
+                        <p className="text-xs text-muted">
+                            * 本月获取的积分下月1日后方可使用
+                        </p>
+                    )}
+                    {i === 0 && availableBalance < minPrivilege && (
+                        <p className="text-xs text-danger">
+                            积分不足 {minPrivilege}，兑换特权暂不可用。
+                        </p>
+                    )}
                 </div>
-                <div className="flex justify-between text-xs">
-                    <span>本月扣分</span>
-                    <span className="text-danger">
-                        -{summary?.totalDeduct ?? 0}
-                    </span>
-                </div>
-                <div className="flex justify-between text-xs">
-                    <span>本月待结积分</span>
-                    <span className="text-success">
-                        +{summary?.totalEarn ?? 0}
-                    </span>
-                </div>
-                <div className="flex justify-between text-xs pt-1 border-t border-gray-200">
-                    <span>总余额</span>
-                    <span>{totalBalance}</span>
-                </div>
-                <p className="text-xs text-muted">
-                    * 本月获取的积分下月1日后方可使用
-                </p>
-            </div>
+            ))}
         </div>
     )
 }

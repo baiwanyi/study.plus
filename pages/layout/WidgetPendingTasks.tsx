@@ -1,8 +1,5 @@
 import type { Task } from '@apps/lib/types'
-import {
-    taskTypeLabels,
-    taskTypeColors,
-} from '@apps/lib/utils'
+import { taskTypeLabels, taskTypeColors } from '@apps/lib/utils'
 import { DataTable, type Column } from '@apps/components/DataTable'
 
 interface WidgetPendingTasksProps {
@@ -11,16 +8,22 @@ interface WidgetPendingTasksProps {
 
 const columns: Column<Task>[] = [
     {
-        key: 'title',
-        header: '名称',
-        render: (task) => <span className="font-medium">{task.title}</span>,
-    },
-    {
         key: 'type',
         header: '类型',
         render: (task) => (
             <span className={`badge ${taskTypeColors[task.type]}`}>
                 {taskTypeLabels[task.type]}
+            </span>
+        ),
+    },
+    {
+        key: 'title',
+        header: '题目',
+        render: (task) => (
+            <span className="font-medium">
+                {task.title.length > 32
+                    ? `${task.title.slice(0, 32)}...`
+                    : task.title}
             </span>
         ),
     },

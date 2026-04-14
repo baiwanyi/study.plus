@@ -1,6 +1,12 @@
 import { useState, useEffect, useMemo } from 'react'
 import type { Exchange, ExchangeItemRule } from '@apps/lib/types'
-import { formatDate, exchangeStatusLabels, exchangeStatusColors, paginate } from '@apps/lib/utils'
+import {
+    formatDate,
+    exchangeStatusLabels,
+    exchangeStatusColors,
+    paginate,
+    isAdmin,
+} from '@apps/lib/utils'
 import { DataTable, type Column } from '@apps/components/DataTable'
 
 interface ExchangesListTableProps {
@@ -46,7 +52,7 @@ export default function ExchangesListTable({
             key: 'createdAt',
             header: '时间',
             render: (record) => (
-                <span className="text-gray-600">
+                <span className="text-xs text-gray-600">
                     {formatDate(record.createdAt)}
                 </span>
             ),
@@ -95,14 +101,14 @@ export default function ExchangesListTable({
         {
             key: 'actions',
             header: '操作',
-            render: (record) =>
-                record.status === 'active' ? (
-                    <button
-                        onClick={() => onRevoke(record.id)}
-                        className="btn-danger btn-sm">
-                        撤销
-                    </button>
-                ) : null,
+            render: (record) => (
+                <button
+                    disabled={!(record.status === 'active' && isAdmin())}
+                    onClick={() => onRevoke(record.id)}
+                    className="btn-danger btn-sm">
+                    撤销
+                </button>
+            ),
         },
     ]
 

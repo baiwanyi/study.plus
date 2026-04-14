@@ -40,7 +40,7 @@ export default function ListTask({
     const taskColumns: Column<Task>[] = [
         {
             key: 'title',
-            header: '名称',
+            header: '题目',
             render: (task) => (
                 <button
                     onClick={() => isAdminRole && onEdit(task)}

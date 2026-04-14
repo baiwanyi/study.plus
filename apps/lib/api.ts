@@ -1,8 +1,9 @@
 import {
     defaultExamRemark,
-    defaultHomeworkRemark,
+    defaultSubmissionRemark,
+    defaultCustomRemark,
     defaultQuotes,
-} from '@apps/db/default'
+} from '@/apps/lib/default'
 import type {
     Task,
     Submission,
@@ -87,10 +88,10 @@ export const pointsApi = {
             method: 'POST',
             body: JSON.stringify({ category, grade, remark }),
         }),
-    createByCustomRule: (ruleId: string) =>
+    createByCustomRule: (ruleId: string, remark?: string) =>
         request<PointRecord>('/points/by-custom-rule', {
             method: 'POST',
-            body: JSON.stringify({ ruleId }),
+            body: JSON.stringify({ ruleId, remark }),
         }),
     createByExamScore: (score: number, remark?: string) =>
         request<PointRecord>('/points/by-exam-score', {
@@ -132,12 +133,14 @@ export const optionsAPI = {
 // ===== Remark =====
 interface RemarkOptions {
     exam: string
-    homework: string
+    submission: string
+    custom: string
 }
 
 const defaultRemark: RemarkOptions = {
     exam: defaultExamRemark.join('\n'),
-    homework: defaultHomeworkRemark.join('\n'),
+    submission: defaultSubmissionRemark.join('\n'),
+    custom: defaultCustomRemark.join('\n'),
 }
 
 export const remarkApi = {
@@ -148,7 +151,8 @@ export const remarkApi = {
                 const option = data as Partial<RemarkOptions>
                 return {
                     exam: option.exam ?? defaultRemark.exam,
-                    homework: option.homework ?? defaultRemark.homework,
+                    submission: option.submission ?? defaultRemark.submission,
+                    custom: option.custom ?? defaultRemark.custom,
                 }
             }
         } catch {

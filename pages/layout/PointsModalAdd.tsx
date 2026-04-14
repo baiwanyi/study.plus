@@ -1,23 +1,39 @@
 import { useState, useEffect, type ReactNode } from 'react'
-import type { TaskGrade, CustomRule, ExamRuleRange } from '@apps/lib/types'
+import type {
+    PointCategoryType,
+    PointRecordType,
+    CustomRule,
+    ExamRuleRange,
+} from '@apps/lib/types'
 import { remarkApi } from '@apps/lib/api'
+import {
+    defaultGradeValues,
+    pointSymbol,
+    pointColors,
+    pointBackgroundColors,
+    pointTypeLabels,
+    relatedTypeLabels,
+    toPointType,
+    toPointSymbol,
+} from '@apps/lib/utils'
 import Modal from '@apps/components/Modal'
 import Tabs from '@apps/components/Tabs'
 
-const defaultGradeOptions: TaskGrade[] = ['A+', 'A', 'B', 'C', 'D', 'E']
-const categoryOptions: { key: string; label: string }[] = [
+const categoryOptions: { key: PointCategoryType; label: string }[] = [
     { key: 'exam', label: '单元测评' },
     { key: 'submission', label: '作业批改' },
     { key: 'custom', label: '自定义规则' },
 ]
-const CustomRulesOptions: { key: string; label: string }[] = [
+
+const CustomRulesOptions: { key: PointRecordType; label: string }[] = [
     { key: 'earn', label: '加分项' },
     { key: 'deduct', label: '扣分项' },
 ]
 
 interface RemarkOptions {
     exam: string
-    homework: string
+    submission: string
+    custom: string
 }
 
 interface PointsModalAddProps {
@@ -58,7 +74,7 @@ export default function PointsModalAdd({
      * 分类选项状态
      * 用于管理不同类型（考试、作业、自定义）的分类选项
      */
-    const [addCategory, setAddCategory] = useState('exam')
+    const [addCategory, setAddCategory] = useState<PointCategoryType>('exam')
 
     /**
      * 等级选项状态
@@ -83,7 +99,7 @@ export default function PointsModalAdd({
      * 用于管理不同类型（考试、作业）的等级选项
      */
     const [gradeOptions, setGradeOptions] =
-        useState<string[]>(defaultGradeOptions)
+        useState<readonly string[]>(defaultGradeValues)
 
     /**
      * 自定义规则选项状态
@@ -95,9 +111,7 @@ export default function PointsModalAdd({
      * 自定义规则选项状态
      * 用于管理不同类型（加分、扣分）的自定义规则
      */
-    const [customRuleTab, setCustomRuleTab] = useState<'earn' | 'deduct'>(
-        'earn',
-    )
+    const [customRuleTab, setCustomRuleTab] = useState<PointRecordType>('earn')
 
     /**
      * 考试分数选项状态
@@ -111,7 +125,8 @@ export default function PointsModalAdd({
      */
     const [remarkOptions, setRemarkOptions] = useState<RemarkOptions>({
         exam: '',
-        homework: '',
+        submission: '',
+        custom: '',
     })
 
     /**
@@ -135,19 +150,10 @@ export default function PointsModalAdd({
     }, [])
 
     /**
-     * 当前备注选项
-     * 用于管理不同类型（考试、作业）的备注选项
-     */
-    const currentRemarkOptions =
-        addCategory === 'submission'
-            ? remarkOptions.homework
-            : remarkOptions.exam
-
-    /**
      * 备注标签
      * 用于管理不同类型（考试、作业）的备注标签
      */
-    const remarkTags = currentRemarkOptions
+    const remarkTags = remarkOptions[addCategory as PointCategoryType]
         .split('\n')
         .map((s) => s.trim())
         .filter(Boolean)
@@ -174,9 +180,21 @@ export default function PointsModalAdd({
     }
 
     /**
+     * 重置状态
+     */
+    const handleOnCancel = () => {
+        setAddCategory('exam')
+        setAddRemark('')
+        setAddGrade(gradeOptions[1] || 'A')
+        setAddCustomRuleId('')
+        setAddExamScore('')
+        onCancel()
+    }
+
+    /**
      * 添加积分操作函数
      */
-    const handleAddPoints = async () => {
+    const handleSavePoints = async () => {
         setLoading(true)
         try {
             await onConfirm({
@@ -186,12 +204,7 @@ export default function PointsModalAdd({
                 customRuleId: addCustomRuleId,
                 examScore: addExamScore,
             })
-            // 重置状态
-            setAddRemark('')
-            setAddGrade(gradeOptions[1] || 'A')
-            setAddCustomRuleId('')
-            setAddExamScore('')
-            onCancel()
+            handleOnCancel()
         } finally {
             setLoading(false)
         }
@@ -203,8 +216,7 @@ export default function PointsModalAdd({
     const handleSaveRemarks = async () => {
         const newOptions = {
             ...remarkOptions,
-            [addCategory === 'submission' ? 'homework' : 'exam']:
-                remarkSettingsText,
+            [addCategory as PointCategoryType]: remarkSettingsText,
         }
         setRemarkOptions(newOptions)
         await remarkApi.update(newOptions)
@@ -223,17 +235,12 @@ export default function PointsModalAdd({
                         key={grade}
                         onClick={() => setAddGrade(grade)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
-                            addGrade === grade
-                                ? 'border-primary bg-primary text-white'
-                                : 'border-gray-200 text-foreground hover:bg-gray-100'
+                            addGrade === grade ? 'btn-primary' : 'btn-outline'
                         }`}>
                         {grade}
                     </button>
                 ))}
             </div>
-            {addGrade === 'E' && (
-                <p className="text-xs text-danger">E 等级为未完成，扣 50 分</p>
-            )}
         </div>
     )
 
@@ -262,10 +269,10 @@ export default function PointsModalAdd({
                     if (matched) {
                         return (
                             <p
-                                className={`text-sm mt-1 font-medium ${matched.points >= 0 ? 'text-success' : 'text-danger'}`}>
+                                className={`text-sm mt-1 font-medium ${toPointType(matched.points)}`}>
                                 匹配规则：{matched.min}-{matched.max}
                                 分，
-                                {matched.points >= 0 ? '+' : ''}
+                                {toPointSymbol(matched.points)}
                                 {matched.points} 积分
                             </p>
                         )
@@ -301,18 +308,13 @@ export default function PointsModalAdd({
                 onClick={() => setAddCustomRuleId(ruleId)}
                 className={`w-full text-left p-3 rounded-lg border transition-all ${
                     isSelected
-                        ? customRuleTab === 'earn'
-                            ? 'border-success bg-success/10'
-                            : 'border-danger bg-danger/10'
+                        ? pointBackgroundColors[customRuleTab]
                         : 'border-gray-200 hover:bg-gray-50'
                 }`}>
-                <div className="flex items-center justify-between">
-                    <span className="font-medium text-gray-900">
-                        {rule.name}
-                    </span>
-                    <span
-                        className={`text-sm font-bold ${rule.type === 'earn' ? 'text-success' : 'text-danger'}`}>
-                        {rule.type === 'earn' ? '+' : '-'}
+                <div className="flex items-center justify-between text-sm">
+                    <span className="text-headline">{rule.name}</span>
+                    <span className={`font-bold ${pointColors[rule.type]}`}>
+                        {pointSymbol[rule.type]}
                         {rule.points}
                     </span>
                 </div>
@@ -327,7 +329,7 @@ export default function PointsModalAdd({
         <div className="space-y-2">
             <label className="label">选择自定义规则</label>
             {customRules.length === 0 ? (
-                <p className="text-sm text-gray-400 py-4 text-center">
+                <p className="text-none">
                     暂无自定义规则，请先在规则管理中添加
                 </p>
             ) : (
@@ -338,16 +340,16 @@ export default function PointsModalAdd({
                         activeClassName="bg-white text-headline"
                         tabs={CustomRulesOptions}
                         onChange={(key) => {
-                            setCustomRuleTab(key as 'earn' | 'deduct')
+                            setCustomRuleTab(key)
                             setAddCustomRuleId('')
                         }}
                     />
                     <div className="space-y-2 max-h-60 overflow-y-auto">
                         {customRules.filter((r) => r.type === customRuleTab)
                             .length === 0 ? (
-                            <p className="text-sm text-gray-400 py-4 text-center">
+                            <p className="text-none">
                                 暂无
-                                {customRuleTab === 'earn' ? '加分' : '扣分'}
+                                {pointTypeLabels[customRuleTab]}
                                 规则
                             </p>
                         ) : (
@@ -374,14 +376,16 @@ export default function PointsModalAdd({
     /**
      * 渲染备注设置
      */
-    const renderRemarks = addCategory !== 'custom' && (
+    const renderRemarks = (
         <div className="space-y-2">
             <div className="flex items-center justify-between">
                 <label className="label">备注标签</label>
                 <button
                     type="button"
                     onClick={() => {
-                        setRemarkSettingsText(currentRemarkOptions)
+                        setRemarkSettingsText(
+                            remarkOptions[addCategory as PointCategoryType],
+                        )
                         setShowRemarkSettings(!showRemarkSettings)
                     }}
                     className="text-xs btn-link">
@@ -397,7 +401,7 @@ export default function PointsModalAdd({
             {showRemarkSettings && (
                 <div className="space-y-2">
                     <p className="text-xs text-muted">
-                        {addCategory === 'submission' ? '作业批改' : '单元测评'}
+                        {relatedTypeLabels[addCategory]}
                         备注选项（每行一个）
                     </p>
                     <textarea
@@ -440,7 +444,7 @@ export default function PointsModalAdd({
     /**
      * 根据当前分类渲染内容
      */
-    const categoryContent: Record<string, ReactNode> = {
+    const categoryContent: Record<PointCategoryType, ReactNode> = {
         exam: renderExamRules,
         submission: renderGradeSelector,
         custom: renderCustomRules,
@@ -452,8 +456,8 @@ export default function PointsModalAdd({
             title="添加积分记录"
             isDisabled={isDisabled}
             isLoading={loading}
-            onCancel={onCancel}
-            onConfirm={handleAddPoints}
+            onCancel={handleOnCancel}
+            onConfirm={handleSavePoints}
             confirmLabel="确认添加">
             <Tabs
                 background="gray"
@@ -467,7 +471,7 @@ export default function PointsModalAdd({
                     setShowRemarkSettings(false)
                 }}
             />
-            {categoryContent[addCategory]}
+            {categoryContent[addCategory as PointCategoryType]}
             {renderRemarks}
         </Modal>
     )

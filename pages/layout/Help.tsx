@@ -70,17 +70,13 @@ export default function Help() {
             {showHelp &&
                 createPortal(
                     <div className="fixed inset-0 z-[9999]">
-                        <div
-                            className="absolute inset-0 bg-black/50"
-                            onClick={handleCloseHelp}
-                        />
                         <div className="relative bg-white w-full h-full overflow-y-auto">
                             <div className="sticky top-0 z-10 border-b border-gray-100">
                                 <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">
                                     <h3>帮助文档</h3>
                                     <button
                                         onClick={handleCloseHelp}
-                                        className="text-gray-400 hover:text-gray-600">
+                                        className="text-gray-600 hover:text-gray-900">
                                         <X className="w-5 h-5" />
                                     </button>
                                 </div>

@@ -104,6 +104,10 @@
     .label {
         @apply block text-sm font-medium text-gray-700;
     }
+
+    .text-none {
+        @apply text-sm text-gray-400 py-8 text-center;
+    }
 }
 
 /* Snackbar */
