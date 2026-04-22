@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { optionsAPI } from '@apps/lib/api'
 import type { CustomRule } from '@apps/lib/types'
-import { pointColors, pointSymbol, pointTypeColors, pointTypeLabels } from '@apps/lib/utils'
+import { pointColors, pointSymbol } from '@apps/lib/utils'
 import { parseCustomData } from '@/pages/layout/OptionsRulesCustom'
 import { DataTable, type Column } from '@apps/components/DataTable'
 
@@ -28,15 +28,6 @@ export default function WidgetCustomRules() {
             ),
         },
         {
-            key: 'type',
-            header: '类型',
-            render: (rule) => (
-                <span className={pointTypeColors[rule.type]}>
-                    {pointTypeLabels[rule.type]}
-                </span>
-            ),
-        },
-        {
             key: 'points',
             header: '积分',
             render: (rule) => (
@@ -58,11 +49,24 @@ export default function WidgetCustomRules() {
     return (
         <div className="card space-y-4">
             <h3>自定义规则</h3>
-            <DataTable
-                data={customRules}
-                columns={columns}
-                rowKey={(rule, idx) => rule.name || rule.id || `custom-${idx}`}
-            />
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <DataTable
+                    captionText="自定义加分规则"
+                    data={customRules.filter((r) => r.type === 'earn')}
+                    columns={columns}
+                    rowKey={(rule, idx) =>
+                        rule.name || rule.id || `custom-${idx}`
+                    }
+                />
+                <DataTable
+                    captionText="自定义扣分规则"
+                    data={customRules.filter((r) => r.type === 'deduct')}
+                    columns={columns}
+                    rowKey={(rule, idx) =>
+                        rule.name || rule.id || `custom-${idx}`
+                    }
+                />
+            </div>
         </div>
     )
 }

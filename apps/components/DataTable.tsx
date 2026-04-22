@@ -7,6 +7,7 @@ export interface Column<T> {
 }
 
 export interface DataTableProps<T> {
+    captionText?: string
     data: T[]
     columns: Column<T>[]
     pagination?: {
@@ -19,6 +20,7 @@ export interface DataTableProps<T> {
 }
 
 export function DataTable<T extends Record<string, any>>({
+    captionText,
     data,
     columns,
     pagination,
@@ -35,6 +37,9 @@ export function DataTable<T extends Record<string, any>>({
     return (
         <div className="space-y-6">
             <table className="w-full text-sm">
+                {captionText && (
+                    <caption className="caption-top text-start text-lg font-semibold">{captionText}</caption>
+                )}
                 <thead>
                     <tr className="border-b border-light">
                         {columns.map((col, ci) => (
