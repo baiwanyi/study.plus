@@ -22,7 +22,7 @@ import type {
     ApiErrorResponse,
     ApiSuccessResponse,
 } from '@apps/lib/types'
-import { toTaskType } from '@apps/lib/utils'
+import { toTaskType, taskStatus, taskTypeValues } from '@apps/lib/utils'
 
 const router = Router()
 
@@ -38,35 +38,79 @@ async function deleteOldPoints(submissionId: number) {
         )
 }
 
-// Helper: record points for a submission
+// Helper: safely parse JSON with fallback
+function safeJsonParse<T>(json: string | null, fallback: T): T {
+    if (!json) return fallback
+    try {
+        return JSON.parse(json) as T
+    } catch {
+        return fallback
+    }
+}
+
+// Helper: validate task id parameter
+function parseTaskId(id: string): number | null {
+    const taskId = Number(id)
+    return Number.isInteger(taskId) && taskId > 0 ? taskId : null
+}
+
+// Helper: fetch task by id with 404 handling
+async function fetchTaskById(taskId: number): Promise<Task | null> {
+    const rows = await db.select().from(tasks).where(eq(tasks.id, taskId))
+    return (rows[0] as Task) ?? null
+}
+
+// Helper: fetch submission by task id
+async function fetchSubmissionByTaskId(taskId: number): Promise<Submission | null> {
+    const rows = await db.select().from(submissions).where(eq(submissions.taskId, taskId))
+    return (rows[0] as Submission) ?? null
+}
+
+// Helper: validate enum value
+function isValidEnum<T extends string>(value: unknown, validValues: readonly T[]): value is T {
+    return typeof value === 'string' && validValues.includes(value as T)
+}
+
+// Helper: record points for a submission with error handling
 async function recordPoints(
     gradeValue: string,
     submissionId: number,
     suffix: string,
-) {
-    const rules = await loadRules()
-    const points = getPointsForGrade(rules, gradeValue)
-    if (points !== 0) {
-        await db.insert(pointRecords).values({
-            type: points > 0 ? 'earn' : 'deduct',
-            amount: Math.abs(points),
-            reason: `作业${suffix} ${gradeValue}`,
-            ruleName: 'gradingScale.homework',
-            relatedId: submissionId,
-            relatedType: 'submission',
-        })
-        // Sync month summary
-        await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+): Promise<number> {
+    try {
+        const rules = await loadRules()
+        const points = getPointsForGrade(rules, gradeValue)
+        if (points !== 0) {
+            await db.insert(pointRecords).values({
+                type: points > 0 ? 'earn' : 'deduct',
+                amount: Math.abs(points),
+                reason: `作业${suffix} ${gradeValue}`,
+                ruleName: 'gradingScale.homework',
+                relatedId: submissionId,
+                relatedType: 'submission',
+            })
+            // Sync month summary
+            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+        }
+        return points
+    } catch (err) {
+        console.error('Failed to record points:', err)
+        return 0
     }
-    return points
 }
 
 // Get all tasks (with submission info)
 router.get('/', async (req: Request, res: Response) => {
-    const { status, type } = req.query as {
-        status?: TaskStatus
-        type?: TaskType
-    }
+    // Validate query parameters against valid enums
+    const rawStatus = req.query.status as string | undefined
+    const rawType = req.query.type as string | undefined
+
+    const status: TaskStatus | undefined = rawStatus && isValidEnum(rawStatus, taskStatus)
+        ? rawStatus
+        : undefined
+    const type: TaskType | undefined = rawType && isValidEnum(rawType, ['composition', 'mindmap', 'notes'] as const)
+        ? (rawType as TaskType)
+        : undefined
 
     let taskRows: Task[]
     if (status) {
@@ -79,7 +123,8 @@ router.get('/', async (req: Request, res: Response) => {
         taskRows = (await db
             .select()
             .from(tasks)
-            .where(eq(tasks.type, type))
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
+            .where(eq(tasks.type, type as any))
             .orderBy(desc(tasks.createdAt))) as Task[]
     } else {
         taskRows = (await db
@@ -125,7 +170,9 @@ router.get('/', async (req: Request, res: Response) => {
     const pointMap = new Map<number, { type: string; amount: number }>()
     for (const p of allPoints) {
         // Keep the latest point record per submission (last one wins)
-        pointMap.set(p.relatedId!, { type: p.type, amount: p.amount })
+        if (p.relatedId != null) {
+            pointMap.set(p.relatedId, { type: p.type, amount: p.amount })
+        }
     }
 
     const result = taskRows.map((task) => {
@@ -140,6 +187,12 @@ router.get('/', async (req: Request, res: Response) => {
             }
         }
 
+        // Parse aiScore once and reuse
+        const aiScoreData = safeJsonParse<{ comment?: string | null; suggestions?: string[] }>(
+            sub?.aiScore ?? null,
+            { comment: null, suggestions: [] }
+        )
+
         return {
             ...task,
             submission: sub
@@ -152,15 +205,11 @@ router.get('/', async (req: Request, res: Response) => {
                       createdAt: sub.createdAt,
                   }
                 : null,
-            aiComment: sub?.aiScore
-                ? (JSON.parse(sub.aiScore).comment ?? null)
-                : null,
+            aiComment: aiScoreData.comment ?? null,
             submittedAt: sub?.createdAt ?? null,
             gradedAt: sub?.scoredAt ?? null,
             pointsEarned,
-            aiSuggestions: sub?.aiScore
-                ? (JSON.parse(sub.aiScore).suggestions ?? [])
-                : [],
+            aiSuggestions: aiScoreData.suggestions ?? [],
         }
     })
 
@@ -177,6 +226,11 @@ router.post(
         const { title, type }: CreateTaskRequest = req.body
         if (!title || !type) {
             res.status(400).json({ error: 'title and type are required' })
+            return
+        }
+        // Validate type against allowed values
+        if (!isValidEnum(type, taskTypeValues)) {
+            res.status(400).json({ error: 'Invalid task type' })
             return
         }
         const result = await db
@@ -198,19 +252,33 @@ router.put(
         >,
         res: Response<Task | ApiErrorResponse>,
     ) => {
-        const taskId = Number(req.params.id)
-        if (!Number.isInteger(taskId) || taskId <= 0) {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
         const { title, type, status }: UpdateTaskRequest = req.body
+
+        // Validate type and status against valid enums
+        if (type && !isValidEnum(type, ['composition', 'mindmap', 'notes'] as const)) {
+            res.status(400).json({ error: 'Invalid task type' })
+            return
+        }
+        if (status && !isValidEnum(status, ['pending', 'completed', 'expired'] as const)) {
+            res.status(400).json({ error: 'Invalid task status' })
+            return
+        }
+
+        // Build update object with validated fields
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const updateData: any = {}
+        if (title) updateData.title = title
+        if (type) updateData.type = type
+        if (status) updateData.status = status
+
         const result = await db
             .update(tasks)
-            .set({
-                ...(title && { title }),
-                ...(type && { type }),
-                ...(status && { status }),
-            })
+            .set(updateData)
             .where(eq(tasks.id, taskId))
             .returning()
         if (!result[0]) {
@@ -228,8 +296,8 @@ router.delete(
         req: Request<{ id: string }>,
         res: Response<ApiSuccessResponse | ApiErrorResponse>,
     ) => {
-        const taskId = Number(req.params.id)
-        if (!Number.isInteger(taskId) || taskId <= 0) {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
@@ -249,8 +317,8 @@ router.post(
         >,
         res: Response<{ submission: Submission } | ApiErrorResponse>,
     ) => {
-        const taskId = Number(req.params.id)
-        if (!Number.isInteger(taskId) || taskId <= 0) {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
@@ -260,11 +328,7 @@ router.post(
             return
         }
 
-        const taskRows = await db
-            .select()
-            .from(tasks)
-            .where(eq(tasks.id, taskId))
-        const task = taskRows[0] as Task | undefined
+        const task = await fetchTaskById(taskId)
         if (!task) {
             res.status(404).json({ error: 'Task not found' })
             return
@@ -311,27 +375,19 @@ router.post(
         req: Request<{ id: string }, { title: string } | ApiErrorResponse>,
         res: Response<{ title: string } | ApiErrorResponse>,
     ) => {
-        const taskId = Number(req.params.id)
-        if (!Number.isInteger(taskId) || taskId <= 0) {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
 
-        const taskRows = await db
-            .select()
-            .from(tasks)
-            .where(eq(tasks.id, taskId))
-        const task = taskRows[0] as Task | undefined
+        const task = await fetchTaskById(taskId)
         if (!task) {
             res.status(404).json({ error: 'Task not found' })
             return
         }
 
-        const subRows = await db
-            .select()
-            .from(submissions)
-            .where(eq(submissions.taskId, taskId))
-        const submission = subRows[0] as Submission | undefined
+        const submission = await fetchSubmissionByTaskId(taskId)
         if (!submission || !submission.content) {
             res.status(400).json({
                 error: 'No submission content to generate title from',
@@ -339,11 +395,8 @@ router.post(
             return
         }
 
-        const title = await generateTitle(
-            submission.content,
-            task.type === 'mindmap' ? 'mindmap' : 'composition',
-            taskId,
-        )
+        // task.type is already TaskType, pass directly
+        const title = await generateTitle(submission.content, task.type, taskId)
 
         // Update task title
         await db.update(tasks).set({ title }).where(eq(tasks.id, taskId))
@@ -382,27 +435,19 @@ router.post(
         req: Request<{ id: string }, SubmitTaskResponse | ApiErrorResponse>,
         res: Response<SubmitTaskResponse | ApiErrorResponse>,
     ) => {
-        const taskId = Number(req.params.id)
-        if (!Number.isInteger(taskId) || taskId <= 0) {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
 
-        const taskRows = await db
-            .select()
-            .from(tasks)
-            .where(eq(tasks.id, taskId))
-        const task = taskRows[0] as Task | undefined
+        const task = await fetchTaskById(taskId)
         if (!task) {
             res.status(404).json({ error: 'Task not found' })
             return
         }
 
-        const subRows = await db
-            .select()
-            .from(submissions)
-            .where(eq(submissions.taskId, taskId))
-        const submission = subRows[0] as Submission | undefined
+        const submission = await fetchSubmissionByTaskId(taskId)
         if (!submission) {
             res.status(404).json({
                 error: 'Submission not found, please submit first',

@@ -133,6 +133,7 @@ export const defaultSystemSettings = {
 export const defaultTaskTitle = {
     mindmap: '围绕成长的思维导图',
     composition: '记一件有意义的事',
+    notes: '读一本好书，写一篇读书笔记',
 }
 
 export const defaultPromptTaskTitleMindmap =
@@ -143,6 +144,9 @@ export const defaultPromptTaskTitleComposition =
 
 export const defaultPromptGenerateTitle =
     '请根据以下{taskType}内容，生成一个简洁恰当的标题（不超过15个字，只返回标题文本，不要加引号或其他符号）：{taskContent}'
+
+export const defaultPromptTaskTitleNotes =
+    '请为{taskGrade}的读书笔记作业生成一个有趣的标题，要求简洁有吸引力。'
 
 export const defaultPromptScoreComposition =
     '请对以下{taskType}进行评分。{taskTitle}。内容：{taskContent}请按以下格式返回：1. 评分等级（A+/A/B/C/D/E）2. 百分制分数3. 评语（50字以内）4. 改进建议（1-3条）请严格按以下 JSON 格式返回：{"grade":"等级","score":分数,"comment":"评语","suggestions":["建议1","建议2"]}'

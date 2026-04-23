@@ -14,7 +14,7 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap')),
+      type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes')),
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )

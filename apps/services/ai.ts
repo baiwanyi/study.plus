@@ -9,6 +9,7 @@ import {
     defaultTaskTitle,
     defaultPromptTaskTitleComposition,
     defaultPromptTaskTitleMindmap,
+    defaultPromptTaskTitleNotes,
     defaultPromptGenerateTitle,
     defaultPromptScoreComposition,
 } from '@apps/lib/default'
@@ -91,6 +92,10 @@ export async function generateTaskTitle(
             taskClassLabels[grade],
         ),
         composition: defaultPromptTaskTitleComposition.replace(
+            '{taskGrade}',
+            taskClassLabels[grade],
+        ),
+        notes: defaultPromptTaskTitleNotes.replace(
             '{taskGrade}',
             taskClassLabels[grade],
         ),

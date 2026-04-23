@@ -1,4 +1,4 @@
-export type TaskType = 'composition' | 'mindmap'
+export type TaskType = 'composition' | 'mindmap' | 'notes'
 
 export type TaskStatus = 'pending' | 'completed' | 'expired'
 export type TaskClass =

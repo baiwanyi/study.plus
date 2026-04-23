@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { tasksApi } from '@apps/lib/api'
 import type { Task, TaskType, AIScoreResult } from '@apps/lib/types'
-import { formatErrorMessage } from '@apps/lib/utils'
+import { formatErrorMessage, taskTypeDefaultTitles } from '@apps/lib/utils'
 import { useSnackbar } from '@components/Snackbar'
 import Modal from '@/apps/components/Modal'
 import Loading from '@/apps/components/Loading'
@@ -50,9 +50,7 @@ export default function Tasks() {
     }, [loadTasks])
 
     const handleCreate = async (title: string, type: TaskType) => {
-        const resolvedTitle =
-            title ||
-            (type === 'composition' ? '未命名作文作业' : '未命名思维导图作业')
+        const resolvedTitle = title || taskTypeDefaultTitles[type]
         try {
             await tasksApi.create({ title: resolvedTitle, type })
             setShowCreate(false)

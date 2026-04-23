@@ -22,8 +22,11 @@ export function formatNumber(n: number): string {
 }
 
 /** Normalize any value to a valid TaskType, defaulting to 'composition' */
-export function toTaskType(value: string): TaskType {
-    return value === 'mindmap' ? 'mindmap' : 'composition'
+export function toTaskType(value: string | null | undefined): TaskType {
+    if (!value) return 'composition'
+    return (taskTypeValues as readonly string[]).includes(value)
+        ? (value as TaskType)
+        : 'composition'
 }
 
 export function toPointType(value: number): string {
@@ -37,6 +40,7 @@ export function toPointSymbol(value: number): string {
 export const taskTypeColors: Record<TaskType, string> = {
     composition: 'bg-purple-100 text-purple-800',
     mindmap: 'bg-pink-100 text-pink-800',
+    notes: 'bg-green-100 text-green-800',
 }
 
 export const taskStatus = ['pending', 'completed', 'expired'] as const
@@ -114,15 +118,17 @@ export const relatedTypeLabels: Record<RelatedType, string> = {
     revoked: '已撤销',
 }
 
-export const taskTypeValues = ['composition', 'mindmap'] as const
+export const taskTypeValues = ['composition', 'mindmap', 'notes'] as const
 export const taskTypeLabels: Record<TaskType, string> = {
     composition: '作文',
     mindmap: '思维导图',
+    notes: '读书笔记',
 }
 
 export const taskTypeDefaultTitles: Record<TaskType, string> = {
     mindmap: '未命名思维导图',
     composition: '未命名作文',
+    notes: '未命名读书笔记',
 }
 
 export const taskClassLabels: TaskClass[] = [
