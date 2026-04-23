@@ -11,6 +11,7 @@ import WidgetHomeworkGradeRules from '@layout/WidgetHomeworkGradeRules'
 import WidgetExchangeRules from '@layout/WidgetExchangeRules'
 import WidgetPendingTasks from '@layout/WidgetPendingTasks'
 import Help from '@layout/Help'
+import Share from '@layout/Share'
 
 export default function Dashboard() {
     const [tasks, setTasks] = useState<Task[]>([])
@@ -53,7 +54,10 @@ export default function Dashboard() {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2 className="text-2xl font-bold text-gray-900">首页看板</h2>
-                <Help />
+                <div className="flex items-center space-x-4">
+                    <Help />
+                    <Share />
+                </div>
             </div>
 
             {/* Stats Cards */}

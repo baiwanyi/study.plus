@@ -10,6 +10,7 @@ export interface ModalProps {
     title?: string
     children: React.ReactNode
     danger?: boolean
+    footer?: boolean
     confirmLabel?: string
     confirmIcon?: React.ReactNode
 }
@@ -28,6 +29,7 @@ const Modal: React.FC<ModalProps> = ({
     title = '',
     children,
     danger,
+    footer = true,
     confirmLabel = '保存更改',
     confirmIcon = <DefaultConfirmIcon />,
 }) => {
@@ -47,21 +49,23 @@ const Modal: React.FC<ModalProps> = ({
                         </button>
                     </div>
                     <div className="space-y-4">{children}</div>
-                    <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
-                        <button onClick={onCancel} className="btn-outline">
-                            取消
-                        </button>
-                        {onConfirm && (
-                            <button
-                                onClick={onConfirm}
-                                disabled={isDisabled}
-                                className={
-                                    danger ? 'btn-danger' : 'btn-primary'
-                                }>
-                                {isLoading ? confirmIcon : confirmLabel}
+                    {footer && (
+                        <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
+                            <button onClick={onCancel} className="btn-outline">
+                                取消
                             </button>
-                        )}
-                    </div>
+                            {onConfirm && (
+                                <button
+                                    onClick={onConfirm}
+                                    disabled={isDisabled}
+                                    className={
+                                        danger ? 'btn-danger' : 'btn-primary'
+                                    }>
+                                    {isLoading ? confirmIcon : confirmLabel}
+                                </button>
+                            )}
+                        </div>
+                    )}
                 </div>
             </div>
         </div>
