@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { optionsAPI, quotesApi } from '@apps/lib/api'
-import { defaultQuotes } from '@/apps/lib/default'
+import { defaultQuotes } from '@apps/lib/default'
 import { useSnackbar } from '@components/Snackbar'
 import { formatErrorMessage, taskClassLabels } from '@apps/lib/utils'
 import { RulesPage } from '@apps/components/RulesPage'

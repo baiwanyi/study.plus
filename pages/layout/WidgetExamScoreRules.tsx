@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { optionsAPI } from '@apps/lib/api'
 import type { ExamRuleRange } from '@apps/lib/types'
 import { pointColors, pointSymbol } from '@apps/lib/utils'
-import { parseExamData } from '@/pages/layout/OptionsRulesExam'
+import { parseExamData } from '@pages/layout/OptionsRulesExam'
 import { DataTable, type Column } from '@apps/components/DataTable'
 
 const columns: Column<ExamRuleRange>[] = [

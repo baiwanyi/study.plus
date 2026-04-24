@@ -5,7 +5,7 @@ import {
     defaultExamRules,
     defaultExchangeRules,
     defaultSystemSettings,
-} from '@/apps/lib/default'
+} from '@apps/lib/default'
 
 console.log('Running database migration...')
 

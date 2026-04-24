@@ -12,7 +12,7 @@ interface ComputedSummary extends MonthSummary {
     totalDeduct: number
     /** Balance at the start of the month */
     balance: number
-    /** Available points for exchange = basePoints - totalDeduct (this month's earnings are not usable until next month) */
+    /** Available points for exchange = basePoints - totalDeduct - monthlyBasePoints (this month's earnings and monthlyBasePoints are not usable until next month) */
     availableBalance: number
     /** Minimum points required to use privileges (from options) */
     minimumPointsForPrivileges: number
@@ -136,8 +136,8 @@ export async function recomputeMonthSummary(
     const totalEarn = Number(earnResult[0]?.total) || 0
     const totalDeduct = Number(deductResult[0]?.total) || 0
     const balance = summary.basePoints + totalEarn - totalDeduct
-    // This month's earnings are not available for exchange until next month
-    const availableBalance = summary.basePoints - totalDeduct
+    // This month's earnings and monthlyBasePoints are not available for exchange until next month
+    const availableBalance = summary.basePoints - totalDeduct - rules.monthlyBasePoints
 
     // Update stored values
     await db
@@ -152,5 +152,6 @@ export async function recomputeMonthSummary(
         balance,
         availableBalance,
         minimumPointsForPrivileges,
+        monthlyBasePoints: rules.monthlyBasePoints,
     }
 }

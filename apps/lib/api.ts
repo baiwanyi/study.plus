@@ -3,7 +3,7 @@ import {
     defaultSubmissionRemark,
     defaultCustomRemark,
     defaultQuotes,
-} from '@/apps/lib/default'
+} from '@apps/lib/default'
 import type {
     Task,
     Submission,

@@ -10,7 +10,7 @@ import {
     Bot,
 } from 'lucide-react'
 import { quotesApi } from '@apps/lib/api'
-import { defaultQuotes } from '@/apps/lib/default'
+import { defaultQuotes } from '@apps/lib/default'
 import { isAdmin } from '@apps/lib/utils'
 
 const baseNavItems = [

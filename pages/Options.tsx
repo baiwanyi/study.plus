@@ -1,11 +1,11 @@
 import { useState } from 'react'
 import Tabs from '@components/Tabs'
 import type { TabItem } from '@components/Tabs'
-import { RulesHomework } from '@/pages/layout/OptionsRulesHomework'
-import { RulesExam } from '@/pages/layout/OptionsRulesExam'
-import { RulesExchange } from '@/pages/layout/OptionsRulesExchange'
-import { RulesCustom } from '@/pages/layout/OptionsRulesCustom'
-import { RulesSystem } from '@/pages/layout/OptionsSystem'
+import { RulesHomework } from '@pages/layout/OptionsRulesHomework'
+import { RulesExam } from '@pages/layout/OptionsRulesExam'
+import { RulesExchange } from '@pages/layout/OptionsRulesExchange'
+import { RulesCustom } from '@pages/layout/OptionsRulesCustom'
+import { RulesSystem } from '@pages/layout/OptionsSystem'
 
 type TabKey = 'homework' | 'exam' | 'exchange' | 'custom' | 'system'
 

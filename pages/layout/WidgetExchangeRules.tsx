@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { optionsAPI } from '@apps/lib/api'
 import type { ExchangeItemRule } from '@apps/lib/types'
 import { DataTable, type Column } from '@apps/components/DataTable'
-import { parseExchangeData } from '@/pages/layout/OptionsRulesExchange'
+import { parseExchangeData } from '@pages/layout/OptionsRulesExchange'
 
 export default function WidgetExchangeRules() {
     const [exchangeRules, setExchangeRules] = useState<ExchangeItemRule[]>([])

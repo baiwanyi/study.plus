@@ -10,6 +10,7 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
     const balance = summary?.balance ?? 0
     const minimumPoints = summary?.minimumPointsForPrivileges ?? 0
     const totalEarn = summary?.totalEarn ?? 0
+    const monthlyBasePoints = summary?.monthlyBasePoints ?? 0
 
     return (
         <div className="grid grid-cols-1 gap-4">
@@ -24,7 +25,7 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                         余额不足 {minimumPoints} 积分，兑换特权暂不可用。
                     </p>
                 )}
-                <p className="text-xs text-muted">* 本月获取积分下月方可使用</p>
+                <p className="text-xs text-muted">* 本月获取积分及月初始积分下月方可使用</p>
             </div>
             <div className="card space-y-2">
                 <p className="text-sm text-gray-700">总余额 ({month})</p>
@@ -33,7 +34,10 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                     {balance.toLocaleString()}
                 </p>
                 <p className="text-xs text-muted">
-                    含本月待结积分 +{totalEarn.toLocaleString()}
+                    含本月待结积分 {totalEarn.toLocaleString()}
+                    {monthlyBasePoints > 0 && (
+                        <> + 本月初始 {monthlyBasePoints.toLocaleString()}</>
+                    )}
                 </p>
             </div>
         </div>

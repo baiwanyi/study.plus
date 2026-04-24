@@ -1,10 +1,10 @@
 import { useState, useEffect } from 'react'
 import { aiUsageApi } from '@apps/lib/api'
 import type { AIUsageLog, AIUsageSummary } from '@apps/lib/types'
-import Loading from '@/apps/components/Loading'
+import Loading from '@apps/components/Loading'
 import AISummaryCards from '@layout/AISummaryCards'
 import AISummaryTable from '@layout/AISummaryTable'
-import AIListTable from '@/pages/layout/AIListTable'
+import AIListTable from '@pages/layout/AIListTable'
 
 export default function AIUsage() {
     const [aiLogs, setLogs] = useState<AIUsageLog[]>([])

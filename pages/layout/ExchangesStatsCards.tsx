@@ -32,7 +32,7 @@ export default function ExchangesStatsCards({
                 color: 'text-success',
             },
             {
-                label: '上月结余',
+                label: '本月基础积分',
                 value: summary?.basePoints ?? 0,
                 color: 'text-gray-700',
             },
@@ -52,7 +52,7 @@ export default function ExchangesStatsCards({
                     )}
                     {i === 0 && (
                         <p className="text-xs text-muted">
-                            * 本月获取的积分下月1日后方可使用
+                            * 本月获取的积分及月初始积分下月1日后方可使用
                         </p>
                     )}
                     {i === 0 && availableBalance < minPrivilege && (

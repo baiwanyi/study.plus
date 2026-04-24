@@ -8,7 +8,7 @@ import Dashboard from '@pages/Dashboard'
 import Tasks from '@pages/Tasks'
 import Points from '@pages/Points'
 import Exchanges from '@pages/Exchanges'
-import Options from '@/pages/Options'
+import Options from '@pages/Options'
 import AIUsage from '@pages/AIUsage'
 import '@pages/index.css'
 

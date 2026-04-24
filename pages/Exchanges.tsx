@@ -8,7 +8,7 @@ import ExchangesStatsCards from '@layout/ExchangesStatsCards'
 import ExchangesListTable from '@layout/ExchangesListTable'
 import ExchangesModalAdd from '@layout/ExchangesModalAdd'
 import Loading from '@components/Loading'
-import { parseExchangeData } from '@/pages/layout/OptionsRulesExchange'
+import { parseExchangeData } from '@pages/layout/OptionsRulesExchange'
 
 export default function Exchanges() {
     const { showSnackbar } = useSnackbar()

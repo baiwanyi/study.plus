@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { optionsAPI } from '@apps/lib/api'
 import type { CustomRule } from '@apps/lib/types'
 import { pointColors, pointSymbol } from '@apps/lib/utils'
-import { parseCustomData } from '@/pages/layout/OptionsRulesCustom'
+import { parseCustomData } from '@pages/layout/OptionsRulesCustom'
 import { DataTable, type Column } from '@apps/components/DataTable'
 
 export default function WidgetCustomRules() {

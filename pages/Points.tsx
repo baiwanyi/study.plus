@@ -9,7 +9,7 @@ import type {
 import { getCurrentMonth, isAdmin, formatErrorMessage } from '@apps/lib/utils'
 import { useSnackbar } from '@components/Snackbar'
 import PointsListTable from '@layout/PointsListTable'
-import PointsModalAdd from '@/pages/layout/PointsModalAdd'
+import PointsModalAdd from '@pages/layout/PointsModalAdd'
 import Loading from '@components/Loading'
 
 export default function Points() {
