@@ -79,4 +79,13 @@ app.use((err: Error, _req: Request, res: Response, _next: unknown) => {
 
 app.listen(PORT, '0.0.0.0', () => {
     console.log(`Server listening on port ${PORT}`)
+}).on('error', (err: NodeJS.ErrnoException) => {
+    if (err.code === 'EADDRINUSE') {
+        console.error(
+            `Port ${PORT} is already in use. Please free the port or set PORT environment variable to a different value.`,
+        )
+    } else {
+        console.error('Server failed to start:', err)
+    }
+    process.exit(1)
 })
