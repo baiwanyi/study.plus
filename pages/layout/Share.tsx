@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useCallback } from 'react'
 import Modal from '@apps/components/Modal'
 import { ExternalLink } from 'lucide-react'
 

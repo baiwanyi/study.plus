@@ -308,6 +308,38 @@ async function migrate(): Promise<void> {
         }
     }
 
+    // Ensure homework rules contain all default grades (C, D, E may be missing from older data)
+    try {
+        const homeworkRow = await client.execute({
+            sql: "SELECT value FROM options WHERE key = 'homework'",
+            args: [],
+        })
+        if (homeworkRow.rows.length > 0) {
+            const homeworkVal = JSON.parse(
+                homeworkRow.rows[0].value as string,
+            ) as Array<{ grade: string; points: number }>
+            if (Array.isArray(homeworkVal)) {
+                const existingGrades = new Set(homeworkVal.map((g) => g.grade))
+                const missingGrades = defaultHomeworkRules.filter(
+                    (d) => !existingGrades.has(d.grade),
+                )
+                if (missingGrades.length > 0) {
+                    // Add missing grades and update
+                    const updatedHomework = [...homeworkVal, ...missingGrades]
+                    await client.execute({
+                        sql: "UPDATE options SET value = ? WHERE key = 'homework'",
+                        args: [JSON.stringify(updatedHomework)],
+                    })
+                    console.log(
+                        `Added missing homework grades: ${missingGrades.map((g) => g.grade).join(', ')}`,
+                    )
+                }
+            }
+        }
+    } catch (e) {
+        console.log('Homework rules migration skipped:', (e as Error).message)
+    }
+
     // Insert default separate rules if they don't exist
     const defaultRules: { key: string; value: string }[] = [
         {

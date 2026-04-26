@@ -24,12 +24,14 @@ function toPositiveNumber(val: unknown, fallback: number = 0): number {
 function toGradePoints(obj: unknown): GradePoints[] {
     if (Array.isArray(obj)) {
         // Validate array items have expected structure
+        // Allow negative points for grades like C, D, E (deductions)
         return obj.filter((item): item is GradePoints => {
             return (
                 item !== null &&
                 typeof item === 'object' &&
                 typeof (item as GradePoints).grade === 'string' &&
-                toPositiveNumber((item as GradePoints).points, -1) >= 0
+                typeof (item as GradePoints).points === 'number' &&
+                !Number.isNaN((item as GradePoints).points)
             )
         })
     }
