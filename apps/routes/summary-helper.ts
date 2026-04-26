@@ -1,5 +1,5 @@
 import { db } from '@apps/db/index'
-import { pointRecords, monthSummary } from '@apps/db/schema'
+import { pointRecords, monthSummary, exchanges } from '@apps/db/schema'
 import { eq, and, gte, lte, sql, ne } from 'drizzle-orm'
 import { loadRules } from '@apps/routes/rules-loader'
 import type { MonthSummary } from '@apps/lib/types'
@@ -10,9 +10,11 @@ interface ComputedSummary extends MonthSummary {
     totalEarn: number
     /** Total points deducted this month */
     totalDeduct: number
+    /** Total points exchanged this month */
+    totalExchanges: number
     /** Balance at the start of the month */
     balance: number
-    /** Available points for exchange = basePoints - totalDeduct - monthlyBasePoints (this month's earnings and monthlyBasePoints are not usable until next month) */
+    /** Available points for exchange = basePoints - monthlyBasePoints (this month's earnings, deductions and monthlyBasePoints are all frozen until next month) */
     availableBalance: number
     /** Minimum points required to use privileges (from options) */
     minimumPointsForPrivileges: number
@@ -135,20 +137,35 @@ export async function recomputeMonthSummary(
 
     const totalEarn = Number(earnResult[0]?.total) || 0
     const totalDeduct = Number(deductResult[0]?.total) || 0
+
+    // Calculate exchanges for this month (only active status)
+    const exchangesResult = await db
+        .select({ total: sql`COALESCE(SUM(${exchanges.pointsCost}), 0)` })
+        .from(exchanges)
+        .where(
+            and(
+                eq(exchanges.status, 'active'),
+                gte(exchanges.createdAt, start),
+                lte(exchanges.createdAt, end),
+            ),
+        )
+    const totalExchanges = Number(exchangesResult[0]?.total) || 0
+
     const balance = summary.basePoints + totalEarn - totalDeduct
-    // This month's earnings and monthlyBasePoints are not available for exchange until next month
-    const availableBalance = summary.basePoints - totalDeduct - rules.monthlyBasePoints
+    // This month's earnings, deductions and monthlyBasePoints are all frozen until next month
+    const availableBalance = summary.basePoints - rules.monthlyBasePoints
 
     // Update stored values
     await db
         .update(monthSummary)
-        .set({ totalEarn, totalDeduct, balance })
+        .set({ totalEarn, totalDeduct, totalExchanges, balance })
         .where(eq(monthSummary.month, targetMonth))
 
     return {
         ...summary,
         totalEarn,
         totalDeduct,
+        totalExchanges,
         balance,
         availableBalance,
         minimumPointsForPrivileges,

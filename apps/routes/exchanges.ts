@@ -157,7 +157,8 @@ router.post(
         try {
             const currentMonth: string = new Date().toISOString().slice(0, 7)
 
-            // 直接修改 monthSummary：balance 增加，basePoints 增加，totalDeduct 减少
+            // 直接修改 monthSummary：balance 增加，basePoints 增加
+            // 注意：totalDeduct 不应被修改，它只记录实际扣分
             const summaryRows = await db
                 .select()
                 .from(monthSummary)
@@ -169,10 +170,6 @@ router.post(
                     .set({
                         balance: current.balance + exchange.pointsCost,
                         basePoints: current.basePoints + exchange.pointsCost,
-                        totalDeduct: Math.max(
-                            0,
-                            current.totalDeduct - exchange.pointsCost,
-                        ),
                     })
                     .where(eq(monthSummary.month, currentMonth))
             }

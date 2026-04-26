@@ -86,5 +86,6 @@ export const monthSummary = sqliteTable('month_summary', {
     basePoints: integer('base_points').notNull().default(500),
     totalEarn: integer('total_earn').notNull().default(0),
     totalDeduct: integer('total_deduct').notNull().default(0),
+    totalExchanges: integer('total_exchanges').notNull().default(0),
     balance: integer('balance').notNull().default(500),
 })

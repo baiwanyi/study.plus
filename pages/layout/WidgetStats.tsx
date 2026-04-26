@@ -16,8 +16,8 @@ export default function WidgetStats({
         () => [
             {
                 label: '本月获取积分',
-                value: stats?.totalEarn ?? 0,
-                color: 'text-success',
+                value: stats?.net ?? 0,
+                color: stats?.net && stats.net < 0 ? 'text-danger' : 'text-success',
             },
             {
                 label: '本月兑换积分',

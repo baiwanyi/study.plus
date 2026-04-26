@@ -22,13 +22,13 @@ export default function ExchangesStatsCards({
                         : 'text-danger',
             },
             {
-                label: '本月消耗积分（含扣分）',
-                value: summary?.totalDeduct ?? 0,
+                label: '本月兑换积分',
+                value: summary?.totalExchanges ?? 0,
                 color: 'text-danger',
             },
             {
                 label: '本月待结积分',
-                value: summary?.totalEarn ?? 0,
+                value: (summary?.totalEarn ?? 0) - (summary?.totalDeduct ?? 0),
                 color: 'text-success',
             },
             {

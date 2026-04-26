@@ -91,8 +91,9 @@ export interface MonthSummary {
     basePoints: number
     totalEarn: number
     totalDeduct: number
+    totalExchanges: number
     balance: number
-    /** Available points for exchange (this month's earnings and monthlyBasePoints excluded - both frozen until next month) */
+    /** Available points for exchange (this month's earnings, deductions and monthlyBasePoints are all frozen until next month) */
     availableBalance: number
     /** Minimum points required to use privileges (from options) */
     minimumPointsForPrivileges: number

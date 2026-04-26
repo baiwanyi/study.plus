@@ -200,9 +200,25 @@ async function migrate(): Promise<void> {
       base_points INTEGER NOT NULL DEFAULT 500,
       total_earn INTEGER NOT NULL DEFAULT 0,
       total_deduct INTEGER NOT NULL DEFAULT 0,
+      total_exchanges INTEGER NOT NULL DEFAULT 0,
       balance INTEGER NOT NULL DEFAULT 500
     )
   `)
+
+    // Migrate month_summary to add total_exchanges column if not exists
+    const monthSummaryColumns = await client.execute(
+        'PRAGMA table_info(month_summary)',
+    )
+    const hasTotalExchanges = monthSummaryColumns.rows.some(
+        (col) =>
+            (col as unknown as { name: string }).name === 'total_exchanges',
+    )
+    if (!hasTotalExchanges) {
+        await client.execute(
+            'ALTER TABLE month_summary ADD COLUMN total_exchanges INTEGER NOT NULL DEFAULT 0',
+        )
+        console.log('Added total_exchanges column to month_summary table.')
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS ai_usage_logs (
@@ -458,7 +474,7 @@ async function migrate(): Promise<void> {
     })
     if (existingMonth.rows.length === 0) {
         await client.execute({
-            sql: 'INSERT INTO month_summary (month, base_points, total_earn, total_deduct, balance) VALUES (?, 500, 0, 0, 500)',
+            sql: 'INSERT INTO month_summary (month, base_points, total_earn, total_deduct, total_exchanges, balance) VALUES (?, 500, 0, 0, 0, 500)',
             args: [currentMonth],
         })
         console.log(`Month summary for ${currentMonth} created.`)
