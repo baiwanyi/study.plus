@@ -27,21 +27,25 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                         余额不足 {minimumPoints} 积分，兑换特权暂不可用。
                     </p>
                 )}
-                <p className="text-xs text-muted">
-                    * 本月获取积分及月初始积分下月方可使用
-                </p>
             </div>
             <div className="card space-y-2">
-                <p className="text-sm text-gray-700">总余额 ({month})</p>
+                <p className="text-sm text-gray-700">总余额</p>
                 <p
                     className={`text-4xl font-bold ${balance >= minimumPoints ? 'text-primary' : 'text-danger'}`}>
                     {balance.toLocaleString()}
                 </p>
+            </div>
+            <div className="card space-y-2">
+                <p className="text-sm text-gray-700">下月可用积分</p>
+                <p className="text-4xl font-bold text-primary">
+                    {(
+                        monthlyBasePoints -
+                        Math.abs(totalEarn - totalDeduct + totalExchanges)
+                    ).toLocaleString()}
+                </p>
+
                 <p className="text-xs text-muted">
-                    含本月待结积分 {(totalEarn - totalDeduct + totalExchanges).toLocaleString()}
-                    {monthlyBasePoints > 0 && (
-                        <> + 本月初始 {monthlyBasePoints.toLocaleString()}</>
-                    )}
+                    * 本月获取积分及月初始积分下月方可使用
                 </p>
             </div>
         </div>
