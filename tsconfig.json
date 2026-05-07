@@ -24,13 +24,12 @@
         "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo",
 
         // 路径别名映射（Path Alias Mapping）
-        "baseUrl": ".",
         "paths": {
-            "@/*": ["*"],
-            "@apps/*": ["apps/*"],
-            "@components/*": ["apps/components/*"],
-            "@pages/*": ["pages/*"],
-            "@layout/*": ["pages/layout/*"]
+            "@/*": ["./*"],
+            "@apps/*": ["./apps/*"],
+            "@components/*": ["./apps/components/*"],
+            "@pages/*": ["./pages/*"],
+            "@layout/*": ["./pages/layout/*"]
         },
 
         // 类型检查与代码规范 (Type Checking & Linting)
@@ -38,10 +37,7 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "noFallthroughCasesInSwitch": true,
-        "noUncheckedSideEffectImports": true,
-
-        // 其他 / 废弃兼容 (Other / Deprecations)
-        "ignoreDeprecations": "6.0",
+        "noUncheckedSideEffectImports": true
     },
     "include": ["vite.config.ts", "apps", "pages"]
 }

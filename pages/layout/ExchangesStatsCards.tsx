@@ -10,7 +10,9 @@ export default function ExchangesStatsCards({
 }: ExchangesStatsCardsProps) {
     const availableBalance = summary?.availableBalance ?? 0
     const totalBalance = summary?.balance ?? 0
+    const totalExchanges = summary?.totalExchanges ?? 0
     const minPrivilege = summary?.minimumPointsForPrivileges ?? 100
+    const monthlyBasePoints = summary?.monthlyBasePoints ?? 500
     const exchangesCards = useMemo(
         () => [
             {
@@ -23,17 +25,17 @@ export default function ExchangesStatsCards({
             },
             {
                 label: '本月兑换积分',
-                value: summary?.totalExchanges ?? 0,
+                value: totalExchanges,
                 color: 'text-danger',
             },
             {
                 label: '本月待结积分',
-                value: (summary?.totalEarn ?? 0) - (summary?.totalDeduct ?? 0),
+                value: (summary?.totalEarn ?? 0) - (summary?.totalDeduct ?? 0) + totalExchanges,
                 color: 'text-success',
             },
             {
-                label: '本月基础积分',
-                value: summary?.basePoints ?? 0,
+                label: '上月结余积分',
+                value: (summary?.basePoints ?? 0) - monthlyBasePoints,
                 color: 'text-gray-700',
             },
         ],

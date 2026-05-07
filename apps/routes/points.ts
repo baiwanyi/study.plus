@@ -370,7 +370,7 @@ router.get(
                 totalEarn,
                 totalDeduct,
                 totalExchanges,
-                net: totalEarn - totalDeduct,
+                net: totalEarn - totalDeduct + totalExchanges,
             })
         } catch (err) {
             console.error('Error in GET /points/stats:', err)

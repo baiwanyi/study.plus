@@ -8,6 +8,7 @@ interface WidgetBalanceProps {
 export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
     const availableBalance = summary?.availableBalance ?? 0
     const balance = summary?.balance ?? 0
+    const totalExchanges = summary?.totalExchanges ?? 0
     const minimumPoints = summary?.minimumPointsForPrivileges ?? 0
     const totalEarn = summary?.totalEarn ?? 0
     const totalDeduct = summary?.totalDeduct ?? 0
@@ -37,7 +38,7 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                     {balance.toLocaleString()}
                 </p>
                 <p className="text-xs text-muted">
-                    含本月待结积分 {(totalEarn - totalDeduct).toLocaleString()}
+                    含本月待结积分 {(totalEarn - totalDeduct + totalExchanges).toLocaleString()}
                     {monthlyBasePoints > 0 && (
                         <> + 本月初始 {monthlyBasePoints.toLocaleString()}</>
                     )}

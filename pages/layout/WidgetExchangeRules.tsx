@@ -52,12 +52,12 @@ export default function WidgetExchangeRules() {
         <div className="card space-y-4">
             <h3>积分兑换规则</h3>
             <DataTable data={exchangeRules} columns={columns} rowKey="key" />
-            <p className="text-muted text-sm">
-                法定节假日不受规则限制，可按照正常时间进行娱乐活动。
-            </p>
-            <p className="text-muted text-sm">
-                时间规定：8:00~13:00 | 14:00~22:30
-            </p>
+            <ul className="text-muted text-sm">
+                <li>法定节假日不受规则限制。</li>
+                <li>白天时间：8:00~21:30，周末节假日：8:00~22:30</li>
+                <li>夜间时间：21:30~次日 8:00，周末节假日：22:30~次日 8:00</li>
+                <li>午休时间：13:00~14:00，此时间段为禁止时间</li>
+            </ul>
         </div>
     )
 }

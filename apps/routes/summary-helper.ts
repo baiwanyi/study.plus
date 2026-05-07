@@ -153,7 +153,7 @@ export async function recomputeMonthSummary(
 
     const balance = summary.basePoints + totalEarn - totalDeduct
     // This month's earnings, deductions and monthlyBasePoints are all frozen until next month
-    const availableBalance = summary.basePoints - rules.monthlyBasePoints
+    const availableBalance = summary.basePoints - rules.monthlyBasePoints - totalExchanges
 
     // Update stored values
     await db
