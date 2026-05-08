@@ -1,4 +1,10 @@
-import type { MonthSummary } from '@apps/lib/types'
+import { useState, useEffect } from 'react'
+import type { MonthSummary, ExchangeItemRule } from '@apps/lib/types'
+import { optionsAPI } from '@apps/lib/api'
+import { parseExchangeData } from './OptionsRulesExchange'
+
+const DEFAULT_RATIO = 5
+const DEFAULT_POINTS = 1
 
 interface WidgetBalanceProps {
     summary: MonthSummary | null
@@ -6,6 +12,23 @@ interface WidgetBalanceProps {
 }
 
 export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
+    const [exchangeRules, setExchangeRules] = useState<ExchangeItemRule[]>([])
+
+    useEffect(() => {
+        let cancelled = false
+        optionsAPI
+            .get('exchange')
+            .then((data) => {
+                if (!cancelled) setExchangeRules(parseExchangeData(data))
+            })
+            .catch(() => {
+                if (!cancelled) setExchangeRules([])
+            })
+        return () => {
+            cancelled = true
+        }
+    }, [])
+
     const availableBalance = summary?.availableBalance ?? 0
     const balance = summary?.balance ?? 0
     const totalExchanges = summary?.totalExchanges ?? 0
@@ -13,6 +36,13 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
     const totalEarn = summary?.totalEarn ?? 0
     const totalDeduct = summary?.totalDeduct ?? 0
     const monthlyBasePoints = summary?.monthlyBasePoints ?? 0
+
+    const gameRule = exchangeRules.find(
+        (r) => r.key === 'game' || r.label.includes('游戏'),
+    )
+    const points = gameRule ? gameRule.points : DEFAULT_POINTS
+    const ratio = gameRule ? gameRule.ratio : DEFAULT_RATIO
+    const exchangeableMinutes = Math.round((availableBalance / points) * ratio)
 
     return (
         <div className="grid grid-cols-1 gap-4">
@@ -27,6 +57,9 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                         余额不足 {minimumPoints} 积分，兑换特权暂不可用。
                     </p>
                 )}
+                <p className="text-xs text-muted">
+                    剩余积分可兑换游戏时长约<span className="font-semibold px-1">{exchangeableMinutes}</span>分
+                </p>
             </div>
             <div className="card space-y-2">
                 <p className="text-sm text-gray-700">总余额</p>
