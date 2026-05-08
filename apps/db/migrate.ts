@@ -76,7 +76,7 @@ async function migrate(): Promise<void> {
       reason TEXT NOT NULL,
       rule_name TEXT,
       related_id INTEGER,
-      related_type TEXT CHECK(related_type IN ('task', 'submission', 'exam', 'extra', 'custom', 'revoked')),
+      related_type TEXT CHECK(related_type IN ('task', 'submission', 'exam', 'extra', 'custom', 'exchange', 'revoked')),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)

@@ -106,6 +106,7 @@ export const relatedTypeValues = [
     'exam',
     'extra',
     'custom',
+    'exchange',
     'revoked',
 ] as const
 
@@ -115,6 +116,7 @@ export const relatedTypeLabels: Record<RelatedType, string> = {
     exam: '单元测评',
     extra: '额外',
     custom: '自定义',
+    exchange: '积分兑换',
     revoked: '已撤销',
 }
 

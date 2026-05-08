@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { db } from '@apps/db/index'
 import { pointRecords, exchanges } from '@apps/db/schema'
-import { eq, ne, desc, and, gte, lte, notLike, sql } from 'drizzle-orm'
+import { eq, ne, desc, and, gte, lte, sql } from 'drizzle-orm'
 import { getPointsForGrade, getPointsForExamScore } from '@apps/services/points'
 import { loadRules } from '@apps/routes/rules-loader'
 import { recomputeMonthSummary } from '@apps/routes/summary-helper'
@@ -44,7 +44,7 @@ router.get(
                 conditions.push(lte(pointRecords.createdAt, end))
             }
 
-            conditions.push(notLike(pointRecords.ruleName, 'exchangeRates%'))
+            conditions.push(ne(pointRecords.relatedType, 'exchange'))
 
             const records: PointRecord[] = (await db
                 .select()

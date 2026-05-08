@@ -19,6 +19,7 @@ export type RelatedType =
     | 'exam'
     | 'extra'
     | 'custom'
+    | 'exchange'
     | 'revoked'
 export type ExchangeItemType = string
 export type ExchangeStatus = 'active' | 'revoked'

@@ -112,7 +112,7 @@ router.post(
             reason: `兑换${itemLabel} ${detail}`,
             ruleName: `exchangeRates.${itemType}`,
             relatedId: exchange.id,
-            relatedType: 'custom',
+            relatedType: 'exchange',
         })
 
         // Recompute month summary after deduction
@@ -181,7 +181,7 @@ router.post(
                 .where(
                     and(
                         eq(pointRecords.relatedId, exchange.id),
-                        eq(pointRecords.relatedType, 'custom'),
+                        eq(pointRecords.relatedType, 'exchange'),
                     ),
                 )
 
