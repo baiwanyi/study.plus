@@ -30,7 +30,10 @@ export default function ExchangesStatsCards({
             },
             {
                 label: '本月待结积分',
-                value: (summary?.totalEarn ?? 0) - (summary?.totalDeduct ?? 0) + totalExchanges,
+                value:
+                    (summary?.totalEarn ?? 0) -
+                    (summary?.totalDeduct ?? 0) +
+                    totalExchanges,
                 color: 'text-success',
             },
             {
@@ -50,16 +53,18 @@ export default function ExchangesStatsCards({
                         {card.value}
                     </p>
                     {i === 0 && (
-                        <p className="text-sm">总积分 {totalBalance}</p>
-                    )}
-                    {i === 0 && (
-                        <p className="text-xs text-muted">
-                            * 本月获取的积分及月初始积分下月1日后方可使用
+                        <p className="text-sm text-muted">
+                            总积分 {totalBalance}
                         </p>
                     )}
                     {i === 0 && availableBalance < minPrivilege && (
                         <p className="text-xs text-danger">
                             积分不足 {minPrivilege}，兑换特权暂不可用。
+                        </p>
+                    )}
+                    {i === 2 && (
+                        <p className="text-xs text-muted">
+                            * 本月获取的积分及月初始积分下月1日后方可使用
                         </p>
                     )}
                 </div>
