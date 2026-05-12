@@ -12,6 +12,7 @@ import {
     RefreshCw,
     CheckCircle,
     Play,
+    CirclePlay,
     Pause,
     Volume2,
     VolumeX,
@@ -47,7 +48,6 @@ export default function VideoPlayer() {
     const [duration, setDuration] = useState(0)
     const [volume, setVolume] = useState(1)
     const [muted, setMuted] = useState(false)
-    const [hovered, setHovered] = useState(false)
 
     // 缓存全量视频列表和播放队列，避免重复请求
     const videoListRef = useRef<Video[]>([])
@@ -422,10 +422,7 @@ export default function VideoPlayer() {
                 onWheel={handleWheel}>
                 {/* Video Player */}
                 <div className="flex flex-col items-center gap-2">
-                    <div
-                        className="rounded-xl w-[70vw] overflow-hidden aspect-video bg-black relative"
-                        onMouseEnter={() => setHovered(true)}
-                        onMouseLeave={() => setHovered(false)}>
+                    <div className="rounded-xl w-[70vw] overflow-hidden aspect-video bg-black relative">
                         <video
                             ref={videoRef}
                             tabIndex={0}
@@ -447,21 +444,17 @@ export default function VideoPlayer() {
                                 }
                             }}
                         />
-                        {/* 悬浮覆盖层：暂停时始终显示，播放时悬停显示 */}
+                        {/* 覆盖层：暂停时显示播放按钮 */}
                         <div
-                            className={`absolute inset-0 p-3 flex items-end justify-end transition-opacity duration-200 ${
-                                !playing || hovered
-                                    ? 'bg-black/20 opacity-100'
-                                    : 'opacity-0 pointer-events-none'
+                            className={`absolute inset-0 p-6 flex items-end justify-end transition-opacity duration-200 ${
+                                playing
+                                    ? 'opacity-0 pointer-events-none'
+                                    : 'opacity-100'
                             }`}>
                             <div
-                                className="w-16 h-16 rounded-full bg-black/50 flex items-center justify-center cursor-pointer hover:bg-black/70 transition-colors"
+                                className="cursor-pointer text-white/70 hover:text-white/90"
                                 onClick={togglePlay}>
-                                {playing ? (
-                                    <Pause className="size-8 text-white" />
-                                ) : (
-                                    <Play className="size-8 text-white ml-1" />
-                                )}
+                                <CirclePlay className="size-16" />
                             </div>
                         </div>
                     </div>
