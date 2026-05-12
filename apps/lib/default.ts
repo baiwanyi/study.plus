@@ -128,6 +128,8 @@ export const defaultSystemSettings = {
     autosaveInterval: 10,
     monthlyBasePoints: 500,
     minimumPointsForPrivileges: 100,
+    advanceRepayRatio: 16,
+    maxPendingAmount: 500,
 }
 
 export const defaultTaskTitle = {
@@ -150,3 +152,5 @@ export const defaultPromptTaskTitleNotes =
 
 export const defaultPromptScoreComposition =
     '请对以下{taskType}进行评分。{taskTitle}。内容：{taskContent}请按以下格式返回：1. 评分等级（A+/A/B/C/D/E）2. 百分制分数3. 评语（50字以内）4. 改进建议（1-3条）请严格按以下 JSON 格式返回：{"grade":"等级","score":分数,"comment":"评语","suggestions":["建议1","建议2"]}'
+
+export const defaultVideoDirectory = ''

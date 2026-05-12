@@ -11,6 +11,9 @@ interface SystemSettings {
     pageSize: number
     autosaveInterval: number
     grade: number
+    advanceRepayRatio: number
+    maxPendingAmount: number
+    videoDirectory: string
 }
 
 const defaultSettings: SystemSettings = {
@@ -19,6 +22,9 @@ const defaultSettings: SystemSettings = {
     pageSize: 20,
     autosaveInterval: 10,
     grade: 1,
+    advanceRepayRatio: 16,
+    maxPendingAmount: 500,
+    videoDirectory: '',
 }
 export function RulesSystem() {
     const { showSnackbar } = useSnackbar()
@@ -58,12 +64,15 @@ export function RulesSystem() {
         setSettings((prev) => ({ ...prev, [field]: num }))
     }
 
-    const fieldMin: Record<keyof SystemSettings, number> = {
+    const fieldMin: Record<string, number> = {
         monthlyBasePoints: 0,
         minimumPointsForPrivileges: 0,
         pageSize: 1,
         autosaveInterval: 1,
         grade: 1,
+        advanceRepayRatio: 0,
+        maxPendingAmount: 0,
+        videoDirectory: 0,
     }
 
     const handleSave = async () => {
@@ -75,6 +84,9 @@ export function RulesSystem() {
                 pageSize: settings.pageSize,
                 autosaveInterval: settings.autosaveInterval,
                 grade: settings.grade,
+                advanceRepayRatio: settings.advanceRepayRatio,
+                maxPendingAmount: settings.maxPendingAmount,
+                videoDirectory: settings.videoDirectory,
             })
             await quotesApi.update(quotes)
             showSnackbar('保存成功！')
@@ -90,6 +102,12 @@ export function RulesSystem() {
         { key: 'minimumPointsForPrivileges', label: '特权最低积分' },
         { key: 'pageSize', label: '每页显示条数' },
         { key: 'autosaveInterval', label: '自动保存间隔（秒）' },
+        { key: 'advanceRepayRatio', label: '预支返还比例（%）' },
+        { key: 'maxPendingAmount', label: '预支风控上限（积分）' },
+    ]
+
+    const textFields: { key: keyof SystemSettings; label: string; placeholder: string }[] = [
+        { key: 'videoDirectory', label: '本地视频目录路径', placeholder: '例如：D:\\Videos\\学习视频' },
     ]
 
     return (
@@ -106,6 +124,24 @@ export function RulesSystem() {
                             disabled={saving}
                             onChange={(e) =>
                                 handleNumberChange(key, e.target.value)
+                            }
+                        />
+                    </div>
+                ))}
+                {textFields.map(({ key, label, placeholder }) => (
+                    <div className="space-y-1" key={key}>
+                        <label className="label">{label}</label>
+                        <input
+                            type="text"
+                            className="regular-text"
+                            value={settings[key]}
+                            disabled={saving}
+                            placeholder={placeholder}
+                            onChange={(e) =>
+                                setSettings((prev) => ({
+                                    ...prev,
+                                    [key]: e.target.value,
+                                }))
                             }
                         />
                     </div>

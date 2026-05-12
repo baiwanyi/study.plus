@@ -80,6 +80,23 @@ export const aiUsageLogs = sqliteTable('ai_usage_logs', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
+export const pointAdvances = sqliteTable('point_advances', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    amount: integer('amount').notNull(),
+    totalRepayment: integer('total_repayment').notNull(),
+    installments: integer('installments').notNull(),
+    installmentAmount: integer('installment_amount').notNull(),
+    paidInstallments: integer('paid_installments').notNull().default(0),
+    status: text('status', {
+        enum: ['active', 'completed'],
+    })
+        .notNull()
+        .default('active'),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
 export const monthSummary = sqliteTable('month_summary', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     month: text('month').notNull().unique(),
@@ -88,4 +105,15 @@ export const monthSummary = sqliteTable('month_summary', {
     totalDeduct: integer('total_deduct').notNull().default(0),
     totalExchanges: integer('total_exchanges').notNull().default(0),
     balance: integer('balance').notNull().default(500),
+})
+
+export const videos = sqliteTable('videos', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    path: text('path').notNull(),
+    title: text('title').notNull(),
+    md5: text('md5').notNull().unique(),
+    views: integer('views').notNull().default(0),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
 })

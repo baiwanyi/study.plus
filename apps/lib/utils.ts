@@ -108,6 +108,7 @@ export const relatedTypeValues = [
     'custom',
     'exchange',
     'revoked',
+    'advance',
 ] as const
 
 export const relatedTypeLabels: Record<RelatedType, string> = {
@@ -118,6 +119,7 @@ export const relatedTypeLabels: Record<RelatedType, string> = {
     custom: '自定义',
     exchange: '积分兑换',
     revoked: '已撤销',
+    advance: '积分预支',
 }
 
 export const taskTypeValues = ['composition', 'mindmap', 'notes'] as const

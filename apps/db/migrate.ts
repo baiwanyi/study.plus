@@ -194,6 +194,19 @@ async function migrate(): Promise<void> {
   `)
 
     await client.execute(`
+    CREATE TABLE IF NOT EXISTS point_advances (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      amount INTEGER NOT NULL,
+      total_repayment INTEGER NOT NULL,
+      installments INTEGER NOT NULL,
+      installment_amount INTEGER NOT NULL,
+      paid_installments INTEGER NOT NULL DEFAULT 0,
+      status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed')),
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+    await client.execute(`
     CREATE TABLE IF NOT EXISTS month_summary (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       month TEXT NOT NULL UNIQUE,
@@ -479,6 +492,18 @@ async function migrate(): Promise<void> {
         })
         console.log(`Month summary for ${currentMonth} created.`)
     }
+
+    // Create videos table
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS videos (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      path TEXT NOT NULL,
+      title TEXT NOT NULL,
+      md5 TEXT NOT NULL UNIQUE,
+      views INTEGER NOT NULL DEFAULT 0,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
 
     console.log('Migration completed successfully!')
 }

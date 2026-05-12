@@ -23,6 +23,7 @@
         "mermaid": "^11.0.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
+        "react-player": "^3.4.0",
         "react-router-dom": "^7.1.0",
         "vite-tsconfig-paths": "^6.1.1"
     },

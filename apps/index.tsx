@@ -9,6 +9,8 @@ import Tasks from '@pages/Tasks'
 import Points from '@pages/Points'
 import Exchanges from '@pages/Exchanges'
 import Options from '@pages/Options'
+import Borrow from '@pages/Borrow'
+import VideoPlayer from '@pages/VideoPlayer'
 import AIUsage from '@pages/AIUsage'
 import '@pages/index.css'
 
@@ -23,6 +25,8 @@ const AppRoutes = () => (
                 <Route path="tasks" element={<Tasks />} />
                 <Route path="points" element={<Points />} />
                 <Route path="exchanges" element={<Exchanges />} />
+                <Route path="borrow" element={<Borrow />} />
+                <Route path="tv" element={<VideoPlayer />} />
                 {isAdmin() && <Route path="options" element={<Options />} />}
                 <Route path="usage" element={<AIUsage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />

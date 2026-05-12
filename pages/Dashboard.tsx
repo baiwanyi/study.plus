@@ -4,6 +4,7 @@ import type { Task, PointStats, MonthSummary } from '@apps/lib/types'
 import { getCurrentMonth } from '@apps/lib/utils'
 import Loading from '@apps/components/Loading'
 import WidgetStats from '@layout/WidgetStats'
+import WidgetAdvanceStats from '@layout/WidgetAdvanceStats'
 import WidgetBalance from '@layout/WidgetBalance'
 import WidgetCustomRules from '@layout/WidgetCustomRules'
 import WidgetExamScoreRules from '@layout/WidgetExamScoreRules'
@@ -66,6 +67,9 @@ export default function Dashboard() {
                 pendingTasks={pendingTasks}
                 totalTasks={tasks}
             />
+
+            {/* Advance Stats */}
+            <WidgetAdvanceStats />
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                 {/* Net Change & Balance */}

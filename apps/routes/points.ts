@@ -1,10 +1,14 @@
 import { Router, type Request, type Response } from 'express'
 import { db } from '@apps/db/index'
-import { pointRecords, exchanges } from '@apps/db/schema'
+import { pointRecords, exchanges, pointAdvances } from '@apps/db/schema'
 import { eq, ne, desc, and, gte, lte, sql } from 'drizzle-orm'
 import { getPointsForGrade, getPointsForExamScore } from '@apps/services/points'
 import { loadRules } from '@apps/routes/rules-loader'
 import { recomputeMonthSummary } from '@apps/routes/summary-helper'
+import {
+    loadSystemSettings,
+    isFirstDayOfMonth,
+} from '@apps/routes/advance-helper'
 import type {
     PointRecord,
     CreatePointRecordRequest,
@@ -12,6 +16,9 @@ import type {
     PointRecordType,
     RelatedType,
     ApiErrorResponse,
+    PointAdvance,
+    CreateAdvanceRequest,
+    AdvanceSummary,
 } from '@apps/lib/types'
 
 const router = Router()
@@ -216,6 +223,8 @@ router.post(
     },
 )
 
+
+
 // Create a point record by custom rule
 router.post(
     '/by-custom-rule',
@@ -369,6 +378,259 @@ router.get(
             res.status(500).json({
                 error: '服务器内部错误',
             } as ApiErrorResponse)
+        }
+    },
+)
+
+// ===== Advance Routes =====
+
+// GET /points/advances - List all advance records
+router.get(
+    '/advances',
+    async (
+        req: Request,
+        res: Response<PointAdvance[] | ApiErrorResponse>,
+    ) => {
+        try {
+            const { status } = req.query as { status?: string }
+            const conditions: ReturnType<typeof eq>[] = []
+            // Validate status enum to prevent invalid query conditions
+            if (status) {
+                if (status === 'active' || status === 'completed') {
+                    conditions.push(eq(pointAdvances.status, status))
+                } else {
+                    res.status(400).json({
+                        error: `无效的状态值 "${status}"，仅支持 active 或 completed`,
+                    })
+                    return
+                }
+            }
+            const records = (await db
+                .select()
+                .from(pointAdvances)
+                .where(conditions.length > 0 ? and(...conditions) : undefined)
+                .orderBy(desc(pointAdvances.createdAt))) as PointAdvance[]
+            res.json(records)
+        } catch (err) {
+            console.error('Error in GET /points/advances:', err)
+            res.status(500).json({ error: '服务器内部错误' })
+        }
+    },
+)
+
+// GET /points/advances/summary - Get advance summary stats
+router.get(
+    '/advances/summary',
+    async (_req: Request, res: Response<AdvanceSummary | ApiErrorResponse>) => {
+        try {
+            const settings = await loadSystemSettings()
+            const maxPendingAmount =
+                settings.maxPendingAmount ?? 500
+            const activeAdvances = (await db
+                .select()
+                .from(pointAdvances)
+                .where(eq(pointAdvances.status, 'active'))) as PointAdvance[]
+
+            let totalPendingRepayment = 0
+            let currentInstallmentDue = 0
+            let totalRemainingInstallments = 0
+
+            for (const adv of activeAdvances) {
+                const paid = adv.paidInstallments * adv.installmentAmount
+                const remaining = adv.totalRepayment - paid
+                totalPendingRepayment += remaining
+
+                // Only count current installment if still active (has remaining installments)
+                if (adv.paidInstallments < adv.installments) {
+                    currentInstallmentDue += adv.installmentAmount
+                    totalRemainingInstallments +=
+                        adv.installments - adv.paidInstallments
+                }
+            }
+
+            const remainingCredit = Math.max(
+                0,
+                maxPendingAmount - totalPendingRepayment,
+            )
+
+            res.json({
+                totalPendingRepayment,
+                currentInstallmentDue,
+                totalRemainingInstallments,
+                remainingCredit,
+                maxPendingAmount,
+            })
+        } catch (err) {
+            console.error('Error in GET /points/advances/summary:', err)
+            res.status(500).json({ error: '服务器内部错误' })
+        }
+    },
+)
+
+// POST /points/advances - Create a new advance
+router.post(
+    '/advances',
+    async (
+        req: Request<
+            {},
+            PointAdvance | ApiErrorResponse,
+            CreateAdvanceRequest
+        >,
+        res: Response<PointAdvance | ApiErrorResponse>,
+    ) => {
+        try {
+            const { amount, installments } = req.body
+
+            // Validate amount: must be a positive integer
+            if (
+                typeof amount !== 'number' ||
+                !Number.isInteger(amount) ||
+                amount <= 0
+            ) {
+                res.status(400).json({
+                    error: '预支积分必须为正整数',
+                })
+                return
+            }
+
+            // Validate installments: must be one of the allowed tiers
+            if (![3, 6, 9, 12].includes(installments)) {
+                res.status(400).json({
+                    error: '期数仅支持 3/6/9/12 四个档位',
+                })
+                return
+            }
+
+            const settings = await loadSystemSettings()
+            const maxPendingAmount = settings.maxPendingAmount ?? 500
+            const baseRatio = settings.advanceRepayRatio ?? 16
+
+            // Calculate ratio based on installment tier
+            const tierIndex = [3, 6, 9, 12].indexOf(installments)
+            const ratio = baseRatio + tierIndex * 2
+
+            // Calculate repayment: totalRepayment = round(amount * (1 + ratio / 100))
+            const totalRepayment = Math.round(amount * (1 + ratio / 100))
+            const installmentAmount = Math.ceil(
+                totalRepayment / installments,
+            )
+
+            // Risk control: check pending amount
+            const activeAdvances = (await db
+                .select()
+                .from(pointAdvances)
+                .where(eq(pointAdvances.status, 'active'))) as PointAdvance[]
+
+            let currentPending = 0
+            for (const adv of activeAdvances) {
+                currentPending +=
+                    adv.totalRepayment -
+                    adv.paidInstallments * adv.installmentAmount
+            }
+
+            if (currentPending + totalRepayment > maxPendingAmount) {
+                res.status(400).json({
+                    error: `预支失败：当前待还 ${currentPending} 积分，新增预支 ${totalRepayment} 积分后总额 ${currentPending + totalRepayment} 超过风控上限 ${maxPendingAmount} 积分`,
+                })
+                return
+            }
+
+            // Create advance record
+            const result = await db
+                .insert(pointAdvances)
+                .values({
+                    amount,
+                    totalRepayment,
+                    installments,
+                    installmentAmount,
+                })
+                .returning()
+
+            // Create point record for advance (earn)
+            await db.insert(pointRecords).values({
+                type: 'earn',
+                amount,
+                reason: `积分预支 - ${installments}期`,
+                relatedType: 'advance',
+                relatedId: result[0].id,
+            })
+
+            await recomputeMonthSummary(
+                new Date().toISOString().slice(0, 7),
+            )
+            res.json(result[0] as PointAdvance)
+        } catch (err) {
+            console.error('Error in POST /points/advances:', err)
+            res.status(500).json({ error: '服务器内部错误' })
+        }
+    },
+)
+
+// POST /points/advances/repay - Monthly repayment deduction
+router.post(
+    '/advances/repay',
+    async (
+        _req: Request,
+        res: Response<{ success: boolean; repaid: number } | ApiErrorResponse>,
+    ) => {
+        try {
+            if (!isFirstDayOfMonth()) {
+                res.status(400).json({
+                    error: '仅限每月 1 日执行还款',
+                })
+                return
+            }
+
+            const activeAdvances = (await db
+                .select()
+                .from(pointAdvances)
+                .where(eq(pointAdvances.status, 'active'))) as PointAdvance[]
+
+            let totalRepaid = 0
+
+            for (const adv of activeAdvances) {
+                if (adv.paidInstallments >= adv.installments) continue
+
+                // Deduct installment from user's points
+                const reason = `积分预支还款 - 第 ${adv.paidInstallments + 1}/${adv.installments} 期`
+
+                await db.insert(pointRecords).values({
+                    type: 'deduct',
+                    amount: adv.installmentAmount,
+                    reason,
+                    relatedType: 'advance',
+                    relatedId: adv.id,
+                })
+
+                // Update paid installments
+                const newPaid = adv.paidInstallments + 1
+                const newStatus =
+                    newPaid >= adv.installments ? 'completed' : 'active'
+
+                await db
+                    .update(pointAdvances)
+                    .set({
+                        paidInstallments: newPaid,
+                        status: newStatus,
+                    })
+                    .where(eq(pointAdvances.id, adv.id))
+
+                totalRepaid += adv.installmentAmount
+            }
+
+            if (totalRepaid > 0) {
+                await recomputeMonthSummary(
+                    new Date().toISOString().slice(0, 7),
+                )
+            }
+
+            res.json({
+                success: true,
+                repaid: totalRepaid,
+            })
+        } catch (err) {
+            console.error('Error in POST /points/advances/repay:', err)
+            res.status(500).json({ error: '服务器内部错误' })
         }
     },
 )

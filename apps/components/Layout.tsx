@@ -6,8 +6,10 @@ import {
     ClipboardList,
     Database,
     ArrowLeftRight,
+    HandCoins,
     SlidersHorizontal,
     Bot,
+    Tv,
 } from 'lucide-react'
 import { quotesApi } from '@apps/lib/api'
 import { defaultQuotes } from '@apps/lib/default'
@@ -18,6 +20,8 @@ const baseNavItems = [
     { to: '/tasks', label: '作业管理', icon: ClipboardList },
     { to: '/points', label: '积分记录', icon: Database },
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
+    { to: '/borrow', label: '积分预支', icon: HandCoins },
+    { to: '/tv', label: '学迹电台', icon: Tv },
     { to: '/usage', label: 'AI使用量', icon: Bot },
 ]
 

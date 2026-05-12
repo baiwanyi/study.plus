@@ -1,0 +1,253 @@
+import { Router, type Request, type Response } from 'express'
+import { db, client } from '@apps/db/index'
+import { videos } from '@apps/db/schema'
+import { eq, sql } from 'drizzle-orm'
+import fs from 'fs'
+import path from 'path'
+import crypto from 'crypto'
+import type { ApiErrorResponse } from '@apps/lib/types'
+
+const router = Router()
+
+const VIDEO_EXTENSIONS = new Set([
+    '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm',
+])
+
+function scanDirectory(dir: string): string[] {
+    const results: string[] = []
+    const entries = fs.readdirSync(dir, { withFileTypes: true })
+    for (const entry of entries) {
+        const fullPath = path.join(dir, entry.name)
+        if (entry.isDirectory()) {
+            results.push(...scanDirectory(fullPath))
+        } else if (entry.isFile()) {
+            const ext = path.extname(entry.name).toLowerCase()
+            if (VIDEO_EXTENSIONS.has(ext)) {
+                results.push(fullPath)
+            }
+        }
+    }
+    return results
+}
+
+function computeMD5(filePath: string): Promise<string> {
+    return new Promise((resolve, reject) => {
+        const hash = crypto.createHash('md5')
+        const stream = fs.createReadStream(filePath)
+        stream.on('data', (chunk: string | Buffer) => hash.update(chunk))
+        stream.on('end', () => resolve(hash.digest('hex')))
+        stream.on('error', reject)
+    })
+}
+
+// GET /api/videos — 获取视频列表（支持 ?limit=N 限制数量，0 或空为全部）
+router.get('/', async (req: Request, res: Response) => {
+    try {
+        const limit = Number(req.query.limit) || 0
+        let query = 'SELECT * FROM videos ORDER BY created_at'
+        if (limit > 0) query += ` LIMIT ${limit}`
+        const { rows } = await client.execute(query)
+        const list = rows.map((r) => ({
+            id: r.id as number,
+            path: r.path as string,
+            title: r.title as string,
+            md5: r.md5 as string,
+            views: r.views as number,
+            createdAt: r.created_at as string,
+        }))
+        res.json(list)
+    } catch (err) {
+        console.error('获取视频列表失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
+
+// GET /api/videos/:md5 — 获取单个视频详情
+router.get('/:md5', async (req: Request<{ md5: string }>, res: Response) => {
+    try {
+        const { md5 } = req.params
+        const rows = await db
+            .select()
+            .from(videos)
+            .where(eq(videos.md5, md5))
+            .limit(1)
+        if (!rows[0]) {
+            res.status(404).json({ error: '视频未找到' })
+            return
+        }
+        res.json(rows[0])
+    } catch (err) {
+        console.error('获取视频详情失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
+
+// POST /api/videos/scan — 扫描目录导入视频
+router.post('/scan', async (_req: Request, res: Response) => {
+    try {
+        const optionRow = await client.execute({
+            sql: "SELECT value FROM options WHERE key = 'system'",
+            args: [],
+        })
+        const systemConfig = optionRow.rows[0]?.value
+            ? (JSON.parse(optionRow.rows[0].value as string) as Record<string, unknown>)
+            : {}
+        const videoDir = (systemConfig.videoDirectory as string | undefined) || ''
+        if (!videoDir || !fs.existsSync(videoDir)) {
+            res.status(400).json({
+                error: '视频目录未配置或不存在，请在系统设置中配置',
+            } satisfies ApiErrorResponse)
+            return
+        }
+
+        const files = scanDirectory(videoDir)
+        let newCount = 0
+        let skipCount = 0
+        const errors: string[] = []
+
+        for (const filePath of files) {
+            try {
+                const md5 = await computeMD5(filePath)
+                const existing = await db
+                    .select({ id: videos.id })
+                    .from(videos)
+                    .where(eq(videos.md5, md5))
+                    .limit(1)
+                if (existing.length > 0) {
+                    skipCount++
+                    continue
+                }
+                const fileName = path.basename(filePath, path.extname(filePath))
+                await db.insert(videos).values({
+                    path: filePath,
+                    title: fileName,
+                    md5,
+                })
+                newCount++
+            } catch (err) {
+                errors.push(`${filePath}: ${(err as Error).message}`)
+            }
+        }
+
+        res.json({ total: files.length, new: newCount, skipped: skipCount, errors })
+    } catch (err) {
+        console.error('扫描视频失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
+
+// PUT /api/videos/:md5 — 更新视频标题
+router.put(
+    '/:md5',
+    async (
+        req: Request<{ md5: string }, unknown, { title: string }>,
+        res: Response,
+    ) => {
+        try {
+            const { md5 } = req.params
+            const { title } = req.body
+            if (!title || typeof title !== 'string') {
+                res.status(400).json({ error: '标题不能为空' })
+                return
+            }
+            const rows = await db
+                .update(videos)
+                .set({ title })
+                .where(eq(videos.md5, md5))
+                .returning()
+            if (!rows[0]) {
+                res.status(404).json({ error: '视频未找到' })
+                return
+            }
+            res.json(rows[0])
+        } catch (err) {
+            console.error('更新视频标题失败:', err)
+            res.status(500).json({ error: String(err) })
+        }
+    },
+)
+
+// POST /api/videos/:md5/view — 增加浏览次数
+router.post('/:md5/view', async (req: Request<{ md5: string }>, res: Response) => {
+    try {
+        const { md5 } = req.params
+        const rows = await db
+            .update(videos)
+            .set({ views: sql`views + 1` })
+            .where(eq(videos.md5, md5))
+            .returning()
+        if (!rows[0]) {
+            res.status(404).json({ error: '视频未找到' })
+            return
+        }
+        res.json({ success: true })
+    } catch (err) {
+        console.error('增加浏览次数失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
+
+// GET /api/videos/stream/:md5 — 流式传输视频文件
+router.get('/stream/:md5', async (req: Request<{ md5: string }>, res: Response) => {
+    try {
+        const { md5 } = req.params
+        const rows = await db
+            .select()
+            .from(videos)
+            .where(eq(videos.md5, md5))
+            .limit(1)
+        if (!rows[0]) {
+            res.status(404).json({ error: '视频未找到' })
+            return
+        }
+
+        const filePath = rows[0].path
+        if (!fs.existsSync(filePath)) {
+            res.status(404).json({ error: '视频文件不存在' })
+            return
+        }
+
+        const stat = fs.statSync(filePath)
+        const fileSize = stat.size
+        const ext = path.extname(filePath).toLowerCase()
+
+        const mimeTypes: Record<string, string> = {
+            '.mp4': 'video/mp4',
+            '.avi': 'video/x-msvideo',
+            '.mkv': 'video/x-matroska',
+            '.mov': 'video/quicktime',
+            '.wmv': 'video/x-ms-wmv',
+            '.flv': 'video/x-flv',
+            '.webm': 'video/webm',
+        }
+        const contentType = mimeTypes[ext] || 'video/mp4'
+
+        const range = req.headers.range
+        if (range) {
+            const parts = range.replace(/bytes=/, '').split('-')
+            const start = parseInt(parts[0], 10)
+            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+            const chunkSize = end - start + 1
+
+            res.writeHead(206, {
+                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                'Accept-Ranges': 'bytes',
+                'Content-Length': chunkSize,
+                'Content-Type': contentType,
+            })
+            const stream = fs.createReadStream(filePath, { start, end })
+            stream.pipe(res)
+        } else {
+            res.writeHead(200, {
+                'Content-Length': fileSize,
+                'Content-Type': contentType,
+            })
+            fs.createReadStream(filePath).pipe(res)
+        }
+    } catch (err) {
+        console.error('流式传输视频失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
+
+export default router

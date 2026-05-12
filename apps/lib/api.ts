@@ -18,6 +18,11 @@ import type {
     AIScoreResult,
     AIUsageLog,
     AIUsageSummary,
+    PointAdvance,
+    CreateAdvanceRequest,
+    AdvanceSummary,
+    Video,
+    ScanResult,
 } from '@apps/lib/types'
 
 const BASE = '/api'
@@ -191,8 +196,37 @@ export const systemAPI = {
     get: () => request<AppConfig>('/system'),
 }
 
+// ===== Advances =====
+export const advancesApi = {
+    list: () => request<PointAdvance[]>('/points/advances'),
+    summary: () => request<AdvanceSummary>('/points/advances/summary'),
+    create: (data: CreateAdvanceRequest) =>
+        request<PointAdvance>('/points/advances', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+}
+
 // ===== AI Usage =====
 export const aiUsageApi = {
     list: () => request<AIUsageLog[]>('/ai-usage'),
     summary: () => request<AIUsageSummary[]>('/ai-usage/summary'),
+}
+
+// ===== Videos =====
+export const videosApi = {
+    list: (limit?: number) => {
+        const qs = limit && limit > 0 ? `?limit=${limit}` : ''
+        return request<Video[]>(`/videos${qs}`)
+    },
+    get: (md5: string) => request<Video>(`/videos/${md5}`),
+    scan: () => request<ScanResult>('/videos/scan', { method: 'POST' }),
+    updateTitle: (md5: string, title: string) =>
+        request<Video>(`/videos/${md5}`, {
+            method: 'PUT',
+            body: JSON.stringify({ title }),
+        }),
+    addView: (md5: string) =>
+        request<{ success: boolean }>(`/videos/${md5}/view`, { method: 'POST' }),
+    streamUrl: (md5: string) => `${BASE}/videos/stream/${md5}`,
 }

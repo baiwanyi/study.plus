@@ -21,6 +21,7 @@ export type RelatedType =
     | 'custom'
     | 'exchange'
     | 'revoked'
+    | 'advance'
 export type ExchangeItemType = string
 export type ExchangeStatus = 'active' | 'revoked'
 
@@ -202,6 +203,31 @@ export interface AllRules {
     custom: CustomRule[]
 }
 
+// ===== Advance Types =====
+export interface PointAdvance {
+    id: number
+    amount: number
+    totalRepayment: number
+    installments: number
+    installmentAmount: number
+    paidInstallments: number
+    status: 'active' | 'completed'
+    createdAt: string
+}
+
+export interface CreateAdvanceRequest {
+    amount: number
+    installments: number
+}
+
+export interface AdvanceSummary {
+    totalPendingRepayment: number
+    currentInstallmentDue: number
+    totalRemainingInstallments: number
+    remainingCredit: number
+    maxPendingAmount: number
+}
+
 // ===== AI Usage Types =====
 export interface AIUsageLog {
     id: number
@@ -220,4 +246,21 @@ export interface AIUsageSummary {
     totalPromptTokens: number
     totalCompletionTokens: number
     totalTokens: number
+}
+
+// ===== Video Types =====
+export interface Video {
+    id: number
+    path: string
+    title: string
+    md5: string
+    views: number
+    createdAt: string
+}
+
+export interface ScanResult {
+    total: number
+    new: number
+    skipped: number
+    errors: string[]
 }
