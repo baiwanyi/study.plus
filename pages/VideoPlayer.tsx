@@ -41,6 +41,7 @@ export default function VideoPlayer() {
     const [totalVideos, setTotalVideos] = useState(0)
     const [scanning, setScanning] = useState(false)
     const [scanResult, setScanResult] = useState<ScanResult | null>(null)
+    const [scanProgress, setScanProgress] = useState(0)
     const [playing, setPlaying] = useState(false)
     const [currentTime, setCurrentTime] = useState(0)
     const [duration, setDuration] = useState(0)
@@ -260,8 +261,13 @@ export default function VideoPlayer() {
     const handleScan = async () => {
         setScanning(true)
         setScanResult(null)
+        setScanProgress(0)
         try {
-            const result = await videosApi.scan()
+            const result = await videosApi.scanWithProgress(
+                (current, total) => {
+                    setScanProgress(Math.round((current / total) * 100))
+                },
+            )
             setScanResult(result)
         } catch (err) {
             setScanResult({
@@ -323,11 +329,45 @@ export default function VideoPlayer() {
         return <Loading />
     }
 
+    const scanResultComponent = scanResult && (
+        <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2 text-sm text-green-800">
+            <CheckCircle className="size-5 flex-shrink-0 mt-0.5" />
+            <div className="flex-1">
+                <p>扫描完成：共发现 {scanResult.total} 个视频文件</p>
+                <p>
+                    新增 {scanResult.new} 个，跳过 {scanResult.skipped}{' '}
+                    个（已存在）
+                </p>
+                {scanResult.errors.length > 0 && (
+                    <div className="mt-1 text-red-600">
+                        <p>错误 {scanResult.errors.length} 个：</p>
+                        {scanResult.errors.map((err, i) => (
+                            <p key={i} className="truncate">
+                                {err}
+                            </p>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+    )
+
+    const scanButton = (
+        <button
+            onClick={handleScan}
+            disabled={scanning}
+            className="btn-primary flex items-center gap-2">
+            <RefreshCw className={`size-4 ${scanning ? 'animate-spin' : ''}`} />
+            {scanning ? `正在读取...${scanProgress}%` : '读取列表'}
+        </button>
+    )
+
     if (error || !video) {
         return (
             <div className="text-center py-20 text-gray-500">
                 <p className="text-lg">视频加载失败</p>
                 <p className="text-sm mt-1">{error || '未知错误'}</p>
+                {scanButton}
             </div>
         )
     }
@@ -372,39 +412,10 @@ export default function VideoPlayer() {
                         </button>
                     </h2>
                 )}
-
-                <button
-                    onClick={handleScan}
-                    disabled={scanning}
-                    className="btn-primary flex items-center gap-2">
-                    <RefreshCw
-                        className={`size-4 ${scanning ? 'animate-spin' : ''}`}
-                    />
-                    {scanning ? '正在读取...' : '读取列表'}
-                </button>
+                {scanButton}
             </div>
-            {scanResult && (
-                <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2 text-sm text-green-800">
-                    <CheckCircle className="size-5 flex-shrink-0 mt-0.5" />
-                    <div className="flex-1">
-                        <p>扫描完成：共发现 {scanResult.total} 个视频文件</p>
-                        <p>
-                            新增 {scanResult.new} 个，跳过 {scanResult.skipped}{' '}
-                            个（已存在）
-                        </p>
-                        {scanResult.errors.length > 0 && (
-                            <div className="mt-1 text-red-600">
-                                <p>错误 {scanResult.errors.length} 个：</p>
-                                {scanResult.errors.map((err, i) => (
-                                    <p key={i} className="truncate">
-                                        {err}
-                                    </p>
-                                ))}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            )}
+
+            {scanResultComponent}
 
             <div
                 className="flex items-center justify-center space-x-10"

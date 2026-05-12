@@ -82,7 +82,7 @@ router.get('/:md5', async (req: Request<{ md5: string }>, res: Response) => {
     }
 })
 
-// POST /api/videos/scan — 扫描目录导入视频
+// POST /api/videos/scan — 扫描目录导入视频（流式返回 NDJSON 进度）
 router.post('/scan', async (_req: Request, res: Response) => {
     try {
         const optionRow = await client.execute({
@@ -101,11 +101,19 @@ router.post('/scan', async (_req: Request, res: Response) => {
         }
 
         const files = scanDirectory(videoDir)
+        const total = files.length
+
+        // 设置流式响应头
+        res.setHeader('Content-Type', 'application/x-ndjson')
+        res.setHeader('Transfer-Encoding', 'chunked')
+        res.flushHeaders()
+
         let newCount = 0
         let skipCount = 0
         const errors: string[] = []
 
-        for (const filePath of files) {
+        for (let i = 0; i < total; i++) {
+            const filePath = files[i]
             try {
                 const md5 = await computeMD5(filePath)
                 const existing = await db
@@ -115,24 +123,38 @@ router.post('/scan', async (_req: Request, res: Response) => {
                     .limit(1)
                 if (existing.length > 0) {
                     skipCount++
-                    continue
+                } else {
+                    const fileName = path.basename(filePath, path.extname(filePath))
+                    await db.insert(videos).values({
+                        path: filePath,
+                        title: fileName,
+                        md5,
+                    })
+                    newCount++
                 }
-                const fileName = path.basename(filePath, path.extname(filePath))
-                await db.insert(videos).values({
-                    path: filePath,
-                    title: fileName,
-                    md5,
-                })
-                newCount++
             } catch (err) {
                 errors.push(`${filePath}: ${(err as Error).message}`)
             }
+            // 每处理一个文件发送进度
+            res.write(JSON.stringify({ type: 'progress', current: i + 1, total }) + '\n')
         }
 
-        res.json({ total: files.length, new: newCount, skipped: skipCount, errors })
+        // 发送完成事件
+        res.write(JSON.stringify({
+            type: 'complete',
+            total,
+            new: newCount,
+            skipped: skipCount,
+            errors,
+        }) + '\n')
+        res.end()
     } catch (err) {
-        console.error('扫描视频失败:', err)
-        res.status(500).json({ error: String(err) })
+        if (!res.headersSent) {
+            res.status(500).json({ error: String(err) })
+        } else {
+            res.write(JSON.stringify({ type: 'error', message: String(err) }) + '\n')
+            res.end()
+        }
     }
 })
 
