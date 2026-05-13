@@ -58,7 +58,11 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                     </p>
                 )}
                 <p className="text-xs text-muted">
-                    剩余积分可兑换游戏时长约<span className="font-semibold px-1">{exchangeableMinutes}</span>分
+                    剩余积分可兑换游戏时长约
+                    <span className="font-semibold px-1">
+                        {exchangeableMinutes}
+                    </span>
+                    分
                 </p>
             </div>
             <div className="card space-y-2">
@@ -72,8 +76,8 @@ export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
                 <p className="text-sm text-gray-700">下月可用积分</p>
                 <p className="text-4xl font-bold text-primary">
                     {(
-                        monthlyBasePoints -
-                        Math.abs(totalEarn - totalDeduct + totalExchanges)
+                        Math.abs(monthlyBasePoints + totalEarn) -
+                        Math.abs(totalDeduct - totalExchanges)
                     ).toLocaleString()}
                 </p>
 
