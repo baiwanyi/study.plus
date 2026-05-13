@@ -501,9 +501,21 @@ async function migrate(): Promise<void> {
       title TEXT NOT NULL,
       md5 TEXT NOT NULL UNIQUE,
       views INTEGER NOT NULL DEFAULT 0,
+      resume_time INTEGER NOT NULL DEFAULT 0,
+      favorite INTEGER NOT NULL DEFAULT 0,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+
+    // Add resume_time column for existing databases
+    try {
+        await client.execute('ALTER TABLE videos ADD COLUMN resume_time INTEGER NOT NULL DEFAULT 0')
+        console.log('Added resume_time column to videos table.')
+    } catch { /* column already exists */ }
+    try {
+        await client.execute('ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0')
+        console.log('Added favorite column to videos table.')
+    } catch { /* column already exists */ }
 
     console.log('Migration completed successfully!')
 }

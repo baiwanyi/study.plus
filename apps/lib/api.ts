@@ -215,10 +215,14 @@ export const aiUsageApi = {
 
 // ===== Videos =====
 export const videosApi = {
-    list: (limit?: number) => {
-        const qs = limit && limit > 0 ? `?limit=${limit}` : ''
+    list: (limit?: number, favorite?: number) => {
+        const params = new URLSearchParams()
+        if (limit && limit > 0) params.set('limit', String(limit))
+        if (favorite === 1) params.set('favorite', '1')
+        const qs = params.toString() ? `?${params.toString()}` : ''
         return request<Video[]>(`/videos${qs}`)
     },
+    listFavorites: () => request<Video[]>('/videos?favorite=1'),
     get: (md5: string) => request<Video>(`/videos/${md5}`),
     scan: () => request<ScanResult>('/videos/scan', { method: 'POST' }),
     /** 流式扫描，带进度回调 */
@@ -252,6 +256,7 @@ export const videosApi = {
                                     total: data.total,
                                     new: data.new,
                                     skipped: data.skipped,
+                                    deleted: data.deleted ?? 0,
                                     errors: data.errors,
                                 })
                             } else if (data.type === 'error') {
@@ -272,5 +277,12 @@ export const videosApi = {
         }),
     addView: (md5: string) =>
         request<{ success: boolean }>(`/videos/${md5}/view`, { method: 'POST' }),
+    saveResumeTime: (md5: string, time: number) =>
+        request<{ success: boolean }>(`/videos/${md5}/resume-time`, {
+            method: 'PUT',
+            body: JSON.stringify({ time }),
+        }),
+    toggleFavorite: (md5: string) =>
+        request<Video>(`/videos/${md5}/toggle-favorite`, { method: 'POST' }),
     streamUrl: (md5: string) => `${BASE}/videos/stream/${md5}`,
 }

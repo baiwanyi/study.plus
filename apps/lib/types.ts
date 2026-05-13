@@ -255,6 +255,8 @@ export interface Video {
     title: string
     md5: string
     views: number
+    resumeTime: number
+    favorite: number
     createdAt: string
 }
 
@@ -262,5 +264,6 @@ export interface ScanResult {
     total: number
     new: number
     skipped: number
+    deleted: number
     errors: string[]
 }

@@ -39,7 +39,7 @@ export function calculateAdvanceRepayment(
     installments: number,
     baseRatio: number = 16,
 ): { totalRepayment: number; installmentAmount: number; ratio: number } {
-    const tierIndex = [3, 6, 9, 12].indexOf(installments)
+    const tierIndex = [1, 3, 6, 9, 12].indexOf(installments)
     const ratio = baseRatio + tierIndex * 2
     const totalRepayment = Math.round(amount * (1 + ratio / 100))
     const installmentAmount = Math.ceil(totalRepayment / installments)

@@ -1,6 +1,6 @@
 import { db } from '@apps/db/index'
 import { pointRecords, monthSummary, exchanges } from '@apps/db/schema'
-import { eq, and, gte, lte, sql, ne } from 'drizzle-orm'
+import { eq, and, gte, lte, sql, ne, like } from 'drizzle-orm'
 import { loadRules } from '@apps/routes/rules-loader'
 import type { MonthSummary } from '@apps/lib/types'
 
@@ -14,7 +14,7 @@ interface ComputedSummary extends MonthSummary {
     totalExchanges: number
     /** Balance at the start of the month */
     balance: number
-    /** Available points for exchange = basePoints - monthlyBasePoints (this month's earnings, deductions and monthlyBasePoints are all frozen until next month) */
+    /** Available points for exchange = basePoints - monthlyBasePoints - totalExchanges + advanceEarn (this month's earnings/deductions are frozen, but advance earnings are immediately available) */
     availableBalance: number
     /** Minimum points required to use privileges (from options) */
     minimumPointsForPrivileges: number
@@ -151,9 +151,25 @@ export async function recomputeMonthSummary(
         )
     const totalExchanges = Number(exchangesResult[0]?.total) || 0
 
+    // Query advance earnings separately — these are immediately available (not frozen)
+    // Uses reason LIKE matching since relatedType 'advance' was removed for DB constraint compatibility
+    const advanceEarnResult = await db
+        .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
+        .from(pointRecords)
+        .where(
+            and(
+                eq(pointRecords.type, 'earn'),
+                like(pointRecords.reason, '积分预支 - %'),
+                gte(pointRecords.createdAt, start),
+                lte(pointRecords.createdAt, end),
+            ),
+        )
+    const advanceEarn = Number(advanceEarnResult[0]?.total) || 0
+
     const balance = summary.basePoints + totalEarn - totalDeduct
-    // This month's earnings, deductions and monthlyBasePoints are all frozen until next month
-    const availableBalance = summary.basePoints - rules.monthlyBasePoints - totalExchanges
+    // This month's regular earnings/deductions are frozen until next month,
+    // but advance earnings (预支积分) are immediately available for use
+    const availableBalance = summary.basePoints - rules.monthlyBasePoints - totalExchanges + advanceEarn
 
     // Update stored values
     await db

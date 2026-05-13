@@ -392,23 +392,21 @@ router.get(
         res: Response<PointAdvance[] | ApiErrorResponse>,
     ) => {
         try {
-            const { status } = req.query as { status?: string }
-            const conditions: ReturnType<typeof eq>[] = []
-            // Validate status enum to prevent invalid query conditions
-            if (status) {
-                if (status === 'active' || status === 'completed') {
-                    conditions.push(eq(pointAdvances.status, status))
-                } else {
-                    res.status(400).json({
-                        error: `无效的状态值 "${status}"，仅支持 active 或 completed`,
-                    })
-                    return
-                }
+            const rawStatus = req.query.status as string | undefined
+            // Validate status enum
+            if (rawStatus && rawStatus !== 'active' && rawStatus !== 'completed') {
+                res.status(400).json({
+                    error: `无效的状态值 "${rawStatus}"，仅支持 active 或 completed`,
+                })
+                return
             }
+            const whereClause = rawStatus
+                ? eq(pointAdvances.status, rawStatus as 'active' | 'completed')
+                : undefined
             const records = (await db
                 .select()
                 .from(pointAdvances)
-                .where(conditions.length > 0 ? and(...conditions) : undefined)
+                .where(whereClause)
                 .orderBy(desc(pointAdvances.createdAt))) as PointAdvance[]
             res.json(records)
         } catch (err) {
@@ -494,9 +492,9 @@ router.post(
             }
 
             // Validate installments: must be one of the allowed tiers
-            if (![3, 6, 9, 12].includes(installments)) {
+            if (![1, 3, 6, 9, 12].includes(installments)) {
                 res.status(400).json({
-                    error: '期数仅支持 3/6/9/12 四个档位',
+                    error: '期数仅支持 1/3/6/9/12 五个档位',
                 })
                 return
             }
@@ -506,7 +504,7 @@ router.post(
             const baseRatio = settings.advanceRepayRatio ?? 16
 
             // Calculate ratio based on installment tier
-            const tierIndex = [3, 6, 9, 12].indexOf(installments)
+            const tierIndex = [1, 3, 6, 9, 12].indexOf(installments)
             const ratio = baseRatio + tierIndex * 2
 
             // Calculate repayment: totalRepayment = round(amount * (1 + ratio / 100))
@@ -551,14 +549,13 @@ router.post(
                 type: 'earn',
                 amount,
                 reason: `积分预支 - ${installments}期`,
-                relatedType: 'advance',
                 relatedId: result[0].id,
             })
 
             await recomputeMonthSummary(
                 new Date().toISOString().slice(0, 7),
             )
-            res.json(result[0] as PointAdvance)
+            res.status(201).json(result[0] as PointAdvance)
         } catch (err) {
             console.error('Error in POST /points/advances:', err)
             res.status(500).json({ error: '服务器内部错误' })
@@ -598,7 +595,6 @@ router.post(
                     type: 'deduct',
                     amount: adv.installmentAmount,
                     reason,
-                    relatedType: 'advance',
                     relatedId: adv.id,
                 })
 

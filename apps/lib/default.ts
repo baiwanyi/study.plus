@@ -102,7 +102,7 @@ export const defaultExamRules = [
     { min: 60, max: 69, points: -20 },
     { min: 70, max: 79, points: -10 },
     { min: 80, max: 89, points: 10 },
-    { min: 90, max: 95, points: 20 },
+    { min: 90, max: 94, points: 20 },
     { min: 95, max: 100, points: 50 },
 ]
 

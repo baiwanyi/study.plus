@@ -14,6 +14,7 @@
 - **积分奖惩管理**：创建作业，完成作业获得积分，积分可用于兑换奖励
 - **作业提交与评分**：上传作文/思维导图，获得评分（AI评分）
 - **积分兑换**：支持兑娱乐时间、现金等奖励
+- **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 
 ### 产品定位
 
@@ -33,6 +34,7 @@
 | AI 评分  | DeepSeek API                     | 作文/思维导图 AI 评分 + AI 起名 |
 | 数据库   | SQLite (libSQL / @libsql/client) | 轻量级本地数据库，兼容 Turso 云 |
 | ORM      | Drizzle ORM                      | 类型安全的 SQL 查询构建器       |
+| 视频播放 | HTML5 `<video>`                  | 原生视频播放器，支持 Range 请求 |
 
 ### 项目架构
 
@@ -199,6 +201,7 @@ exchanges       -> id, itemType, pointsCost, detail, status(active/revoked), cre
 options         -> id, key(unique), value
 ai_usage_logs   -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
 month_summary   -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500)
+videos          -> id, path, title, md5(unique), views(0), resumeTime(0), favorite(0), createdAt
 ```
 
 ## 项目结构
@@ -225,13 +228,15 @@ study.webian.dev/
 │   │   ├── types.ts            # TypeScript类型定义
 │   │   └── utils.ts            # 工具函数
 │   ├── routes/                 # API路由
+│   │   ├── advance-helper.ts   # 积分预支辅助函数
 │   │   ├── ai-usage.ts         # AI使用记录API
 │   │   ├── exchanges.ts        # 兑换记录API
 │   │   ├── options.ts          # 选项配置API
-│   │   ├── points.ts           # 积分记录API
+│   │   ├── points.ts           # 积分记录API（含预支/还款）
 │   │   ├── rules-loader.ts     # 规则加载与初始化
 │   │   ├── summary-helper.ts   # 月度汇总辅助
-│   │   └── tasks.ts            # 作业API（含AI评分/起名）
+│   │   ├── tasks.ts            # 作业API（含AI评分/起名）
+│   │   └── videos.ts           # 视频API（扫描/列表/流播/收藏/进度）
 │   ├── services/               # 业务逻辑
 │   │   ├── ai.ts               # DeepSeek API封装（评分+起名+使用记录）
 │   │   └── points.ts           # 积分计算服务
@@ -242,6 +247,9 @@ study.webian.dev/
 │   │   ├── AIListTable.tsx     # AI记录列表表格
 │   │   ├── AISummaryCards.tsx  # AI使用统计卡片
 │   │   ├── AISummaryTable.tsx  # AI使用汇总表格
+│   │   ├── BorrowListTable.tsx # 积分预支列表表格
+│   │   ├── BorrowModalAdd.tsx  # 积分预支创建模态框
+│   │   ├── BorrowStatsCards.tsx # 积分预支统计卡片
 │   │   ├── ExchangesListTable.tsx # 兑换记录列表表格
 │   │   ├── ExchangesModalAdd.tsx # 添加兑换记录模态框
 │   │   ├── ExchangesStatsCards.tsx # 兑换统计卡片
@@ -268,12 +276,15 @@ study.webian.dev/
 │   │   ├── WidgetPendingTasks.tsx # 待处理作业组件
 │   │   └── WidgetStats.tsx     # 统计组件
 │   ├── AIUsage.tsx             # AI使用记录页面
+│   ├── Borrow.tsx              # 积分预支页面
 │   ├── Dashboard.tsx           # 首页看板
 │   ├── Exchanges.tsx           # 兑换记录页面
 │   ├── index.css               # 全局样式
 │   ├── Options.tsx             # 设置选项页面
 │   ├── Points.tsx              # 积分记录页面
-│   └── Tasks.tsx               # 作业管理页面
+│   ├── Tasks.tsx               # 作业管理页面
+│   ├── TVFav.tsx               # 视频收藏列表页面
+│   └── VideoPlayer.tsx         # 视频播放器页面（随机轮播/续播/收藏）
 ├── data/                        # SQLite数据库文件
 ├── public/                      # 静态资源
 │   ├── docs/                   # 文档

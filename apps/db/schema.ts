@@ -113,6 +113,8 @@ export const videos = sqliteTable('videos', {
     title: text('title').notNull(),
     md5: text('md5').notNull().unique(),
     views: integer('views').notNull().default(0),
+    resumeTime: integer('resume_time').notNull().default(0),
+    favorite: integer('favorite').notNull().default(0),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),

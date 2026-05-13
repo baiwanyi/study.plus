@@ -40,11 +40,16 @@ function computeMD5(filePath: string): Promise<string> {
     })
 }
 
-// GET /api/videos — 获取视频列表（支持 ?limit=N 限制数量，0 或空为全部）
+// GET /api/videos — 获取视频列表（支持 ?limit=N, ?favorite=1 过滤）
 router.get('/', async (req: Request, res: Response) => {
     try {
         const limit = Number(req.query.limit) || 0
-        let query = 'SELECT * FROM videos ORDER BY created_at'
+        const favorite = Number(req.query.favorite) || 0
+        let query = 'SELECT * FROM videos'
+        const conditions: string[] = []
+        if (favorite === 1) conditions.push('favorite = 1')
+        if (conditions.length) query += ' WHERE ' + conditions.join(' AND ')
+        query += ' ORDER BY created_at'
         if (limit > 0) query += ` LIMIT ${limit}`
         const { rows } = await client.execute(query)
         const list = rows.map((r) => ({
@@ -53,6 +58,8 @@ router.get('/', async (req: Request, res: Response) => {
             title: r.title as string,
             md5: r.md5 as string,
             views: r.views as number,
+            resumeTime: r.resume_time as number,
+            favorite: r.favorite as number,
             createdAt: r.created_at as string,
         }))
         res.json(list)
@@ -139,12 +146,27 @@ router.post('/scan', async (_req: Request, res: Response) => {
             res.write(JSON.stringify({ type: 'progress', current: i + 1, total }) + '\n')
         }
 
+        // 清理数据库中被删除的视频文件记录
+        let deletedCount = 0
+        try {
+            const allVideos = await db.select({ id: videos.id, path: videos.path }).from(videos)
+            for (const v of allVideos) {
+                if (!fs.existsSync(v.path)) {
+                    await db.delete(videos).where(eq(videos.id, v.id))
+                    deletedCount++
+                }
+            }
+        } catch (err) {
+            errors.push(`清理失效记录失败: ${(err as Error).message}`)
+        }
+
         // 发送完成事件
         res.write(JSON.stringify({
             type: 'complete',
             total,
             new: newCount,
             skipped: skipCount,
+            deleted: deletedCount,
             errors,
         }) + '\n')
         res.end()
@@ -273,3 +295,34 @@ router.get('/stream/:md5', async (req: Request<{ md5: string }>, res: Response) 
 })
 
 export default router
+
+// PUT /api/videos/:md5/resume-time — 保存播放进度
+router.put('/:md5/resume-time', async (req: Request<{ md5: string }, unknown, { time: number }>, res: Response) => {
+    try {
+        const { md5 } = req.params
+        const { time } = req.body
+        await db.update(videos).set({ resumeTime: Math.max(0, time) }).where(eq(videos.md5, md5))
+        res.json({ success: true })
+    } catch (err) {
+        console.error('保存播放进度失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
+
+// POST /api/videos/:md5/toggle-favorite — 切换收藏
+router.post('/:md5/toggle-favorite', async (req: Request<{ md5: string }>, res: Response) => {
+    try {
+        const { md5 } = req.params
+        const rows = await db.select({ favorite: videos.favorite }).from(videos).where(eq(videos.md5, md5)).limit(1)
+        if (!rows[0]) {
+            res.status(404).json({ error: '视频未找到' })
+            return
+        }
+        const newFav = rows[0].favorite ? 0 : 1
+        const updated = await db.update(videos).set({ favorite: newFav }).where(eq(videos.md5, md5)).returning()
+        res.json(updated[0])
+    } catch (err) {
+        console.error('切换收藏失败:', err)
+        res.status(500).json({ error: String(err) })
+    }
+})
