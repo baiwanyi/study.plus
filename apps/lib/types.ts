@@ -248,6 +248,25 @@ export interface AIUsageSummary {
     totalTokens: number
 }
 
+// ===== Share Stats Types =====
+export interface ShareStats {
+    month: string
+    exchangeInfo: {
+        totalDuration: number
+        longestDay: string
+        longestDayDuration: number
+    }
+    monthlyEarnExcluding: number
+    monthlyDeductExcluding: number
+    submissionEarnTotal: number
+    examEarnTotal: number
+    totalEarn: number
+    totalDeduct: number
+    totalExchanges: number
+    balance: number
+    availableBalance: number
+}
+
 // ===== Video Types =====
 export interface Video {
     id: number

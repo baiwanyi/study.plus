@@ -11,6 +11,7 @@ import type {
     Exchange,
     MonthSummary,
     PointStats,
+    ShareStats,
     CreateTaskRequest,
     UpdateTaskRequest,
     SubmitTaskRequest,
@@ -108,6 +109,11 @@ export const pointsApi = {
         const qs = month ? `?month=${month}` : ''
         return request<PointStats>(`/points/stats${qs}`)
     },
+    shareStats: (month?: string) => {
+        const qs = month ? `?month=${month}` : ''
+        return request<ShareStats>(`/points/share-stats${qs}`)
+    },
+    availableMonths: () => request<string[]>('/points/available-months'),
 }
 
 // ===== Exchanges =====

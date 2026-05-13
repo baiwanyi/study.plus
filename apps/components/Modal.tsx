@@ -37,7 +37,10 @@ const Modal: React.FC<ModalProps> = ({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center">
-            <div className="absolute inset-0 bg-black/50" onClick={onCancel} />
+            <div
+                className="fixed left-0 inset-0 bg-black/50"
+                onClick={onCancel}
+            />
             <div className="relative bg-white rounded-xl shadow-xl w-full max-w-lg mx-4 max-h-[90vh] overflow-y-auto">
                 <div className="space-y-4 p-6">
                     <div className="flex items-center justify-between mb-4">

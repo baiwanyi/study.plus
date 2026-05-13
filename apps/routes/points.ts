@@ -1,7 +1,7 @@
 import { Router, type Request, type Response } from 'express'
 import { db } from '@apps/db/index'
-import { pointRecords, exchanges, pointAdvances } from '@apps/db/schema'
-import { eq, ne, desc, and, gte, lte, sql } from 'drizzle-orm'
+import { pointRecords, exchanges, pointAdvances, monthSummary } from '@apps/db/schema'
+import { eq, ne, desc, and, gte, lte, sql, inArray } from 'drizzle-orm'
 import { getPointsForGrade, getPointsForExamScore } from '@apps/services/points'
 import { loadRules } from '@apps/routes/rules-loader'
 import { recomputeMonthSummary } from '@apps/routes/summary-helper'
@@ -13,6 +13,7 @@ import type {
     PointRecord,
     CreatePointRecordRequest,
     PointStats,
+    ShareStats,
     PointRecordType,
     RelatedType,
     ApiErrorResponse,
@@ -375,6 +376,182 @@ router.get(
             })
         } catch (err) {
             console.error('Error in GET /points/stats:', err)
+            res.status(500).json({
+                error: '服务器内部错误',
+            } as ApiErrorResponse)
+        }
+    },
+)
+
+// Get all available months from month_summary table
+router.get(
+    '/available-months',
+    async (_req: Request, res: Response<string[] | ApiErrorResponse>) => {
+        try {
+            const rows = await db
+                .select({ month: monthSummary.month })
+                .from(monthSummary)
+                .orderBy(desc(monthSummary.month))
+            const months = rows.map((r) => r.month)
+            res.json(months)
+        } catch (err) {
+            console.error('Error in GET /points/available-months:', err)
+            res.status(500).json({
+                error: '服务器内部错误',
+            } as ApiErrorResponse)
+        }
+    },
+)
+
+// Share stats - aggregated data for the share page
+router.get(
+    '/share-stats',
+    async (req: Request, res: Response<ShareStats | ApiErrorResponse>) => {
+        try {
+            const { month } = req.query as { month?: string }
+            const targetMonth: string =
+                month || new Date().toISOString().slice(0, 7)
+            const startDate = new Date(`${targetMonth}-01T00:00:00.000Z`)
+            const endDate = new Date(startDate)
+            endDate.setUTCMonth(endDate.getUTCMonth() + 1)
+            endDate.setUTCDate(0)
+            endDate.setUTCHours(23, 59, 59, 999)
+            const start = startDate.toISOString()
+            const end = endDate.toISOString()
+
+            // Load rules for exchange ratio
+            const rules = await loadRules()
+            const gameRate =
+                rules.exchangeRates.game || rules.exchangeRates.games
+            const gameDurationPerPoint = gameRate ? gameRate.ratio : 10
+            const gamePointsPerDuration = gameRate ? gameRate.points : 1
+
+            // 1. Game exchange info (total duration & longest day)
+            const gameExchanges = await db
+                .select({
+                    pointsCost: exchanges.pointsCost,
+                    createdAt: exchanges.createdAt,
+                })
+                .from(exchanges)
+                .where(
+                    and(
+                        inArray(exchanges.itemType, ['game', 'games']),
+                        eq(exchanges.status, 'active'),
+                        gte(exchanges.createdAt, start),
+                        lte(exchanges.createdAt, end),
+                    ),
+                )
+
+            const dayDurationMap = new Map<string, number>()
+            let totalDuration = 0
+            for (const ex of gameExchanges) {
+                const duration =
+                    (ex.pointsCost * gameDurationPerPoint) /
+                    gamePointsPerDuration
+                totalDuration += duration
+                const day = ex.createdAt.slice(0, 10)
+                dayDurationMap.set(
+                    day,
+                    (dayDurationMap.get(day) || 0) + duration,
+                )
+            }
+
+            let longestDay = ''
+            let longestDayDuration = 0
+            for (const [day, duration] of dayDurationMap) {
+                if (duration > longestDayDuration) {
+                    longestDay = day
+                    longestDayDuration = duration
+                }
+            }
+
+            // 2. Monthly earn & deduct (exclude exchange / revoked / advance)
+            const earnExcludingResult = await db
+                .select({
+                    total: sql`COALESCE(SUM(${pointRecords.amount}), 0)`,
+                })
+                .from(pointRecords)
+                .where(
+                    and(
+                        eq(pointRecords.type, 'earn'),
+                        ne(pointRecords.relatedType, 'exchange'),
+                        ne(pointRecords.relatedType, 'revoked'),
+                        sql`${pointRecords.reason} NOT LIKE '积分预支 - %'`,
+                        gte(pointRecords.createdAt, start),
+                        lte(pointRecords.createdAt, end),
+                    ),
+                )
+
+            const deductExcludingResult = await db
+                .select({
+                    total: sql`COALESCE(SUM(${pointRecords.amount}), 0)`,
+                })
+                .from(pointRecords)
+                .where(
+                    and(
+                        eq(pointRecords.type, 'deduct'),
+                        ne(pointRecords.relatedType, 'exchange'),
+                        ne(pointRecords.relatedType, 'revoked'),
+                        sql`${pointRecords.reason} NOT LIKE '积分预支 - %'`,
+                        gte(pointRecords.createdAt, start),
+                        lte(pointRecords.createdAt, end),
+                    ),
+                )
+
+            // 3. Submission vs exam earn totals
+            const submissionEarnResult = await db
+                .select({
+                    total: sql`COALESCE(SUM(${pointRecords.amount}), 0)`,
+                })
+                .from(pointRecords)
+                .where(
+                    and(
+                        eq(pointRecords.type, 'earn'),
+                        eq(pointRecords.relatedType, 'submission'),
+                        gte(pointRecords.createdAt, start),
+                        lte(pointRecords.createdAt, end),
+                    ),
+                )
+
+            const examEarnResult = await db
+                .select({
+                    total: sql`COALESCE(SUM(${pointRecords.amount}), 0)`,
+                })
+                .from(pointRecords)
+                .where(
+                    and(
+                        eq(pointRecords.type, 'earn'),
+                        eq(pointRecords.relatedType, 'exam'),
+                        gte(pointRecords.createdAt, start),
+                        lte(pointRecords.createdAt, end),
+                    ),
+                )
+
+            // 4. Monthly summary
+            const summary = await recomputeMonthSummary(targetMonth)
+
+            res.json({
+                month: targetMonth,
+                exchangeInfo: {
+                    totalDuration,
+                    longestDay: longestDay || '',
+                    longestDayDuration,
+                },
+                monthlyEarnExcluding:
+                    Number(earnExcludingResult[0]?.total) || 0,
+                monthlyDeductExcluding:
+                    Number(deductExcludingResult[0]?.total) || 0,
+                submissionEarnTotal:
+                    Number(submissionEarnResult[0]?.total) || 0,
+                examEarnTotal: Number(examEarnResult[0]?.total) || 0,
+                totalEarn: summary.totalEarn,
+                totalDeduct: summary.totalDeduct,
+                totalExchanges: summary.totalExchanges,
+                balance: summary.balance,
+                availableBalance: summary.availableBalance,
+            })
+        } catch (err) {
+            console.error('Error in GET /points/share-stats:', err)
             res.status(500).json({
                 error: '服务器内部错误',
             } as ApiErrorResponse)
