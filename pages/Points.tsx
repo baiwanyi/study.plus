@@ -58,7 +58,9 @@ export default function Points() {
             }
             // Extract custom rules
             if (customData && Array.isArray(customData)) {
-                setCustomRules(customData as CustomRule[])
+                const sorted = [...(customData as CustomRule[])]
+                sorted.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+                setCustomRules(sorted)
             }
             // Extract exam rules
             if (examData) {
@@ -143,8 +145,6 @@ export default function Points() {
                         </button>
                     )}
                 </div>
-
-
 
                 {/* Filters */}
                 <div className="card">

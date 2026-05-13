@@ -39,5 +39,6 @@
         "noFallthroughCasesInSwitch": true,
         "noUncheckedSideEffectImports": true
     },
-    "include": ["vite.config.ts", "apps", "pages"]
+    "include": ["vite.config.ts", "apps", "pages"],
+    "exclude": ["apps/**/__tests__", "apps/test"]
 }

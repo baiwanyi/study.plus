@@ -355,6 +355,7 @@ export default function PointsModalAdd({
                         ) : (
                             customRules
                                 .filter((r) => r.type === customRuleTab)
+                                .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
                                 .map((rule, idx) => {
                                     const ruleId = rule.id ?? rule.name
                                     const isSelected =

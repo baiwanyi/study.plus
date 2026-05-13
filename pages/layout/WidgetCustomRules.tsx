@@ -12,7 +12,9 @@ export default function WidgetCustomRules() {
         optionsAPI
             .get('custom')
             .then((data) => {
-                setCustomRules(parseCustomData(data))
+                const rules = parseCustomData(data)
+                rules.sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+                setCustomRules(rules)
             })
             .catch(() => {
                 setCustomRules([])
