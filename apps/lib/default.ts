@@ -132,6 +132,13 @@ export const defaultSystemSettings = {
     maxPendingAmount: 500,
 }
 
+export const defaultExchangeRuleRemarks = [
+    '法定节假日不受规则限制。',
+    '白天时间：8:00~21:30，周末节假日：8:00~22:30',
+    '夜间时间：21:30~次日 8:00，周末节假日：22:30~次日 8:00',
+    '午休时间：13:00~14:00，此时间段为禁止时间',
+]
+
 export const defaultTaskTitle = {
     mindmap: '围绕成长的思维导图',
     composition: '记一件有意义的事',

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { optionsAPI, quotesApi } from '@apps/lib/api'
-import { defaultQuotes } from '@apps/lib/default'
+import { defaultQuotes, defaultExchangeRuleRemarks } from '@apps/lib/default'
 import { useSnackbar } from '@components/Snackbar'
 import { formatErrorMessage, taskClassLabels } from '@apps/lib/utils'
 import { RulesPage } from '@apps/components/RulesPage'
@@ -30,6 +30,9 @@ export function RulesSystem() {
     const { showSnackbar } = useSnackbar()
     const [settings, setSettings] = useState<SystemSettings>(defaultSettings)
     const [quotes, setQuotes] = useState(defaultQuotes)
+    const [exchangeRuleRemarks, setExchangeRuleRemarks] = useState(
+        defaultExchangeRuleRemarks,
+    )
     const [saving, setSaving] = useState(false)
 
     useEffect(() => {
@@ -50,6 +53,16 @@ export function RulesSystem() {
             .then((data) => {
                 if (cancelled) return
                 setQuotes(Array.isArray(data) ? data : defaultQuotes)
+            })
+            .catch(() => {})
+
+        optionsAPI
+            .get('exchangeRuleRemarks')
+            .then((data) => {
+                if (cancelled) return
+                if (Array.isArray(data)) {
+                    setExchangeRuleRemarks(data as string[])
+                }
             })
             .catch(() => {})
 
@@ -89,6 +102,7 @@ export function RulesSystem() {
                 videoDirectory: settings.videoDirectory,
             })
             await quotesApi.update(quotes)
+            await optionsAPI.update('exchangeRuleRemarks', exchangeRuleRemarks)
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
@@ -146,6 +160,22 @@ export function RulesSystem() {
                         />
                     </div>
                 ))}
+                <div className="space-y-1">
+                    <label className="label">兑换时间规则</label>
+                    <textarea
+                        className="regular-text"
+                        rows={4}
+                        disabled={saving}
+                        value={exchangeRuleRemarks.join('\n')}
+                        onChange={(e) =>
+                            setExchangeRuleRemarks(e.target.value.split('\n'))
+                        }
+                        placeholder="每行一条规则"
+                    />
+                    <p className="text-xs text-gray-400 mt-1">
+                        每行一条，显示在兑换规则页底部
+                    </p>
+                </div>
                 <div className="space-y-1">
                     <label className="label">年级</label>
                     <select
