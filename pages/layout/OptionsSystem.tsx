@@ -120,8 +120,16 @@ export function RulesSystem() {
         { key: 'maxPendingAmount', label: '预支风控上限（积分）' },
     ]
 
-    const textFields: { key: keyof SystemSettings; label: string; placeholder: string }[] = [
-        { key: 'videoDirectory', label: '本地视频目录路径', placeholder: '例如：D:\\Videos\\学习视频' },
+    const textFields: {
+        key: keyof SystemSettings
+        label: string
+        placeholder: string
+    }[] = [
+        {
+            key: 'videoDirectory',
+            label: '本地视频目录路径',
+            placeholder: '例如：D:\\Videos\\学习视频',
+        },
     ]
 
     return (
