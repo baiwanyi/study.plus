@@ -40,7 +40,6 @@
 | 视频播放 | HTML5 `<video>` + react-player          | 原生视频播放器，支持 Range 请求      |
 | 图片导出 | html-to-image                           | DOM 节点截图生成分享卡片             |
 | 测试     | Vitest + @testing-library/react + jsdom | 单元测试 + 组件测试 + 集成测试       |
-| 字体     | 华康标题宋 W9                           | 中文标题字体                         |
 
 ### 项目架构
 
