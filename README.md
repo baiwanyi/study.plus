@@ -7,44 +7,50 @@
 
 ### 项目背景
 
-通过积分奖惩机制培养孩子的学习习惯和自律性，打造一个集习惯管理、积分激励、作业提交与评分于一体的智能学习管理工具。
+通过积分奖惩机制培养孩子的学习习惯和自律性，打造一个集习惯管理、积分激励、作业提交与评分、积分预支与分享于一体的智能学习管理工具。
 
 **核心功能：**
 
-- **积分奖惩管理**：创建作业，完成作业获得积分，积分可用于兑换奖励
-- **作业提交与评分**：上传作文/思维导图，获得评分（AI评分）
-- **积分兑换**：支持兑娱乐时间、现金等奖励
+- **积分奖惩管理**：创建作业，完成作业获得积分，积分可用于兑换奖励或预支
+- **作业提交与评分**：编写 Markdown 内容/思维导图，获得 DeepSeek AI 评分
+- **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
+- **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
+- **学习分享**：一键生成分享卡片，记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 
 ### 产品定位
 
-一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得评分的轻量级工具。
+一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支的轻量级工具。
 
 ## 技术栈
 
-| 类别     | 技术选型                         | 说明                            |
-|----------|----------------------------------|---------------------------------|
-| 前端框架 | React 19 + Vite 6 + TypeScript   | SPA 单页应用                    |
-| UI 组件  | Tailwind CSS 3                   | 原子化 CSS，响应式设计          |
-| 图标库   | Lucide React                     | 轻量级 SVG 图标库               |
-| Markdown | @uiw/react-md-editor             | Markdown 编辑器+实时预览        |
-| 思维导图 | Mermaid.js 11                    | Markdown 语法渲染思维导图       |
-| 路由     | React Router 7                   | 客户端路由                      |
-| 后端服务 | Node.js + Express + TypeScript   | Web 服务 + RESTful API          |
-| AI 评分  | DeepSeek API                     | 作文/思维导图 AI 评分 + AI 起名 |
-| 数据库   | SQLite (libSQL / @libsql/client) | 轻量级本地数据库，兼容 Turso 云 |
-| ORM      | Drizzle ORM                      | 类型安全的 SQL 查询构建器       |
-| 视频播放 | HTML5 `<video>`                  | 原生视频播放器，支持 Range 请求 |
+| 类别     | 技术选型                                | 说明                                 |
+|----------|-----------------------------------------|--------------------------------------|
+| 前端框架 | React 19 + Vite 8 + TypeScript 6        | SPA 单页应用                         |
+| CSS      | Tailwind CSS 4                          | 原子化 CSS，自定义色板               |
+| 图标库   | Lucide React                            | 轻量级 SVG 图标库                    |
+| Markdown | @uiw/react-md-editor                    | Markdown 编辑器 + 实时预览           |
+| 思维导图 | Mermaid.js 11                           | Markdown 语法渲染思维导图            |
+| 路由     | React Router 7                          | 客户端路由                           |
+| 后端服务 | Node.js + Express 5 + TypeScript        | RESTful API                          |
+| 编译优化 | React Compiler (Babel 插件)             | 自动记忆化编译优化                   |
+| AI 评分  | DeepSeek API                            | 作文/思维导图 AI 评分 + AI 起名/出题 |
+| 数据库   | SQLite (libSQL / @libsql/client)        | 轻量级本地数据库                     |
+| ORM      | Drizzle ORM + Drizzle Kit               | 类型安全的 SQL 查询构建器 + 迁移工具 |
+| 视频播放 | HTML5 `<video>` + react-player          | 原生视频播放器，支持 Range 请求      |
+| 图片导出 | html-to-image                           | DOM 节点截图生成分享卡片             |
+| 测试     | Vitest + @testing-library/react + jsdom | 单元测试 + 组件测试 + 集成测试       |
+| 字体     | 华康标题宋 W9                           | 中文标题字体                         |
 
 ### 项目架构
 
 这是一个**前后端一体化**的单仓库项目，采用以下架构：
 
-- **前端**：React 19 + Vite 6，运行在端口 5173
-- **后端**：Express + TypeScript，运行在端口 3001
-- **数据库**：SQLite 本地数据库，使用 Drizzle ORM 进行数据操作
+- **前端**：React 19 + Vite 8，运行在端口 5173
+- **后端**：Express 5 + TypeScript 6，运行在端口 3006
+- **数据库**：SQLite 本地数据库 (`data/study.db`)，使用 Drizzle ORM 进行数据操作
 - **开发模式**：通过 Vite 代理配置将 `/api` 请求转发到 Express 后端
-- **构建部署**：Vite 构建前端，TypeScript 编译后端，统一部署
+- **构建部署**：Vite 构建前端，TypeScript 编译检查，统一部署
 
 ## 功能需求
 
@@ -56,12 +62,17 @@
 - 支持思维导图编辑（基于 Mermaid 语法渲染）
 - 自动保存功能（可通过 `AUTOSAVE_INTERVAL` 环境变量配置间隔秒数）
 
-#### 1.2 AI 评分
+#### 1.2 AI 能力
 
-- 集成 DeepSeek API 进行智能评分与 AI 起名
-- 作文项目：如有题目则根据题目进行评判，如无题目则根据内容进行评判
-- 思维导图项目：如有题目则根据题目进行评判，如无题目则根据内容进行评判
+| 能力    | 说明                                                     |
+|---------|----------------------------------------------------------|
+| AI 评分 | 对作文/思维导图/读书笔记评分 (A+~E)，返回评语+改进建议   |
+| AI 起名 | 根据提交内容自动生成任务标题（仅限「未命名」开头的任务） |
+| AI 出题 | 根据年级和作业类型进行随机出题                           |
+
+- 集成 DeepSeek API，评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
+- 支持 AI 使用记录查询与 Token 用量统计
 
 #### 1.3 评分标准（统一作业评分）
 
@@ -113,13 +124,25 @@
 
 > ⚠️ 月初积分少于特权最低积分（默认 100 分），则当月手机、平板、电视均无法使用。
 
-#### 2.5 月度结算
+#### 2.5 积分预支
+
+| 功能     | 说明                                             |
+|----------|--------------------------------------------------|
+| 积分预支 | 在积分不足时可预支积分，支持分期数（1-12期）选择 |
+| 自动还款 | 每月 1 号系统自动从本月可用积分中扣除还款金额    |
+| 预支追踪 | 查看预支记录、剩余期数、每期还款金额、还款状态   |
+
+- 预支金额必须在 10~9999 积分之间
+- 预支倍数为分期数的整数倍（即总还款 = 预支金额 + 预支金额 ÷ 分期数 × 0.1 × 分期数）
+
+#### 2.6 月度结算
 
 - 每月 1 日统计上月加/扣分情况，得到本月可用积分
 - 结算公式：`本月可用积分 = 月初始积分 + 上月净积分变化`（月初始积分默认 500，可配置）
 - 结算后积分 < 特权最低积分时触发限制规则
+- 自动执行积分预支还款扣减
 
-#### 2.6 规则配置
+#### 2.7 规则配置
 
 - 所有规则在页面使用表格展示，支持在线编辑
 - 月初始积分、特权最低积分、兑换比例均可自定义修改
@@ -132,13 +155,14 @@
 - 本月积分统计（加分/扣分/净变化/余额）
 - 待完成作业列表
 - 积分规则速览（评分标准+兑换比例）
-- 快速添加积分记录
+- 积分预支统计看板
+- 一键生成分享卡片（html-to-image 截图）
 
 #### 3.2 作业管理
 
 - 作业列表（名称/类型/评语/积分/状态/时间）
 - Markdown 编辑器编辑提交内容
-- AI 评分（DeepSeek 自动评分+积分计算）
+- AI 评分（DeepSeek 自动评分 + 积分计算）
 - AI 起名（根据内容自动生成任务标题，仅限「未命名」开头的任务）
 - AI 出题（根据年级和作业类型进行随机出题）
 - 作业创建/编辑/删除
@@ -155,6 +179,7 @@
 - 筛选功能（类型/时间/规则类别）
 - 月度汇总统计
 - 添加记录时备注支持快捷选项（可自定义，每行一个，保存到本地）
+- 支持按作业等级/考试分数/自定义规则快速添加积分记录
 
 #### 3.5 兑换记录
 
@@ -174,133 +199,155 @@
 - 所有规则在页面使用表格展示，支持在线编辑
 - 月初始积分、特权最低积分、兑换比例均可自定义修改
 - 存储在数据库 `options` 表，按类别分 key 存储（homework、exam、exchange、custom、system）
-- 规则分类展示：作业评分规则、考试分数规则、兑换规则、自定义规则、系统规则
+- 规则分类展示：作业评分规则、考试分数规则、兑换规则、自定义规则、系统设置
 
 #### 3.8 设置选项
 
-- 系统设置配置
+- 系统设置配置（管理员检测、数据库路径等）
 - 规则配置页面入口
 - 帮助文档链接
 
-### 4. 数据看板
+### 4. 学迹电台（视频播放）
 
-- 月度积分趋势图
-- 作业完成率统计
-- 各科目评分分布
-- 积分收支明细
+- 扫描本地视频目录（mp4/avi/mkv/mov 等格式）
+- 随机轮播播放 + 续播记忆（resumeTime）
+- 收藏管理（收藏/取消收藏）
+- 键盘/鼠标控制（方向键快进快退、空格暂停/播放等）
+- 流式扫描进度展示
+- 视频收藏列表页面
+
+### 5. 学习分享
+
+- 一键生成分享卡片（html-to-image 截图）
+- 卡片包含月度积分、作业完成情况等统计数据
+- 多张背景图可选（`public/images/`）
 
 ## 数据结构设计
 
 ### 核心数据模型
 
 ```
-tasks           -> id, title, type(composition/mindmap), status(pending/completed/expired), createdAt
-submissions     -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
-point_records   -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType(task/submission/exam/extra/custom), createdAt
-exchanges       -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
-options         -> id, key(unique), value
-ai_usage_logs   -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
-month_summary   -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500)
-videos          -> id, path, title, md5(unique), views(0), resumeTime(0), favorite(0), createdAt
+tasks             -> id, title, type(composition/mindmap), status(pending/completed/expired), createdAt
+submissions       -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
+point_records     -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType, createdAt
+exchanges         -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
+options           -> id, key(unique), value
+ai_usage_logs     -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
+point_advances    -> id, amount, installments, repaidAmount, status(active/completed/cancelled), createdAt
+month_summary     -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500), advanceRepayment(0)
+videos            -> id, path, title, md5(unique), views(0), resumeTime(0), favorite(0), createdAt
+```
+
+### 积分流转全景
+
+```
+家长创建作业 ──→ 孩子提交内容(Markdown/思维导图)
+                        ↓
+              DeepSeek AI 评分 (A+~E)
+                        ↓
+              自动加/扣积分 → 积分流水记录
+                        ↓
+              月度汇总 (每月重置基准积分)
+                        ↓
+          ┌─── 积分兑换 (娱乐时间/现金) ← 兑换比例可配置
+          └─── 积分预支 (分期还款) ← 每月1号自动扣款
 ```
 
 ## 项目结构
 
 ```
 study.webian.dev/
-├── apps/                         # 后端代码和共享组件
-│   ├── components/              # 共享组件
-│   │   ├── DataTable.tsx       # 数据表格组件
-│   │   ├── Layout.tsx          # 布局（侧边栏+主内容区+随机名言）
-│   │   ├── Loading.tsx         # 加载组件
-│   │   ├── Modal.tsx           # 模态框组件
-│   │   ├── RulesPage.tsx       # 规则配置页面
-│   │   ├── Snackbar.tsx        # 全局消息提示组件
+├── apps/                         # 核心源码（React前端 + Express后端）
+│   ├── index.tsx                # ★ 前端入口（路由定义）
+│   ├── server.ts                # ★ 后端入口（Express 服务器）
+│   ├── components/              # 通用 UI 组件
+│   │   ├── DataTable.tsx       # 通用数据表格（分页/自定义渲染）
+│   │   ├── Layout.tsx          # 主布局（侧边栏+内容区+随机名言）
+│   │   ├── Loading.tsx         # 加载状态指示器
+│   │   ├── Modal.tsx           # 通用模态框
+│   │   ├── RulesPage.tsx       # 规则页面包装器
+│   │   ├── Snackbar.tsx        # 全局消息提示（Context Provider）
 │   │   └── Tabs.tsx            # 标签页组件
-│   ├── db/                     # 数据库相关
-│   │   ├── default.ts          # 默认配置
-│   │   ├── index.ts            # 数据库连接
-│   │   ├── migrate.ts          # 迁移脚本
-│   │   └── schema.ts           # Drizzle ORM Schema
+│   ├── db/                     # 数据库层
+│   │   ├── index.ts            # 数据库连接（libSQL + Drizzle）
+│   │   ├── migrate.ts          # 迁移脚本（初始化表+默认数据）
+│   │   └── schema.ts           # Drizzle ORM Schema（8表）
 │   ├── lib/                    # 工具库
-│   │   ├── api.ts              # API请求封装
-│   │   ├── react-md-editor.d.ts # Markdown编辑器类型定义
-│   │   ├── types.ts            # TypeScript类型定义
-│   │   └── utils.ts            # 工具函数
-│   ├── routes/                 # API路由
-│   │   ├── advance-helper.ts   # 积分预支辅助函数
-│   │   ├── ai-usage.ts         # AI使用记录API
-│   │   ├── exchanges.ts        # 兑换记录API
-│   │   ├── options.ts          # 选项配置API
-│   │   ├── points.ts           # 积分记录API（含预支/还款）
+│   │   ├── api.ts              # 前端 API 客户端（8模块）
+│   │   ├── default.ts          # 默认配置（规则/名言/AI提示词）
+│   │   ├── types.ts            # TypeScript 类型定义
+│   │   ├── utils.ts            # 工具函数（日期格式化/分页/状态映射）
+│   │   └── react-md-editor.d.ts # Markdown 编辑器类型声明
+│   ├── routes/                 # Express API 路由
+│   │   ├── advance-helper.ts   # 积分预支辅助
+│   │   ├── ai-usage.ts         # AI使用记录
+│   │   ├── exchanges.ts        # 积分兑换
+│   │   ├── options.ts          # 系统配置
+│   │   ├── points.ts           # 积分流水（含预支/还款/月度结算）
 │   │   ├── rules-loader.ts     # 规则加载与初始化
-│   │   ├── summary-helper.ts   # 月度汇总辅助
-│   │   ├── tasks.ts            # 作业API（含AI评分/起名）
-│   │   └── videos.ts           # 视频API（扫描/列表/流播/收藏/进度）
-│   ├── services/               # 业务逻辑
-│   │   ├── ai.ts               # DeepSeek API封装（评分+起名+使用记录）
-│   │   └── points.ts           # 积分计算服务
-│   ├── index.tsx               # React入口（前端）
-│   └── server.ts               # Express服务器入口
+│   │   ├── summary-helper.ts   # 月度汇总计算
+│   │   ├── tasks.ts            # 作业管理（含AI评分/起名/出题）
+│   │   └── videos.ts           # 视频管理（扫描/流播/收藏/进度）
+│   ├── services/               # 业务服务层
+│   │   ├── ai.ts               # DeepSeek API封装
+│   │   └── points.ts           # 积分计算引擎
+│   ├── test/                   # 测试辅助
+│   └── __tests__/              # 测试文件
 ├── pages/                       # 前端页面组件
-│   ├── layout/                 # 布局和子组件
-│   │   ├── AIListTable.tsx     # AI记录列表表格
-│   │   ├── AISummaryCards.tsx  # AI使用统计卡片
-│   │   ├── AISummaryTable.tsx  # AI使用汇总表格
-│   │   ├── BorrowListTable.tsx # 积分预支列表表格
-│   │   ├── BorrowModalAdd.tsx  # 积分预支创建模态框
-│   │   ├── BorrowStatsCards.tsx # 积分预支统计卡片
-│   │   ├── ExchangesListTable.tsx # 兑换记录列表表格
-│   │   ├── ExchangesModalAdd.tsx # 添加兑换记录模态框
-│   │   ├── ExchangesStatsCards.tsx # 兑换统计卡片
-│   │   ├── Help.tsx            # 帮助组件
-│   │   ├── OptionsRulesCustom.tsx # 自定义规则组件
-│   │   ├── OptionsRulesExam.tsx # 考试规则组件
-│   │   ├── OptionsRulesExchange.tsx # 兑换规则组件
-│   │   ├── OptionsRulesHomework.tsx # 作业规则组件
-│   │   ├── OptionsSystem.tsx   # 系统设置组件
-│   │   ├── PointsListTable.tsx # 积分记录列表表格
-│   │   ├── PointsModalAdd.tsx  # 添加积分记录模态框
-│   │   ├── PointsStatsCards.tsx # 积分统计卡片
-│   │   ├── TaskEdit.tsx        # 作业编辑组件
-│   │   ├── TaskListTable.tsx   # 作业列表表格
-│   │   ├── TaskModalAIResult.tsx # AI评分结果模态框
-│   │   ├── TaskModalAIScore.tsx # AI评分模态框
-│   │   ├── TaskModalCreate.tsx # 创建作业模态框
-│   │   ├── TaskModalEdit.tsx   # 编辑作业模态框
-│   │   ├── WidgetBalance.tsx   # 余额组件
-│   │   ├── WidgetCustomRules.tsx # 自定义规则组件
-│   │   ├── WidgetExamScoreRules.tsx # 考试分数规则组件
-│   │   ├── WidgetExchangeRules.tsx # 兑换规则组件
-│   │   ├── WidgetHomeworkGradeRules.tsx # 作业评分规则组件
-│   │   ├── WidgetPendingTasks.tsx # 待处理作业组件
-│   │   └── WidgetStats.tsx     # 统计组件
-│   ├── AIUsage.tsx             # AI使用记录页面
-│   ├── Borrow.tsx              # 积分预支页面
-│   ├── Dashboard.tsx           # 首页看板
-│   ├── Exchanges.tsx           # 兑换记录页面
-│   ├── index.css               # 全局样式
-│   ├── Options.tsx             # 设置选项页面
-│   ├── Points.tsx              # 积分记录页面
-│   ├── Tasks.tsx               # 作业管理页面
-│   ├── TVFav.tsx               # 视频收藏列表页面
-│   └── VideoPlayer.tsx         # 视频播放器页面（随机轮播/续播/收藏）
-├── data/                        # SQLite数据库文件
+│   ├── index.css               # 全局样式（Tailwind + 自定义类）
+│   ├── share.css               # 分享卡片样式
+│   ├── Dashboard.tsx           # 首页看板（统计卡片/待办任务/分享）
+│   ├── Tasks.tsx               # 作业管理（创建/编辑/评分）
+│   ├── Points.tsx              # 积分记录（筛选/手动添加/月度汇总）
+│   ├── Exchanges.tsx           # 兑换记录（创建/撤销/筛选）
+│   ├── Borrow.tsx              # 积分预支（申请/还款追踪）
+│   ├── Options.tsx             # 设置选项（5标签页，仅管理员）
+│   ├── AIUsage.tsx             # AI 使用量统计
+│   ├── VideoPlayer.tsx         # 学迹电台（随机轮播/续播/收藏）
+│   ├── TVFav.tsx               # 视频收藏列表
+│   └── layout/                 # 子组件（共 30+ 个）
+│       ├── Share.tsx           # 分享卡片生成（html-to-image）
+│       ├── Help.tsx            # 帮助文档
+│       ├── TaskEdit.tsx        # 作业编辑器
+│       ├── TaskListTable.tsx   # 作业列表表格
+│       ├── TaskModal*.tsx      # 作业相关模态框（创建/编辑/评分/结果）
+│       ├── PointsListTable.tsx # 积分记录表
+│       ├── PointsModalAdd.tsx  # 手动添加积分
+│       ├── PointsStatsCards.tsx # 积分统计卡片
+│       ├── ExchangesListTable.tsx # 兑换记录表
+│       ├── ExchangesModalAdd.tsx # 添加兑换
+│       ├── ExchangesStatsCards.tsx # 兑换统计
+│       ├── BorrowListTable.tsx # 预支记录表
+│       ├── BorrowModalAdd.tsx  # 预支申请
+│       ├── BorrowStatsCards.tsx # 预支统计
+│       ├── AIListTable.tsx     # AI记录表
+│       ├── AISummaryCards.tsx  # AI统计卡片
+│       ├── AISummaryTable.tsx  # AI汇总表
+│       ├── OptionsRules*.tsx   # 规则配置子组件
+│       ├── OptionsSystem.tsx   # 系统设置
+│       └── Widget*.tsx         # 首页小部件（8个）
+├── data/                        # SQLite 数据库文件
+│   └── study.db                # 数据库文件
 ├── public/                      # 静态资源
-│   ├── docs/                   # 文档
-│   │   ├── faq.md              # 常见问题文档
-│   │   ├── markdown.md         # Markdown语法参考文档
-│   │   └── mermaid.md          # Mermaid图表语法参考文档
-│   └── favicon.svg             # 网站图标
+│   ├── favicon.svg             # 网站图标
+│   ├── fonts/                  # 字体文件
+│   │   └── 华康标题宋W9.ttf  # 中文标题字体（3.3MB）
+│   ├── images/                 # 分享背景图（5张，~18MB）
+│   └── docs/                   # 帮助文档
+│       ├── faq.md              # 常见问题
+│       ├── markdown.md         # Markdown 语法参考
+│       └── mermaid.md          # Mermaid 图表语法参考
+├── dist/                        # 构建输出目录
 ├── .env                         # 环境变量（不提交到仓库）
 ├── .gitignore                   # Git忽略配置
-├── eslint.config.js            # ESLint配置
-├── index.html                   # HTML入口文件
-├── package.json                 # 项目配置
-├── postcss.config.js           # PostCSS配置
-├── tailwind.config.js          # Tailwind CSS配置
-├── tsconfig.json               # TypeScript配置
-└── vite.config.ts              # Vite构建配置
+├── eslint.config.js            # ESLint 配置
+├── index.html                   # SPA HTML 入口
+├── package.json                 # 项目配置与脚本
+├── postcss.config.js           # PostCSS 配置
+├── tailwind.config.js          # Tailwind CSS 主题配置
+├── tsconfig.json               # TypeScript 严格模式配置
+├── vite.config.ts              # Vite 构建配置（代理/编译优化/分包）
+└── vitest.config.ts            # Vitest 测试配置
 ```
 
 ## 开发计划
@@ -331,14 +378,27 @@ study.webian.dev/
 - [x] 积分自动计算（统一作业评分标准，含 A+ 等级 +50 分）
 - [x] 月度结算逻辑
 - [x] 积分兑换功能（娱乐/现金）
+- [x] 积分预支功能（分期还款 + 自动扣款）
 - [x] 规则配置可自定义（月初始积分、特权最低积分、兑换比例）
 - [x] 兑换记录正确匹配规则配置的兑换比例
 
-### Phase 4 - 文档与体验优化
+### Phase 4 - 视频播放与分享
+
+- [x] 本地视频扫描与流式播放（Range 请求）
+- [x] 随机轮播 + 续播记忆
+- [x] 视频收藏与列表管理
+- [x] 键盘/鼠标控制
+- [x] 学习分享卡片（html-to-image 截图）
+- [x] 分享背景图与字体支持
+
+### Phase 5 - 文档与体验优化
 
 - [x] Markdown 语法参考文档（public/docs/markdown.md）
 - [x] Mermaid 图表语法参考文档（public/docs/mermaid.md）
 - [x] 常见问题文档（public/docs/faq.md）
+- [x] React Compiler 编译优化集成
+- [x] 单元/组件/集成测试框架搭建
+- [x] ESLint + TypeScript 严格模式配置
 
 ## 本地开发
 
@@ -357,8 +417,13 @@ npm run db:migrate
 npm run dev:all
 
 # 或分别启动
-npm run start            # 启动后端（端口3001）
+npm run start            # 启动后端（端口3006）
 npm run dev              # 启动前端（端口5173）
+
+# 运行测试
+npm test                 # 运行所有测试
+npm run test:watch       # 监听模式
+npm run test:ui          # UI 模式查看测试结果
 ```
 
 ### 环境变量
@@ -371,16 +436,33 @@ DEEPSEEK_API_KEY=你的API密钥
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 # 服务端口
-PORT=3001
+PORT=3006
 
 # 数据库路径
 DB_PATH=./data/study.db
+
+# 视频分发路径（本地视频文件根目录）
+DISTRIBUTION_PATH=E:\\Videos\\xxx
 
 # 自动保存间隔（秒）
 AUTOSAVE_INTERVAL=10
 ```
 
 > ⚠️ `.env` 文件已在 `.gitignore` 中配置，不会被提交到仓库。请勿将 API 密钥硬编码或提交到版本控制。
+
+### 可用脚本
+
+| 脚本                  | 说明                                 |
+|-----------------------|--------------------------------------|
+| `npm run dev`         | 启动前端开发服务器（端口 5173）      |
+| `npm run start`       | 启动后端开发服务器（端口 3006）      |
+| `npm run dev:all`     | 同时启动前后端（concurrently）       |
+| `npm run build`       | TypeScript 编译检查 + Vite 构建      |
+| `npm run preview`     | Vite 预览构建产物                    |
+| `npm test`            | 运行所有测试                         |
+| `npm run db:migrate`  | 数据库迁移与初始化                   |
+| `npm run db:push`     | Drizzle Kit 直接推送 Schema 到数据库 |
+| `npm run db:generate` | 生成 Drizzle 迁移文件                |
 
 ## 许可证
 
