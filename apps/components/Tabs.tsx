@@ -25,7 +25,7 @@ export default function Tabs<T extends string = string>({
                 <button
                     key={tab.key}
                     onClick={() => onChange(tab.key)}
-                    className={`py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
+                    className={`flex-1 py-1.5 px-3 rounded-md text-sm font-medium transition-all ${
                         active === tab.key
                             ? `${activeClassName} shadow-sm`
                             : 'text-gray-600 hover:text-gray-800'

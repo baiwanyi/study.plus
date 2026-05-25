@@ -105,7 +105,7 @@ export default function ExchangesListTable({
                 <button
                     disabled={!(record.status === 'active' && isAdmin())}
                     onClick={() => onRevoke(record.id)}
-                    className="btn-danger btn-sm">
+                    className="btn btn-danger btn-sm">
                     撤销
                 </button>
             ),

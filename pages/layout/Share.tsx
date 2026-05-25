@@ -8,13 +8,12 @@ import { formatNumber, formatErrorMessage } from '@apps/lib/utils'
 import '@pages/share.css'
 import { toPng } from 'html-to-image'
 
-const IMAGE_URLS = [
-    '/images/share-1.jpg',
-    '/images/share-2.jpg',
-    '/images/share-3.jpg',
-    '/images/share-4.jpg',
-    '/images/share-5.jpg',
-]
+const imageModules = import.meta.glob('/public/images/*.{jpg,jpeg,png,webp}', {
+    eager: true,
+})
+const IMAGE_URLS = Object.keys(imageModules).map((p) =>
+    p.replace('/public', ''),
+)
 
 function getCurrentMonth(): string {
     const now = new Date()
@@ -160,7 +159,8 @@ export default function Share() {
                 open={showShare}
                 onCancel={handleCloseShare}
                 footer={false}
-                title="分享">
+                title="分享"
+                isScroll>
                 {/* Stats content */}
                 {loading && <Loading />}
 

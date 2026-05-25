@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import { X, LoaderCircle } from 'lucide-react'
 
 export interface ModalProps {
@@ -45,6 +45,15 @@ const Modal: React.FC<ModalProps> = ({
     confirmIcon = <DefaultConfirmIcon />,
     size = 'md',
 }) => {
+    useEffect(() => {
+        if (isScroll && open) {
+            document.body.classList.add('overflow-hidden')
+        }
+        return () => {
+            document.body.classList.remove('overflow-hidden')
+        }
+    }, [isScroll, open])
+
     if (!open) return null
 
     return (

@@ -385,14 +385,16 @@ export default function Weekly() {
                     </button>
                 </div>
 
-                <Tabs
-                    tabs={years.map((y) => ({
-                        key: String(y),
-                        label: String(y),
-                    }))}
-                    active={String(year)}
-                    onChange={(key) => setYear(Number(key))}
-                />
+                {years.length > 1 && (
+                    <Tabs
+                        tabs={years.map((y) => ({
+                            key: String(y),
+                            label: String(y),
+                        }))}
+                        active={String(year)}
+                        onChange={(key) => setYear(Number(key))}
+                    />
+                )}
                 <div className="card">
                     <DataTable
                         data={reports}

@@ -146,7 +146,7 @@ export default function ListTask({
                             </button>
                             <button
                                 onClick={() => onDelete(task.id)}
-                                className="btn-danger btn-sm">
+                                className="btn btn-danger btn-sm">
                                 删除
                             </button>
                         </>

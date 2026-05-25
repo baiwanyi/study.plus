@@ -149,6 +149,8 @@ export const taskAILabels: Record<TaskAI, string> = {
     'ai-score': 'AI评分',
     'ai-title': 'AI起名',
     'ai-task': 'AI出题',
+    'weekly-analyze': 'AI周报分析',
+    'weekly-chat': 'AI周报对话',
 }
 
 export function getCurrentMonth(): string {
