@@ -164,7 +164,7 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
 
     return (
         <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
-            <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between flex-shrink-0">
+            <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
                 <div className="flex items-center justify-between gap-3">
                     <span
                         className={`badge ${taskTypeColors[currentTask.type]}`}>
@@ -197,9 +197,9 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
 
             {/* AI 改进建议 */}
             {hasSuggestions && (
-                <div className="bg-amber-50 border-b border-warning-background px-6 py-3 flex-shrink-0">
+                <div className="bg-amber-50 border-b border-warning-background px-6 py-3 shrink-0">
                     <div className="flex items-start gap-2">
-                        <Sparkles className="w-5 h-5 text-warning flex-shrink-0" />
+                        <Sparkles className="w-5 h-5 text-warning shrink-0" />
                         <div className="space-y-1 text-sm font-medium text-warning">
                             <h6 className="text-warning">改进建议</h6>
                             <ul className="list-disc list-inside">
@@ -223,7 +223,7 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
                 />
             </div>
 
-            <div className="bg-gray-100 border-t border-gray-200 px-4 py-1.5 flex items-center justify-between text-xs text-gray-500 flex-shrink-0">
+            <div className="bg-gray-100 border-t border-gray-200 px-4 py-1.5 flex items-center justify-between text-xs text-gray-500 shrink-0">
                 <div className="flex items-center gap-4">
                     <span>{mdContent.length} 字符</span>
                     <span

@@ -43,7 +43,7 @@ export default function AISummaryTable({ summary }: AISummaryTableProps) {
     if (summary.length === 0) return null
 
     return (
-        <div className="card overflow-hidden !p-0">
+        <div className="card overflow-hidden p-0!">
             <DataTable<AIUsageSummary>
                 data={summary}
                 columns={columns}

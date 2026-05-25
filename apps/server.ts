@@ -61,12 +61,12 @@ const clientDist = path.resolve(
 app.use(express.static(clientDist))
 
 // API 404 fallback — return JSON for unmatched API routes
-app.all('/api/*', (_req: Request, res: Response) => {
+app.all('/api/{*path}', (_req: Request, res: Response) => {
     res.status(404).json({ error: 'API endpoint not found' })
 })
 
 // SPA fallback — serve index.html for all other routes
-app.get('*', (_req: Request, res: Response) => {
+app.get('/{*path}', (_req: Request, res: Response) => {
     res.sendFile(path.join(clientDist, 'index.html'))
 })
 

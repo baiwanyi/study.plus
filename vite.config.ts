@@ -1,16 +1,15 @@
 import { defineConfig } from 'vite'
-import react from '@vitejs/plugin-react'
-import tsconfigPaths from 'vite-tsconfig-paths'
+import react, { reactCompilerPreset } from '@vitejs/plugin-react'
+import babel from '@rolldown/plugin-babel'
 
 export default defineConfig({
     plugins: [
-        react({
-            babel: {
-                plugins: [['babel-plugin-react-compiler']],
-            },
-        }),
-        tsconfigPaths()
+        react(),
+        babel({ presets: [reactCompilerPreset()] }),
     ],
+    resolve: {
+        tsconfigPaths: true,
+    },
     build: {
         rollupOptions: {
             output: {

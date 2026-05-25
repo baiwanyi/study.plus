@@ -108,7 +108,7 @@ export default function BorrowListTable({ advances }: BorrowListTableProps) {
                 totalRemaining={stats.totalRemaining}
             />
 
-            <div className="card overflow-hidden !p-0">
+            <div className="card overflow-hidden p-0!">
                 <DataTable<PointAdvance>
                     data={visibleAdvances}
                     emptyText="暂无预支记录"

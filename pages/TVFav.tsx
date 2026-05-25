@@ -71,7 +71,7 @@ export default function TVFav() {
                 </button>
                 <h2 className="text-2xl font-bold text-gray-900">{`共 ${list.length} 个收藏视频`}</h2>
             </div>
-            <div className="card !p-0">
+            <div className="card p-0!">
                 <DataTable
                     data={list}
                     columns={columns}

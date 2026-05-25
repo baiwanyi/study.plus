@@ -113,7 +113,7 @@ export default function ExchangesListTable({
     ]
 
     return (
-        <div className="card overflow-hidden !p-0">
+        <div className="card overflow-hidden p-0!">
             <DataTable<Exchange>
                 data={pagedExchanges}
                 columns={columns}

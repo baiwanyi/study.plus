@@ -65,7 +65,7 @@ export default function PointsListTable({ records }: PointsListTableProps) {
     ]
 
     return (
-        <div className="card overflow-hidden !p-0">
+        <div className="card overflow-hidden p-0!">
             <DataTable<PointRecord>
                 data={pagedRecords}
                 columns={columns}

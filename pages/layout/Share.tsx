@@ -153,7 +153,7 @@ export default function Share() {
     return (
         <>
             <button onClick={handleOpenShare}>
-                <ExternalLink className="w-5 h-5 flex-shrink-0 text-gray-600 hover:text-headline" />
+                <ExternalLink className="w-5 h-5 shrink-0 text-gray-600 hover:text-headline" />
             </button>
 
             <Modal
@@ -173,7 +173,7 @@ export default function Share() {
                 {stats && (
                     <div className="flex flex-col space-y-4">
                         <div id="share" className="flex flex-col space-y-4 p-6">
-                            <div className="relative aspect-[16/9] overflow-hidden rounded-lg">
+                            <div className="relative aspect-video overflow-hidden rounded-lg">
                                 <img
                                     src={imageUrl}
                                     className="w-full h-auto object-cover"
@@ -189,7 +189,7 @@ export default function Share() {
                                         <ChevronDown className="w-3 h-3" />
                                     </button>
                                     {showMonthList && (
-                                        <div className="absolute right-0 top-6 mt-1 bg-white rounded shadow-lg border border-gray-200 py-1 max-h-40 overflow-y-auto z-10 min-w-[120px]">
+                                        <div className="absolute right-0 top-6 mt-1 bg-white rounded shadow-lg border border-gray-200 py-1 max-h-40 overflow-y-auto z-10 min-w-30">
                                             {availableMonths.map((m) => (
                                                 <button
                                                     key={m}

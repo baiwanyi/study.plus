@@ -44,7 +44,7 @@ export default function ListTask({
             render: (task) => (
                 <button
                     onClick={() => isAdminRole && onEdit(task)}
-                    className={`font-medium text-headline truncate max-w-[300px] ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
+                    className={`font-medium text-headline truncate max-w-75 ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
                     title={task.title}>
                     {task.title.length > 16
                         ? `${task.title.slice(0, 16)}...`
@@ -165,7 +165,7 @@ export default function ListTask({
                 </button>
             </div>
 
-            <div className="card overflow-hidden !p-0">
+            <div className="card overflow-hidden p-0!">
                 <DataTable<Task>
                     data={pagedTasks}
                     columns={taskColumns}

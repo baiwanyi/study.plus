@@ -426,7 +426,7 @@ export default function VideoPlayer() {
 
     const scanResultComponent = scanResult && (
         <div className="bg-green-50 border border-green-200 rounded-lg p-3 flex items-start gap-2 text-sm text-green-800 relative">
-            <CheckCircle className="size-5 flex-shrink-0 mt-0.5" />
+            <CheckCircle className="size-5 shrink-0 mt-0.5" />
             <button
                 onClick={() => setScanResult(null)}
                 className="absolute top-2 right-2 text-green-600 hover:text-green-800 transition-colors">

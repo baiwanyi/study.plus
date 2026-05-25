@@ -64,12 +64,12 @@ export default function Help() {
     return (
         <>
             <button onClick={handleOpenHelp}>
-                <CircleQuestionMark className="w-5 h-5 flex-shrink-0 text-gray-600 hover:text-headline" />
+                <CircleQuestionMark className="w-5 h-5 shrink-0 text-gray-600 hover:text-headline" />
             </button>
 
             {showHelp &&
                 createPortal(
-                    <div className="fixed inset-0 z-[9999]">
+                    <div className="fixed inset-0 z-9999">
                         <div className="relative bg-white w-full h-full overflow-y-auto">
                             <div className="sticky top-0 z-10 border-b border-gray-100">
                                 <div className="flex items-center justify-between p-4 bg-white border-b border-gray-200">

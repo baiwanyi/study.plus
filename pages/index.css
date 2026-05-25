@@ -1,30 +1,47 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-@layer base {
-    body {
-        @apply font-sans bg-background text-foreground text-base;
-    }
+@theme {
+    --color-primary: #2271b1;
+    --color-primary-foreground: #135e96;
+    --color-primary-background: #E8F1F7;
 
-    h1,
-    h2,
-    h3,
-    h4,
-    h5,
-    h6 {
-        @apply text-headline font-semibold;
-    }
+    --color-sidebar: #1d2327;
+    --color-sidebar-link: #9aa0a5;
+    --color-sidebar-hover: #2c3338;
 
-    h1,
-    h2 {
-        @apply text-2xl;
-    }
+    --color-gray-100: #f8f9fa;
+    --color-gray-200: #e9ecef;
+    --color-gray-300: #dee2e6;
+    --color-gray-400: #ced4da;
+    --color-gray-500: #adb5bd;
+    --color-gray-600: #6c757d;
+    --color-gray-700: #495057;
+    --color-gray-800: #343a40;
+    --color-gray-900: #212529;
 
-    h3,
-    h4 {
-        @apply text-lg;
-    }
+    --color-muted: #9aa0a5;
+    --color-headline: #1d2327;
+    --color-background: #f0f0f1;
+
+    --color-foreground: #3c434a;
+    --color-foreground-light: #c3c4c7;
+    --color-foreground-dark: #1d2327;
+
+    --color-danger: #dc3545;
+    --color-danger-background: #FBEAEC;
+    --color-danger-hover: #E83838;
+
+    --color-success: #2ba246;
+    --color-success-background: #E3F1E8;
+    --color-success-hover: #225953;
+
+    --color-info: #007cba;
+    --color-info-background: #E2ECF3;
+    --color-info-hover: #0D9BA9;
+
+    --color-warning: #ea8011;
+    --color-warning-background: #FFFBEB;
+    --color-warning-hover: #EF4521;
 }
 
 /* Custom Components */
@@ -35,26 +52,26 @@
 
     .btn {
         @apply inline-flex items-center justify-center px-4 py-2 rounded-lg font-medium text-sm transition-all duration-200 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed;
-    }
 
-    .btn-primary {
-        @apply btn bg-primary text-white hover:bg-primary-foreground active:bg-primary-foreground;
-    }
+        &.btn-primary {
+            @apply bg-primary text-white hover:bg-primary-foreground active:bg-primary-foreground;
+        }
 
-    .btn-success {
-        @apply btn bg-success text-white hover:bg-success-hover;
-    }
+        &.btn-success {
+            @apply bg-success text-white hover:bg-success-hover;
+        }
 
-    .btn-danger {
-        @apply btn bg-danger text-white hover:bg-danger-hover;
-    }
+        &.btn-danger {
+            @apply bg-danger text-white hover:bg-danger-hover;
+        }
 
-    .btn-outline {
-        @apply btn border border-gray-300 text-gray-700 hover:bg-gray-50;
-    }
+        &.btn-outline {
+            @apply border border-gray-300 text-gray-700 hover:bg-gray-50;
+        }
 
-    .btn-link {
-        @apply btn text-primary hover:text-primary-foreground;
+        &.btn-link {
+            @apply text-primary hover:text-primary-foreground;
+        }
     }
 
     .btn-sm {
@@ -63,38 +80,38 @@
 
     .badge {
         @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium;
-    }
 
-    .badge-primary {
-        @apply badge bg-primary-background text-primary;
-    }
+        &.badge-primary {
+            @apply bg-primary-background text-primary;
+        }
 
-    .badge-earn {
-        @apply badge bg-success-background text-success;
-    }
+        &.badge-earn {
+            @apply bg-success-background text-success;
+        }
 
-    .badge-deduct {
-        @apply badge bg-danger-background text-danger;
-    }
+        &.badge-deduct {
+            @apply bg-danger-background text-danger;
+        }
 
-    .badge-pending {
-        @apply badge bg-warning-background text-warning;
-    }
+        &.badge-pending {
+            @apply bg-warning-background text-warning;
+        }
 
-    .badge-completed {
-        @apply badge bg-success-background text-success;
-    }
+        &.badge-completed {
+            @apply bg-success-background text-success;
+        }
 
-    .badge-expired {
-        @apply badge bg-gray-100 text-gray-800;
-    }
+        &.badge-expired {
+            @apply bg-gray-100 text-gray-800;
+        }
 
-    .badge-active {
-        @apply badge bg-success-background text-success;
-    }
+        &.badge-active {
+            @apply bg-success-background text-success;
+        }
 
-    .badge-revoked {
-        @apply badge bg-danger-background text-danger;
+        &.badge-revoked {
+            @apply bg-danger-background text-danger;
+        }
     }
 
     .regular-text {
@@ -112,7 +129,7 @@
 
 /* Snackbar */
 .snackbar {
-    @apply fixed left-6 bottom-6 z-[100] flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white
+    @apply fixed left-6 bottom-6 z-100 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white
     translate-y-20 opacity-0 pointer-events-none;
     transition:
         transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
