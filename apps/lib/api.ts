@@ -207,6 +207,11 @@ export const systemAPI = {
     get: () => request<AppConfig>('/system'),
 }
 
+// ===== Images =====
+export const imagesApi = {
+    list: () => request<string[]>('/images'),
+}
+
 // ===== Advances =====
 export const advancesApi = {
     list: () => request<PointAdvance[]>('/points/advances'),

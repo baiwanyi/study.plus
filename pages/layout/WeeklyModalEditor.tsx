@@ -13,6 +13,7 @@ import Modal from '@apps/components/Modal'
 import Tabs from '@apps/components/Tabs'
 import type { WeeklyAnalysis, WeeklyMessage } from '@apps/lib/types'
 import type { WeeklyReportContent } from '@apps/lib/weekly'
+import '@apps/styles/markdown-viewer.css'
 
 // ===== Constants =====
 
@@ -231,8 +232,7 @@ export default function WeeklyModalEditor({
                                                 </p>
                                             ) : (
                                                 <div
-                                                    data-color-mode="light"
-                                                    className="bg-transparent">
+                                                    data-color-mode="light">
                                                     <MDEditor.Markdown
                                                         source={msg.content}
                                                     />

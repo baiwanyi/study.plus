@@ -2,18 +2,23 @@ import { useState, useCallback, useEffect } from 'react'
 import Modal from '@apps/components/Modal'
 import Loading from '@apps/components/Loading'
 import { ExternalLink, ChevronDown } from 'lucide-react'
-import { pointsApi, quotesApi } from '@apps/lib/api'
+import { pointsApi, quotesApi, imagesApi } from '@apps/lib/api'
 import type { ShareStats } from '@apps/lib/types'
 import { formatNumber, formatErrorMessage } from '@apps/lib/utils'
 import '@pages/share.css'
 import { toPng } from 'html-to-image'
 
-const imageModules = import.meta.glob('/public/images/*.{jpg,jpeg,png,webp}', {
-    eager: true,
-})
-const IMAGE_URLS = Object.keys(imageModules).map((p) =>
-    p.replace('/public', ''),
-)
+let cachedImages: string[] | null = null
+
+async function getImageUrls(): Promise<string[]> {
+    if (cachedImages) return cachedImages
+    try {
+        cachedImages = await imagesApi.list()
+        return cachedImages
+    } catch {
+        return []
+    }
+}
 
 function getCurrentMonth(): string {
     const now = new Date()
@@ -39,7 +44,8 @@ function StatCard({
 
 export default function Share() {
     const [showShare, setShowShare] = useState(false)
-    const [imageUrl, setImageUrl] = useState(IMAGE_URLS[0])
+    const [imageUrls, setImageUrls] = useState<string[]>([])
+    const [imageUrl, setImageUrl] = useState('/images/share-1.jpg')
     const [month, setMonth] = useState(getCurrentMonth())
     const [stats, setStats] = useState<ShareStats | null>(null)
     const [loading, setLoading] = useState(false)
@@ -49,9 +55,15 @@ export default function Share() {
     const [quote, setQuote] = useState('')
 
     const handleOpenShare = useCallback(() => {
-        const randomIndex = Math.floor(Math.random() * IMAGE_URLS.length)
-        setImageUrl(IMAGE_URLS[randomIndex])
+        const urls = imageUrls.length > 0 ? imageUrls : ['/images/share-1.jpg']
+        const randomIndex = Math.floor(Math.random() * urls.length)
+        setImageUrl(urls[randomIndex])
         setShowShare(true)
+    }, [imageUrls])
+
+    // Fetch available images on mount
+    useEffect(() => {
+        getImageUrls().then(setImageUrls).catch(() => {})
     }, [])
 
     const handleCloseShare = useCallback(() => setShowShare(false), [])

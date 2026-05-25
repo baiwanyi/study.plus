@@ -1,5 +1,6 @@
 import express, { type Express, type Request, type Response } from 'express'
 import path from 'path'
+import fs from 'fs'
 import tasksRouter from '@apps/routes/tasks'
 import pointsRouter from '@apps/routes/points'
 import exchangesRouter from '@apps/routes/exchanges'
@@ -29,6 +30,21 @@ app.use('/api/options', rulesRouter)
 app.use('/api/videos', videosRouter)
 app.use('/api/rss', rssRouter)
 app.use('/api/weekly', weeklyRouter)
+
+// List images in public/images/ directory for share background picker
+app.get('/api/images', (_req: Request, res: Response) => {
+    const imagesDir = path.resolve(import.meta.dirname, '..', 'public', 'images')
+    try {
+        const files = fs
+            .readdirSync(imagesDir)
+            .filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f))
+            .sort()
+            .map((f) => `/images/${f}`)
+        res.json(files)
+    } catch {
+        res.json([])
+    }
+})
 
 // Options endpoint (exposes safe client-side config)
 app.get('/api/system', async (_req: Request, res: Response) => {
