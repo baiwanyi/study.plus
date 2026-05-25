@@ -1,9 +1,9 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 @theme {
     --color-primary: #2271b1;
     --color-primary-foreground: #135e96;
-    --color-primary-background: #E8F1F7;
+    --color-primary-background: #e8f1f7;
 
     --color-sidebar: #1d2327;
     --color-sidebar-link: #9aa0a5;
@@ -28,20 +28,20 @@
     --color-foreground-dark: #1d2327;
 
     --color-danger: #dc3545;
-    --color-danger-background: #FBEAEC;
-    --color-danger-hover: #E83838;
+    --color-danger-background: #fbeaec;
+    --color-danger-hover: #e83838;
 
     --color-success: #2ba246;
-    --color-success-background: #E3F1E8;
+    --color-success-background: #e3f1e8;
     --color-success-hover: #225953;
 
     --color-info: #007cba;
-    --color-info-background: #E2ECF3;
-    --color-info-hover: #0D9BA9;
+    --color-info-background: #e2ecf3;
+    --color-info-hover: #0d9ba9;
 
     --color-warning: #ea8011;
-    --color-warning-background: #FFFBEB;
-    --color-warning-hover: #EF4521;
+    --color-warning-background: #fffbeb;
+    --color-warning-hover: #ef4521;
 }
 
 /* Custom Components */
@@ -125,34 +125,59 @@
     .text-none {
         @apply text-sm text-gray-400 py-8 text-center;
     }
-}
 
-/* Snackbar */
-.snackbar {
-    @apply fixed left-6 bottom-6 z-100 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white
+    /* Snackbar */
+    .snackbar {
+        @apply fixed left-6 bottom-6 z-100 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white
     translate-y-20 opacity-0 pointer-events-none;
-    transition:
-        transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
-        opacity 0.3s ease;
+        transition:
+            transform 0.3s cubic-bezier(0.4, 0, 0.2, 1),
+            opacity 0.3s ease;
+    }
+
+    .snackbar-show {
+        @apply translate-y-0 opacity-100 pointer-events-auto;
+    }
+
+    .snackbar-success {
+        @apply bg-emerald-600;
+    }
+
+    .snackbar-error {
+        @apply bg-red-600;
+    }
+
+    .snackbar-info {
+        @apply bg-blue-600;
+    }
+
+    .snackbar-icon {
+        @apply w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold shrink-0;
+        background-color: rgb(255 255 255 / 0.2);
+    }
 }
 
-.snackbar-show {
-    @apply translate-y-0 opacity-100 pointer-events-auto;
-}
+@layer base {
+    body {
+        @apply font-sans bg-background text-foreground text-base;
+    }
 
-.snackbar-success {
-    @apply bg-emerald-600;
-}
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        @apply text-headline font-semibold;
+    }
 
-.snackbar-error {
-    @apply bg-red-600;
-}
+    h1,
+    h2 {
+        @apply text-2xl;
+    }
 
-.snackbar-info {
-    @apply bg-blue-600;
-}
-
-.snackbar-icon {
-    @apply w-5 h-5 flex items-center justify-center rounded-full text-xs font-bold shrink-0;
-    background-color: rgb(255 255 255 / 0.2);
+    h3,
+    h4 {
+        @apply text-lg;
+    }
 }

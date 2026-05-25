@@ -1,0 +1,153 @@
+.markdown-viewer {
+    font-size: 0.9375rem;
+    line-height: 1.8;
+    color: var(--color-foreground);
+}
+
+.markdown-viewer h1,
+.markdown-viewer h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    margin-top: 1.5em;
+    margin-bottom: 0.5em;
+    padding-bottom: 0.3em;
+    border-bottom: 1px solid var(--color-gray-200);
+    color: var(--color-headline);
+}
+
+.markdown-viewer h1 {
+    font-size: 1.375rem;
+}
+
+.markdown-viewer h3,
+.markdown-viewer h4 {
+    font-size: 1.0625rem;
+    font-weight: 600;
+    margin-top: 1.25em;
+    margin-bottom: 0.4em;
+    color: var(--color-primary);
+}
+
+.markdown-viewer h4 {
+    font-size: 1rem;
+}
+
+.markdown-viewer p {
+    margin-bottom: 0.75em;
+}
+
+.markdown-viewer p:last-child {
+    margin-bottom: 0;
+}
+
+.markdown-viewer strong {
+    font-weight: 700;
+    color: var(--color-headline);
+}
+
+.markdown-viewer em {
+    font-style: italic;
+    color: var(--color-gray-600);
+}
+
+.markdown-viewer ul,
+.markdown-viewer ol {
+    padding-left: 1.5em;
+    margin-bottom: 0.75em;
+}
+
+.markdown-viewer ul li {
+    list-style-type: disc;
+    margin-bottom: 0.25em;
+}
+
+.markdown-viewer ul li::marker {
+    color: var(--color-gray-400);
+}
+
+.markdown-viewer ol li {
+    list-style-type: decimal;
+    margin-bottom: 0.25em;
+}
+
+.markdown-viewer ol li::marker {
+    color: var(--color-primary);
+    font-weight: 500;
+}
+
+.markdown-viewer li > ul,
+.markdown-viewer li > ol {
+    margin-bottom: 0;
+}
+
+.markdown-viewer pre {
+    background: var(--color-gray-100);
+    border: 1px solid var(--color-gray-200);
+    border-radius: 0.5rem;
+    padding: 1rem;
+    overflow-x: auto;
+    margin-bottom: 0.75em;
+    font-size: 0.875rem;
+    line-height: 1.6;
+}
+
+.markdown-viewer code {
+    font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+}
+
+.markdown-viewer :not(pre) > code {
+    background: var(--color-primary-background);
+    color: var(--color-primary);
+    padding: 0.125em 0.375em;
+    border-radius: 0.25rem;
+    font-size: 0.85em;
+}
+
+.markdown-viewer blockquote {
+    border-left: 4px solid var(--color-primary);
+    background: var(--color-gray-100);
+    padding: 0.75em 1em;
+    margin-bottom: 0.75em;
+    border-radius: 0 0.375rem 0.375rem 0;
+    color: var(--color-gray-600);
+    font-style: italic;
+}
+
+.markdown-viewer a {
+    color: var(--color-primary);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+}
+
+.markdown-viewer a:hover {
+    color: var(--color-primary-foreground);
+}
+
+.markdown-viewer hr {
+    border: none;
+    border-top: 1px dashed var(--color-gray-300);
+    margin: 1.5em 0;
+}
+
+.markdown-viewer table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 0.75em;
+}
+
+.markdown-viewer th,
+.markdown-viewer td {
+    border: 1px solid var(--color-gray-200);
+    padding: 0.5em 0.75em;
+    text-align: left;
+}
+
+.markdown-viewer th {
+    background: var(--color-gray-100);
+    font-weight: 600;
+}
+
+.markdown-viewer img {
+    max-width: 100%;
+    border-radius: 0.375rem;
+}

@@ -7,6 +7,8 @@ declare module '@uiw/react-md-editor' {
         height?: number | string
         preview?: 'live' | 'edit' | 'preview'
         hideToolbar?: boolean
+        placeholder?: string
+        textareaProps?: React.TextareaHTMLAttributes<HTMLTextAreaElement>
         previewOptions?: Record<string, unknown>
     }
 

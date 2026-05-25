@@ -24,7 +24,12 @@ import type {
     AdvanceSummary,
     Video,
     ScanResult,
+    WeeklyReport,
+    WeeklyAnalysis,
+    WeeklyConversation,
+    WeeklyMessage,
 } from '@apps/lib/types'
+import type { WeeklyReportContent } from '@apps/lib/weekly'
 
 const BASE = '/api'
 
@@ -243,6 +248,44 @@ export const rssApi = {
         return request<{ items: RssFeedItem[] }>(`/rss/feed${qs}`)
     },
     getPost: (id: number) => request<RssPostDetail>(`/rss/post/${id}`),
+}
+
+// ===== Weekly Reports =====
+export const weeklyApi = {
+    list: (year?: number) => {
+        const qs = year ? `?year=${year}` : ''
+        return request<WeeklyReport[]>(`/weekly${qs}`)
+    },
+    create: (data: {
+        weekNumber: number
+        year: number
+        content: WeeklyReportContent
+    }) =>
+        request<WeeklyReport>('/weekly', {
+            method: 'POST',
+            body: JSON.stringify(data),
+        }),
+    update: (id: number, data: { content: WeeklyReportContent }) =>
+        request<WeeklyReport>(`/weekly/${id}`, {
+            method: 'PUT',
+            body: JSON.stringify(data),
+        }),
+    delete: (id: number) =>
+        request<void>(`/weekly/${id}`, { method: 'DELETE' }),
+    analyze: (id: number) =>
+        request<{ analysis: WeeklyAnalysis }>(`/weekly/${id}/analyze`, {
+            method: 'POST',
+        }),
+    chat: (id: number, message: string) =>
+        request<{ reply: string }>(`/weekly/${id}/chat`, {
+            method: 'POST',
+            body: JSON.stringify({ message }),
+        }),
+    getConversation: (id: number) =>
+        request<{
+            conversation: WeeklyConversation | null
+            messages: WeeklyMessage[]
+        }>(`/weekly/${id}/conversation`),
 }
 
 // ===== Videos =====

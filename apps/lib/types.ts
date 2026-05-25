@@ -1,3 +1,5 @@
+import type { WeeklyReportContent } from './weekly'
+
 export type TaskType = 'composition' | 'mindmap' | 'notes'
 
 export type TaskStatus = 'pending' | 'completed' | 'expired'
@@ -285,4 +287,45 @@ export interface ScanResult {
     skipped: number
     deleted: number
     errors: string[]
+}
+
+// ===== Weekly Report Types =====
+// WeeklyReportContent 类型由 Zod Schema 推导，见 apps/lib/weekly.ts
+
+export interface WeeklyAnalysis {
+    praise: string
+    difficultyHelp: string
+    goalAdvice: string
+    aiFeedbackAdvice: string
+    summary: string
+}
+
+export interface WeeklyReport {
+    id: number
+    weekNumber: number
+    year: number
+    content: string | WeeklyReportContent
+    analysis: string | WeeklyAnalysis | null
+    createdAt: string
+    updatedAt: string
+}
+
+export interface ChatMessage {
+    role: 'user' | 'assistant'
+    content: string
+}
+
+export interface WeeklyConversation {
+    id: number
+    weeklyReportId: number
+    createdAt: string
+    updatedAt: string
+}
+
+export interface WeeklyMessage {
+    id: number
+    conversationId: number
+    role: 'user' | 'assistant'
+    content: string
+    createdAt: string
 }

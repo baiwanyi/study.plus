@@ -123,6 +123,8 @@ export const defaultExchangeRules = [
     },
 ]
 
+export const DEFAULT_WEEKLY_AI_HELPER = '费曼'
+
 export const defaultSystemSettings = {
     pageSize: 20,
     autosaveInterval: 10,

@@ -14,7 +14,8 @@ import VideoPlayer from '@pages/VideoPlayer'
 import TVFav from '@pages/TVFav'
 import AIUsage from '@pages/AIUsage'
 import RssReader from '@pages/RssReader'
-import '@pages/index.css'
+import Weekly from '@pages/Weekly'
+import '@apps/styles/index.css'
 
 // Preload runtime config (DB overrides env defaults)
 loadConfig()
@@ -29,6 +30,7 @@ const AppRoutes = () => (
                 <Route path="exchanges" element={<Exchanges />} />
                 <Route path="borrow" element={<Borrow />} />
                 <Route path="rss" element={<RssReader />} />
+                <Route path="weekly" element={<Weekly />} />
                 <Route path="tv/fav" element={<TVFav />} />
                 <Route path="tv/:md5" element={<VideoPlayer />} />
                 <Route path="tv" element={<VideoPlayer />} />

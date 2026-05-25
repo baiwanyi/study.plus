@@ -119,3 +119,42 @@ export const videos = sqliteTable('videos', {
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
 })
+
+export const weeklyReports = sqliteTable('weekly_reports', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    weekNumber: integer('week_number').notNull(),
+    year: integer('year').notNull(),
+    content: text('content').notNull(),
+    analysis: text('analysis'),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const weeklyConversations = sqliteTable('weekly_conversations', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    weeklyReportId: integer('weekly_report_id')
+        .notNull()
+        .references(() => weeklyReports.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const weeklyMessages = sqliteTable('weekly_messages', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    conversationId: integer('conversation_id')
+        .notNull()
+        .references(() => weeklyConversations.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+    content: text('content').notNull(),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})

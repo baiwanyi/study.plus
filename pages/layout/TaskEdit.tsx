@@ -199,7 +199,7 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
             {hasSuggestions && (
                 <div className="bg-amber-50 border-b border-warning-background px-6 py-3 shrink-0">
                     <div className="flex items-start gap-2">
-                        <Sparkles className="w-5 h-5 text-warning shrink-0" />
+                        <Sparkles className="size-5 text-warning shrink-0" />
                         <div className="space-y-1 text-sm font-medium text-warning">
                             <h6 className="text-warning">改进建议</h6>
                             <ul className="list-disc list-inside">

@@ -64,7 +64,7 @@ export default function Help() {
     return (
         <>
             <button onClick={handleOpenHelp}>
-                <CircleQuestionMark className="w-5 h-5 shrink-0 text-gray-600 hover:text-headline" />
+                <CircleQuestionMark className="size-5 shrink-0 text-gray-600 hover:text-headline" />
             </button>
 
             {showHelp &&
@@ -77,7 +77,7 @@ export default function Help() {
                                     <button
                                         onClick={handleCloseHelp}
                                         className="text-gray-600 hover:text-gray-900">
-                                        <X className="w-5 h-5" />
+                                        <X className="size-5" />
                                     </button>
                                 </div>
                                 <Tabs

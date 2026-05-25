@@ -153,7 +153,7 @@ export default function Share() {
     return (
         <>
             <button onClick={handleOpenShare}>
-                <ExternalLink className="w-5 h-5 shrink-0 text-gray-600 hover:text-headline" />
+                <ExternalLink className="size-5 shrink-0 text-gray-600 hover:text-headline" />
             </button>
 
             <Modal

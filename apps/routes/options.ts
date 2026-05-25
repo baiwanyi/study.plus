@@ -49,7 +49,8 @@ router.get('/:key', async (req: Request<{ key: string }>, res: Response) => {
 // Update rules
 router.put('/:key', async (req: Request<{ key: string }>, res: Response<{ success: boolean } | ApiErrorResponse>) => {
   const { key } = req.params;
-  const value = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
+  // 统一 JSON 编码存储，确保读取时 JSON.parse 一致
+  const value = JSON.stringify(req.body);
 
   try {
     const rows = await db.select().from(options).where(eq(options.key, key));

@@ -5,6 +5,7 @@ import {
     defaultExamRules,
     defaultExchangeRules,
     defaultSystemSettings,
+    DEFAULT_WEEKLY_AI_HELPER,
 } from '@apps/lib/default'
 
 console.log('Running database migration...')
@@ -395,6 +396,10 @@ async function migrate(): Promise<void> {
             key: 'system',
             value: JSON.stringify(defaultSystemSettings),
         },
+        {
+            key: 'weeklyAiHelper',
+            value: JSON.stringify(DEFAULT_WEEKLY_AI_HELPER),
+        },
     ]
 
     for (const rule of defaultRules) {
@@ -516,6 +521,40 @@ async function migrate(): Promise<void> {
         await client.execute('ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0')
         console.log('Added favorite column to videos table.')
     } catch { /* column already exists */ }
+
+    // Create weekly_reports table
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS weekly_reports (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      week_number INTEGER NOT NULL,
+      year INTEGER NOT NULL,
+      content TEXT NOT NULL,
+      analysis TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+    // Create weekly_conversations table
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS weekly_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      weekly_report_id INTEGER NOT NULL REFERENCES weekly_reports(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+    // Create weekly_messages table
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS weekly_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL REFERENCES weekly_conversations(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
 
     console.log('Migration completed successfully!')
 }

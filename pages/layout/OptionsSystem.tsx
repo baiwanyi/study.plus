@@ -14,6 +14,7 @@ interface SystemSettings {
     advanceRepayRatio: number
     maxPendingAmount: number
     videoDirectory: string
+    weeklyAiName: string
 }
 
 const defaultSettings: SystemSettings = {
@@ -25,6 +26,7 @@ const defaultSettings: SystemSettings = {
     advanceRepayRatio: 16,
     maxPendingAmount: 500,
     videoDirectory: '',
+    weeklyAiName: '费曼',
 }
 export function RulesSystem() {
     const { showSnackbar } = useSnackbar()
@@ -66,6 +68,21 @@ export function RulesSystem() {
             })
             .catch(() => {})
 
+        optionsAPI
+            .get('weeklyAiHelper')
+            .then((data) => {
+                if (cancelled) return
+                if (typeof data === 'string') {
+                    setSettings((prev) => ({ ...prev, weeklyAiName: data }))
+                } else if (data && typeof data === 'object' && 'display_name' in data) {
+                    const dn = (data as Record<string, unknown>).display_name
+                    if (typeof dn === 'string') {
+                        setSettings((prev) => ({ ...prev, weeklyAiName: dn }))
+                    }
+                }
+            })
+            .catch(() => {})
+
         return () => {
             cancelled = true
         }
@@ -103,6 +120,7 @@ export function RulesSystem() {
             })
             await quotesApi.update(quotes)
             await optionsAPI.update('exchangeRuleRemarks', exchangeRuleRemarks)
+            await optionsAPI.update('weeklyAiHelper', { display_name: settings.weeklyAiName })
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
@@ -129,6 +147,11 @@ export function RulesSystem() {
             key: 'videoDirectory',
             label: '本地视频目录路径',
             placeholder: '例如：D:\\Videos\\学习视频',
+        },
+        {
+            key: 'weeklyAiName',
+            label: 'AI 周报助手名称',
+            placeholder: '例：费曼',
         },
     ]
 

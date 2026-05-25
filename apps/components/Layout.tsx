@@ -11,6 +11,7 @@ import {
     Bot,
     Tv,
     Rss,
+    NotebookPen,
 } from 'lucide-react'
 import { quotesApi } from '@apps/lib/api'
 import { defaultQuotes } from '@apps/lib/default'
@@ -18,6 +19,7 @@ import { isAdmin } from '@apps/lib/utils'
 
 const baseNavItems = [
     { to: '/', label: '首页看板', icon: LayoutGrid },
+    { to: '/weekly', label: '学习周报', icon: NotebookPen },
     { to: '/tasks', label: '作业管理', icon: ClipboardList },
     { to: '/points', label: '积分记录', icon: Database },
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
@@ -72,7 +74,10 @@ export default function Layout() {
                     </div>
                 </div>
                 <nav className="flex-1 p-3 space-y-1">
-                    {[...baseNavItems, ...(isAdminUser ? adminNavItems : [])].map((item) => (
+                    {[
+                        ...baseNavItems,
+                        ...(isAdminUser ? adminNavItems : []),
+                    ].map((item) => (
                         <NavLink
                             key={item.to}
                             to={item.to}
@@ -85,7 +90,7 @@ export default function Layout() {
                                 }`
                             }>
                             <item.icon
-                                className="w-5 h-5 shrink-0"
+                                className="size-5 shrink-0"
                                 strokeWidth={1.5}
                             />
                             {item.label}

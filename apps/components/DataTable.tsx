@@ -38,14 +38,16 @@ export function DataTable<T extends Record<string, any>>({
         <div className="space-y-6">
             <table className="w-full text-sm">
                 {captionText && (
-                    <caption className="caption-top text-start text-lg font-semibold">{captionText}</caption>
+                    <caption className="caption-top text-start text-lg font-semibold">
+                        {captionText}
+                    </caption>
                 )}
                 <thead>
-                    <tr className="border-b border-light">
+                    <tr className="border-b border-gray-300">
                         {columns.map((col, ci) => (
                             <th
                                 key={col.key}
-                                className={`py-3 px-4 text-heading font-medium ${ci === columns.length - 1 ? 'text-end' : 'text-start'}`}>
+                                className={`py-3 px-4 text-base font-light ${ci === columns.length - 1 ? 'text-end' : 'text-start'}`}>
                                 {col.header}
                             </th>
                         ))}
