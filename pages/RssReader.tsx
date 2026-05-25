@@ -1,0 +1,203 @@
+'use client'
+
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
+import { rssApi } from '@apps/lib/api'
+import type { RssFeedItem, RssPostDetail } from '@apps/lib/api'
+import Tabs from '@apps/components/Tabs'
+import Loading from '@apps/components/Loading'
+import { ArrowLeft, ExternalLink, Calendar, Newspaper } from 'lucide-react'
+
+const CATEGORIES = [
+    { key: '', label: '首页' },
+    { key: '4', label: '天文物理' },
+    { key: '5', label: '生物医药' },
+    { key: '6', label: '信息技术' },
+    { key: '7', label: '地球环境' },
+    { key: '21', label: '人文考古' },
+]
+
+export default function RssReader() {
+    const [searchParams, setSearchParams] = useSearchParams()
+    const cat = searchParams.get('cat') || ''
+    const postId = searchParams.get('post')
+
+    const [items, setItems] = useState<RssFeedItem[]>([])
+    const [post, setPost] = useState<RssPostDetail | null>(null)
+    const [loading, setLoading] = useState(false)
+    const [error, setError] = useState('')
+
+    // 加载文章列表
+    useEffect(() => {
+        if (postId) return // 有 postId 时不加载列表
+        setLoading(true)
+        setError('')
+        rssApi
+            .list(cat ? Number(cat) : undefined)
+            .then((data) => {
+                setItems(data.items)
+            })
+            .catch((err) => {
+                setError((err as Error).message || '加载失败')
+            })
+            .finally(() => setLoading(false))
+    }, [cat, postId])
+
+    // 加载文章详情
+    useEffect(() => {
+        if (!postId) {
+            setPost(null)
+            return
+        }
+        setLoading(true)
+        setError('')
+        rssApi
+            .getPost(Number(postId))
+            .then((data) => {
+                setPost(data)
+            })
+            .catch((err) => {
+                setError((err as Error).message || '加载失败')
+            })
+            .finally(() => setLoading(false))
+    }, [postId])
+
+    const handleCategoryChange = (key: string) => {
+        const params = new URLSearchParams()
+        if (key) params.set('cat', key)
+        setSearchParams(params)
+    }
+
+    const handleArticleClick = (id: number) => {
+        const params = new URLSearchParams()
+        if (cat) params.set('cat', cat)
+        params.set('post', String(id))
+        setSearchParams(params)
+    }
+
+    const handleBack = () => {
+        const params = new URLSearchParams()
+        if (cat) params.set('cat', cat)
+        setSearchParams(params)
+    }
+
+    // 详情视图
+    if (postId && post) {
+        return (
+            <div className="space-y-4">
+                <button
+                    onClick={handleBack}
+                    className="btn btn-outline flex items-center gap-2">
+                    <ArrowLeft className="size-4" />
+                    返回列表
+                </button>
+                <article className="bg-white rounded-lg p-6 shadow-sm">
+                    <h1
+                        className="text-2xl font-bold text-gray-900 mb-4"
+                        dangerouslySetInnerHTML={{ __html: post.title }}
+                    />
+                    <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
+                        <Calendar className="size-4" />
+                        <span>{post.date?.slice(0, 10)}</span>
+                    </div>
+                    <div
+                        className="p-10 prose prose-gray max-w-none text-lg [&_img]:max-w-full [&_img]:rounded-xl [&_a]:text-blue-600 [&_a]:underline [&_p]:mb-3"
+                        dangerouslySetInnerHTML={{ __html: post.content }}
+                    />
+                </article>
+            </div>
+        )
+    }
+
+    // 加载中
+    if (loading) return <Loading />
+
+    // 错误
+    if (error) {
+        return (
+            <div className="flex flex-col items-center justify-center mt-24 gap-4">
+                <Newspaper className="size-16 text-gray-300" />
+                <p className="text-gray-500">{error}</p>
+                <button
+                    onClick={() => window.location.reload()}
+                    className="btn btn-primary">
+                    重试
+                </button>
+            </div>
+        )
+    }
+
+    // 空状态
+    if (items.length === 0) {
+        return (
+            <div className="space-y-4">
+                <Tabs
+                    tabs={CATEGORIES}
+                    active={cat}
+                    onChange={handleCategoryChange}
+                />
+                <div className="flex flex-col items-center justify-center mt-24 gap-4">
+                    <Newspaper className="size-16 text-gray-300" />
+                    <p className="text-gray-500">暂无文章</p>
+                </div>
+            </div>
+        )
+    }
+
+    // 列表视图
+    return (
+        <div className="space-y-4">
+            <Tabs
+                tabs={CATEGORIES}
+                active={cat}
+                onChange={handleCategoryChange}
+            />
+            <div className="grid gap-4 sm:grid-cols-2">
+                {items.map((item) => (
+                    <div
+                        key={item.id}
+                        onClick={() => handleArticleClick(item.id)}
+                        className="bg-white rounded-lg shadow-sm hover:shadow-md transition-shadow cursor-pointer border border-transparent hover:border-primary/20 overflow-hidden flex">
+                        {/* 左侧图片 */}
+                        <div className="aspect-video shrink-0 h-50">
+                            {item.image ? (
+                                <div className="h-full overflow-hidden">
+                                    <img
+                                        src={item.image}
+                                        alt={item.title}
+                                        className="w-full h-full object-cover transition-transform duration-300 hover:scale-110"
+                                        loading="lazy"
+                                    />
+                                </div>
+                            ) : (
+                                <div className="h-full bg-gray-100 flex items-center justify-center">
+                                    <Newspaper className="size-8 text-gray-300" />
+                                </div>
+                            )}
+                        </div>
+                        {/* 右侧文字 */}
+                        <div className="p-3 sm:p-4 flex flex-col justify-between min-w-0">
+                            <div>
+                                <h3 className="text-2xl font-semibold text-gray-900 mb-1 ">
+                                    {item.title}
+                                </h3>
+                                {item.excerpt && (
+                                    <p className="text-xs sm:text-sm text-gray-600 line-clamp-2">
+                                        {item.excerpt}
+                                    </p>
+                                )}
+                            </div>
+                            <div className="flex items-center justify-between text-xs text-gray-400 mt-2">
+                                <span className="flex items-center gap-1">
+                                    <Calendar className="size-3" />
+                                    {item.pubDate}
+                                </span>
+                                <ExternalLink className="size-3" />
+                            </div>
+                        </div>
+                    </div>
+                ))}
+            </div>
+        </div>
+    )
+}

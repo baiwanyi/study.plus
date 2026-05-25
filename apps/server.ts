@@ -6,6 +6,7 @@ import exchangesRouter from '@apps/routes/exchanges'
 import rulesRouter from '@apps/routes/options'
 import aiUsageRouter from '@apps/routes/ai-usage'
 import videosRouter from '@apps/routes/videos'
+import rssRouter from '@apps/routes/rss'
 import { db } from '@apps/db/index'
 import { options } from '@apps/db/schema'
 import { eq } from 'drizzle-orm'
@@ -25,6 +26,7 @@ app.use('/api/exchanges', exchangesRouter)
 app.use('/api/ai-usage', aiUsageRouter)
 app.use('/api/options', rulesRouter)
 app.use('/api/videos', videosRouter)
+app.use('/api/rss', rssRouter)
 
 // Options endpoint (exposes safe client-side config)
 app.get('/api/system', async (_req: Request, res: Response) => {

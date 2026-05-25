@@ -73,7 +73,7 @@ export default function TaskModalCreate({
                         <button
                             onClick={handleAiCreateTitle}
                             disabled={isAICreateTitle}
-                            className="btn-outline btn-sm">
+                            className="btn btn-outline btn-sm">
                             {isAICreateTitle ? '题目生成中...' : '生成题目'}
                         </button>
                     </div>

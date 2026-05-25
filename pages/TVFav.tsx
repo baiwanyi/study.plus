@@ -66,7 +66,7 @@ export default function TVFav() {
             <div className="flex items-center gap-4">
                 <button
                     onClick={() => (window.location.href = '/tv')}
-                    className="btn-outline">
+                    className="btn btn-outline">
                     <ChevronLeft className="size-4" />
                 </button>
                 <h2 className="text-2xl font-bold text-gray-900">{`共 ${list.length} 个收藏视频`}</h2>

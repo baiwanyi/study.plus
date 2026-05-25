@@ -235,7 +235,7 @@ export default function PointsModalAdd({
                         key={grade}
                         onClick={() => setAddGrade(grade)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
-                            addGrade === grade ? 'btn-primary' : 'btn-outline'
+                            addGrade === grade ? 'btn btn-primary' : 'btn btn-outline'
                         }`}>
                         {grade}
                     </button>
@@ -416,7 +416,7 @@ export default function PointsModalAdd({
                         <button
                             type="button"
                             onClick={handleSaveRemarks}
-                            className="text-xs btn-outline">
+                            className="text-xs btn btn-outline">
                             保存选项
                         </button>
                     </div>
@@ -433,7 +433,7 @@ export default function PointsModalAdd({
                                     addRemark ? addRemark + '、' + tag : tag,
                                 )
                             }
-                            className="text-xs btn-outline">
+                            className="text-xs btn btn-outline">
                             {tag}
                         </button>
                     ))}

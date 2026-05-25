@@ -177,19 +177,19 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
                         <button
                             onClick={handleAiTitle}
                             disabled={generatingTitle}
-                            className="btn-outline btn-sm">
+                            className="btn btn-outline btn-sm">
                             {generatingTitle ? 'AI起名中...' : 'AI起名'}
                         </button>
                     )}
                 </div>
                 <div className="flex items-center gap-3">
-                    <button onClick={onCancel} className="btn-outline">
+                    <button onClick={onCancel} className="btn btn-outline">
                         取消
                     </button>
                     <button
                         onClick={handleSave}
                         disabled={saving}
-                        className="btn-primary">
+                        className="btn btn-primary">
                         {saving ? '保存中...' : '保存并关闭'}
                     </button>
                 </div>

@@ -54,7 +54,7 @@ const Modal: React.FC<ModalProps> = ({
                     <div className="space-y-4">{children}</div>
                     {footer && (
                         <div className="flex justify-end gap-3 pt-3 border-t border-gray-200">
-                            <button onClick={onCancel} className="btn-outline">
+                            <button onClick={onCancel} className="btn btn-outline">
                                 取消
                             </button>
                             {onConfirm && (
@@ -62,7 +62,7 @@ const Modal: React.FC<ModalProps> = ({
                                     onClick={onConfirm}
                                     disabled={isDisabled}
                                     className={
-                                        danger ? 'btn-danger' : 'btn-primary'
+                                        danger ? 'btn btn-danger' : 'btn btn-primary'
                                     }>
                                     {isLoading ? confirmIcon : confirmLabel}
                                 </button>

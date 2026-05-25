@@ -461,20 +461,20 @@ export default function VideoPlayer() {
         <button
             onClick={handleScan}
             disabled={scanning}
-            className="btn-primary flex items-center gap-2">
+            className="btn btn-primary flex items-center gap-2">
             <RefreshCw className={`size-4 ${scanning ? 'animate-spin' : ''}`} />
             {scanning ? `正在扫描...${scanProgress}%` : '扫描目录'}
         </button>
     )
 
     const homeButtonComponent = (
-        <button onClick={() => navigate('/tv')} className="btn-outline">
+        <button onClick={() => navigate('/tv')} className="btn btn-outline">
             <House className="size-4" />
         </button>
     )
 
     const favButtonComponent = (
-        <button onClick={() => navigate('/tv/fav')} className="btn-outline">
+        <button onClick={() => navigate('/tv/fav')} className="btn btn-outline">
             <Star className="size-4" />
         </button>
     )
@@ -490,13 +490,13 @@ export default function VideoPlayer() {
             <button
                 onClick={handleSaveTitle}
                 disabled={saving || !editTitle.trim()}
-                className="btn-primary p-2">
+                className="btn btn-primary p-2">
                 <Check className="size-4" />
             </button>
             <button
                 onClick={handleCancelEdit}
                 disabled={saving}
-                className="btn-outline p-2">
+                className="btn btn-outline p-2">
                 <X className="size-4" />
             </button>
         </div>
@@ -613,12 +613,12 @@ export default function VideoPlayer() {
             <button
                 onClick={playPrev}
                 disabled={totalVideos <= 1}
-                className="btn-outline rounded-full p-5">
+                className="btn btn-outline rounded-full p-5">
                 <ChevronUp className="size-4" />
             </button>
             <button
                 onClick={toggleFavorite}
-                className="btn-outline bg-white/50 rounded-full p-5">
+                className="btn btn-outline bg-white/50 rounded-full p-5">
                 <Heart
                     className={`size-4 ${video?.favorite ? 'fill-red-500 text-red-500' : ''}`}
                 />
@@ -626,7 +626,7 @@ export default function VideoPlayer() {
             <button
                 onClick={playNext}
                 disabled={totalVideos <= 1}
-                className="btn-outline rounded-full p-5">
+                className="btn btn-outline rounded-full p-5">
                 <ChevronDown className="size-4" />
             </button>
         </div>

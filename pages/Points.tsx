@@ -140,7 +140,7 @@ export default function Points() {
                     {isAdmin() && (
                         <button
                             onClick={() => setShowModal(true)}
-                            className="btn-primary">
+                            className="btn btn-primary">
                             添加记录
                         </button>
                     )}

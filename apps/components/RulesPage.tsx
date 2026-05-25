@@ -22,7 +22,7 @@ export function RulesPage({
                 <h3>{title}</h3>
                 <div className="flex items-center gap-3">
                     {add && (
-                        <button onClick={add} className="btn-outline">
+                        <button onClick={add} className="btn btn-outline">
                             <Plus className="w-4 h-4" />
                             <span className="sr-only">添加</span>
                         </button>
@@ -30,7 +30,7 @@ export function RulesPage({
                     <button
                         onClick={save}
                         disabled={disabled}
-                        className="btn-primary">
+                        className="btn btn-primary">
                         {disabled ? '保存中...' : '保存更改'}
                     </button>
                 </div>

@@ -91,7 +91,7 @@ export default function Exchanges() {
                         <button
                             disabled={availableBalance < minPrivilege}
                             onClick={() => setShowCreate(true)}
-                            className="btn-primary">
+                            className="btn btn-primary">
                             添加兑换
                         </button>
                     )}

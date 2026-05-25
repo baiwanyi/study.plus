@@ -416,12 +416,12 @@ export default function Share() {
                         </div>
                         <div className="flex space-x-4 justify-center">
                             <button
-                                className="btn-primary"
+                                className="btn btn-primary"
                                 onClick={handleDownload}>
                                 下载
                             </button>
                             <button
-                                className="btn-outline"
+                                className="btn btn-outline"
                                 onClick={handleCopy}>
                                 复制图片
                             </button>

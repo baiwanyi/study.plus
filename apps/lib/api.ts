@@ -219,6 +219,32 @@ export const aiUsageApi = {
     summary: () => request<AIUsageSummary[]>('/ai-usage/summary'),
 }
 
+// ===== RSS =====
+export interface RssFeedItem {
+    id: number
+    title: string
+    link: string
+    pubDate: string
+    excerpt: string
+    image?: string
+}
+
+export interface RssPostDetail {
+    id: number
+    title: string
+    content: string
+    date: string
+    excerpt: string
+}
+
+export const rssApi = {
+    list: (cat?: number) => {
+        const qs = cat ? `?cat=${cat}` : ''
+        return request<{ items: RssFeedItem[] }>(`/rss/feed${qs}`)
+    },
+    getPost: (id: number) => request<RssPostDetail>(`/rss/post/${id}`),
+}
+
 // ===== Videos =====
 export const videosApi = {
     list: (limit?: number, favorite?: number) => {

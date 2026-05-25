@@ -134,14 +134,14 @@ export default function ListTask({
                 <span className="space-x-2">
                     <button
                         onClick={() => onEditContent(task)}
-                        className="btn-outline btn-sm">
+                        className="btn btn-outline btn-sm">
                         编辑
                     </button>
                     {isAdminRole && (
                         <>
                             <button
                                 onClick={() => onScore(task)}
-                                className="btn-primary btn-sm">
+                                className="btn btn-primary btn-sm">
                                 AI评分
                             </button>
                             <button
@@ -160,7 +160,7 @@ export default function ListTask({
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2>作业管理</h2>
-                <button onClick={onAdd} className="btn-primary">
+                <button onClick={onAdd} className="btn btn-primary">
                     添加作业
                 </button>
             </div>

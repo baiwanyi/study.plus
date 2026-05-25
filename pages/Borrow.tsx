@@ -55,7 +55,7 @@ export default function Borrow() {
                     {isAdmin() && (
                         <button
                             onClick={() => setShowCreate(true)}
-                            className="btn-primary">
+                            className="btn btn-primary">
                             预支
                         </button>
                     )}

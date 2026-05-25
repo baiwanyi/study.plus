@@ -10,6 +10,7 @@ import {
     SlidersHorizontal,
     Bot,
     Tv,
+    Rss,
 } from 'lucide-react'
 import { quotesApi } from '@apps/lib/api'
 import { defaultQuotes } from '@apps/lib/default'
@@ -22,6 +23,7 @@ const baseNavItems = [
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
     { to: '/borrow', label: '积分预支', icon: HandCoins },
     { to: '/tv', label: '学迹电台', icon: Tv },
+    { to: '/rss', label: 'RSS 阅读', icon: Rss },
     { to: '/usage', label: 'AI使用量', icon: Bot },
 ]
 
@@ -83,7 +85,7 @@ export default function Layout() {
                                 }`
                             }>
                             <item.icon
-                                className="w-5 h-5 flex-shrink-0"
+                                className="w-5 h-5 shrink-0"
                                 strokeWidth={1.5}
                             />
                             {item.label}
