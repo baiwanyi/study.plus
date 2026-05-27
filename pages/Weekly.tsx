@@ -112,6 +112,35 @@ export default function Weekly() {
         setAnalysis(null)
         setChatMessages([])
         setModalOpen(true)
+
+        // 预填上一周的 SMART 目标作为 checklist
+        const prevWeek = getWeekNumber(new Date()) - 1
+        if (prevWeek > 0) {
+            const prevReport = reports.find((r) => r.weekNumber === prevWeek)
+            if (prevReport) {
+                const prevContent = parseContent(prevReport.content)
+                const dimensions: { key: keyof WeeklyReportContent; prefix: string }[] = [
+                    { key: 'smartGoalS', prefix: 'S' },
+                    { key: 'smartGoalM', prefix: 'M' },
+                    { key: 'smartGoalA', prefix: 'A' },
+                    { key: 'smartGoalR', prefix: 'R' },
+                    { key: 'smartGoalT', prefix: 'T' },
+                ]
+                const checklist: string[] = []
+                for (const { key, prefix } of dimensions) {
+                    const value = prevContent[key]
+                    if (value?.trim()) {
+                        const lines = value.split('\n').filter((l) => l.trim())
+                        for (const line of lines) {
+                            checklist.push(`* [ ] ${prefix} - ${line.trim()}`)
+                        }
+                    }
+                }
+                if (checklist.length > 0) {
+                    setForm((prev) => ({ ...prev, lastWeekGoalReview: checklist.join('\n') }))
+                }
+            }
+        }
     }
 
     const openEditModal = async (report: WeeklyReport) => {
