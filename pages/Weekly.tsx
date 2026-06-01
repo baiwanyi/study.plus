@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Plus, SquarePen, Trash2, Eye, Check, X } from 'lucide-react'
 import { DataTable } from '@apps/components/DataTable'
 import Tabs from '@apps/components/Tabs'
@@ -67,6 +67,39 @@ export default function Weekly() {
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
     const [showSaveDialog, setShowSaveDialog] = useState(false)
     const [aiHelperName, setAiHelperName] = useState(DEFAULT_WEEKLY_AI_HELPER)
+
+    // ===== Auto-save refs =====
+    const lastSavedFormRef = useRef('')
+    const isAutoSavingRef = useRef(false)
+    const formRef = useRef(form)
+    const editingReportRef = useRef(editingReport)
+
+    formRef.current = form
+    editingReportRef.current = editingReport
+
+    // ===== Auto-save (every 10 seconds when modal is open) =====
+    useEffect(() => {
+        if (!modalOpen) return
+        lastSavedFormRef.current = JSON.stringify(formRef.current)
+        const timer = setInterval(async () => {
+            if (isAutoSavingRef.current || !editingReportRef.current) return
+            const formStr = JSON.stringify(formRef.current)
+            if (formStr === lastSavedFormRef.current) return
+            isAutoSavingRef.current = true
+            try {
+                await weeklyApi.update(editingReportRef.current.id, {
+                    content: formRef.current,
+                })
+                lastSavedFormRef.current = formStr
+                showSnackbar('已自动保存', 'success')
+            } catch {
+                // 自动保存静默失败，不打扰用户
+            } finally {
+                isAutoSavingRef.current = false
+            }
+        }, 10000)
+        return () => clearInterval(timer)
+    }, [modalOpen])
 
     // ===== Load reports =====
     const loadReports = useCallback(async () => {
@@ -181,6 +214,7 @@ export default function Weekly() {
             showSnackbar('请至少填写"学到的东西"和"遇到的困难"', 'error')
             return
         }
+        isAutoSavingRef.current = true
         setAnalyzing(true)
         try {
             const currentWeek = getWeekNumber(new Date())
@@ -194,6 +228,7 @@ export default function Weekly() {
                 })
                 setEditingReport(created)
             }
+            lastSavedFormRef.current = JSON.stringify(form)
             showSnackbar('保存成功')
             await loadReports()
             closeModal()
@@ -201,6 +236,7 @@ export default function Weekly() {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setAnalyzing(false)
+            isAutoSavingRef.current = false
         }
     }
 
@@ -211,6 +247,7 @@ export default function Weekly() {
             return
         }
 
+        isAutoSavingRef.current = true
         setAnalyzing(true)
         try {
             const currentWeek = getWeekNumber(new Date())
@@ -229,6 +266,8 @@ export default function Weekly() {
                 setEditingReport(created)
             }
 
+            lastSavedFormRef.current = JSON.stringify(form)
+
             const res = await weeklyApi.analyze(reportId)
             setAnalysis(res.analysis)
             // Reload conversation messages from DB
@@ -240,6 +279,7 @@ export default function Weekly() {
             showSnackbar('操作失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setAnalyzing(false)
+            isAutoSavingRef.current = false
         }
     }
 
