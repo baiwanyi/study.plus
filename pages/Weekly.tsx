@@ -3,7 +3,7 @@ import { Plus, SquarePen, Trash2, Eye, Check, X } from 'lucide-react'
 import { DataTable } from '@apps/components/DataTable'
 import Tabs from '@apps/components/Tabs'
 import { weeklyApi, optionsAPI } from '@apps/lib/api'
-import { formatDate, formatErrorMessage } from '@apps/lib/utils'
+import { formatDate, formatErrorMessage, isAdmin } from '@apps/lib/utils'
 import { DEFAULT_WEEKLY_AI_HELPER } from '@apps/lib/default'
 import { useSnackbar } from '@apps/components/Snackbar'
 import WeeklyModalDelete from '@pages/layout/WeeklyModalDelete'
@@ -152,7 +152,10 @@ export default function Weekly() {
             const prevReport = reports.find((r) => r.weekNumber === prevWeek)
             if (prevReport) {
                 const prevContent = parseContent(prevReport.content)
-                const dimensions: { key: keyof WeeklyReportContent; prefix: string }[] = [
+                const dimensions: {
+                    key: keyof WeeklyReportContent
+                    prefix: string
+                }[] = [
                     { key: 'smartGoalS', prefix: 'S' },
                     { key: 'smartGoalM', prefix: 'M' },
                     { key: 'smartGoalA', prefix: 'A' },
@@ -170,7 +173,10 @@ export default function Weekly() {
                     }
                 }
                 if (checklist.length > 0) {
-                    setForm((prev) => ({ ...prev, lastWeekGoalReview: checklist.join('\n') }))
+                    setForm((prev) => ({
+                        ...prev,
+                        lastWeekGoalReview: checklist.join('\n'),
+                    }))
                 }
             }
         }
@@ -429,12 +435,14 @@ export default function Weekly() {
                         title="编辑">
                         <SquarePen className="size-4" />
                     </button>
-                    <button
-                        onClick={() => setConfirmDelete(record.id)}
-                        className="btn btn-outline btn-sm text-danger"
-                        title="删除">
-                        <Trash2 className="size-4" />
-                    </button>
+                    {isAdmin() && (
+                        <button
+                            onClick={() => setConfirmDelete(record.id)}
+                            className="btn btn-outline btn-sm text-danger"
+                            title="删除">
+                            <Trash2 className="size-4" />
+                        </button>
+                    )}
                 </div>
             ),
         },
