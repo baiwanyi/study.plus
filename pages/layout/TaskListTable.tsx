@@ -19,6 +19,7 @@ export interface ListTaskProps {
     onEdit: (task: Task) => void
     onEditContent: (task: Task) => void
     onScore: (task: Task) => void
+    onShare: (task: Task) => void
     onDelete: (id: number) => void
     onAdd: () => void
 }
@@ -28,6 +29,7 @@ export default function ListTask({
     onEdit,
     onEditContent,
     onScore,
+    onShare,
     onDelete,
     onAdd,
 }: ListTaskProps) {
@@ -78,7 +80,15 @@ export default function ListTask({
             key: 'aiComment',
             header: '评语',
             render: (task) =>
-                task.aiComment || <span className="text-gray-400">-</span>,
+                task.aiComment ? (
+                    task.aiComment.length > 16 ? (
+                        task.aiComment.slice(0, 16) + '...'
+                    ) : (
+                        task.aiComment
+                    )
+                ) : (
+                    <span className="text-gray-400">-</span>
+                ),
         },
         {
             key: 'pointsEarned',
@@ -136,6 +146,11 @@ export default function ListTask({
                         onClick={() => onEditContent(task)}
                         className="btn btn-outline btn-sm">
                         编辑
+                    </button>
+                    <button
+                        onClick={() => onShare(task)}
+                        className="btn btn-outline btn-sm">
+                        分享
                     </button>
                     {isAdminRole && (
                         <>

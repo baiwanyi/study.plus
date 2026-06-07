@@ -12,7 +12,13 @@ export type TaskClass =
     | '五年级'
     | '六年级'
 export type TaskGrade = 'A+' | 'A' | 'B' | 'C' | 'D' | 'E'
-export type TaskAI = 'ai-score' | 'ai-title' | 'ai-task' | 'weekly-analyze' | 'weekly-chat'
+export type TaskAI =
+    | 'ai-score'
+    | 'ai-title'
+    | 'ai-task'
+    | 'task-chat'
+    | 'weekly-analyze'
+    | 'weekly-chat'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =
@@ -230,6 +236,18 @@ export interface AdvanceSummary {
     maxPendingAmount: number
 }
 
+// ===== AI Score Log Types =====
+export interface AiScoreLog {
+    id: number
+    taskId: number
+    submissionId: number
+    content: string
+    grade: TaskGrade | null
+    aiScore: string
+    scoredAt: string
+    createdAt: string
+}
+
 // ===== AI Usage Types =====
 export interface AIUsageLog {
     id: number
@@ -287,6 +305,22 @@ export interface ScanResult {
     skipped: number
     deleted: number
     errors: string[]
+}
+
+// ===== Task Conversation Types =====
+export interface TaskConversation {
+    id: number
+    taskId: number
+    createdAt: string
+    updatedAt: string
+}
+
+export interface TaskMessage {
+    id: number
+    conversationId: number
+    role: 'user' | 'assistant'
+    content: string
+    createdAt: string
 }
 
 // ===== Weekly Report Types =====

@@ -1,18 +1,22 @@
 import { Router, type Request, type Response } from 'express'
 import { db } from '@apps/db/index'
-import { tasks, submissions, pointRecords } from '@apps/db/schema'
-import { eq, desc, and, inArray } from 'drizzle-orm'
+import { tasks, submissions, pointRecords, aiScoreLogs, taskConversations, taskMessages } from '@apps/db/schema'
+import { eq, desc, asc, and, inArray } from 'drizzle-orm'
 import {
     scoreComposition,
     generateTitle,
     generateTaskTitle,
+    generateDemoSubmission,
+    chatAboutTask,
 } from '@apps/services/ai'
 import { getPointsForGrade } from '@apps/services/points'
 import { loadRules } from '@apps/routes/rules-loader'
 import { recomputeMonthSummary } from '@apps/routes/summary-helper'
 import type {
+    AiScoreLog,
     Task,
     Submission,
+    ChatMessage,
     CreateTaskRequest,
     UpdateTaskRequest,
     SubmitTaskRequest,
@@ -61,13 +65,21 @@ async function fetchTaskById(taskId: number): Promise<Task | null> {
 }
 
 // Helper: fetch submission by task id
-async function fetchSubmissionByTaskId(taskId: number): Promise<Submission | null> {
-    const rows = await db.select().from(submissions).where(eq(submissions.taskId, taskId))
+async function fetchSubmissionByTaskId(
+    taskId: number,
+): Promise<Submission | null> {
+    const rows = await db
+        .select()
+        .from(submissions)
+        .where(eq(submissions.taskId, taskId))
     return (rows[0] as Submission) ?? null
 }
 
 // Helper: validate enum value
-function isValidEnum<T extends string>(value: unknown, validValues: readonly T[]): value is T {
+function isValidEnum<T extends string>(
+    value: unknown,
+    validValues: readonly T[],
+): value is T {
     return typeof value === 'string' && validValues.includes(value as T)
 }
 
@@ -105,12 +117,13 @@ router.get('/', async (req: Request, res: Response) => {
     const rawStatus = req.query.status as string | undefined
     const rawType = req.query.type as string | undefined
 
-    const status: TaskStatus | undefined = rawStatus && isValidEnum(rawStatus, taskStatus)
-        ? rawStatus
-        : undefined
-    const type: TaskType | undefined = rawType && isValidEnum(rawType, ['composition', 'mindmap', 'notes'] as const)
-        ? (rawType as TaskType)
-        : undefined
+    const status: TaskStatus | undefined =
+        rawStatus && isValidEnum(rawStatus, taskStatus) ? rawStatus : undefined
+    const type: TaskType | undefined =
+        rawType &&
+        isValidEnum(rawType, ['composition', 'mindmap', 'notes'] as const)
+            ? (rawType as TaskType)
+            : undefined
 
     let taskRows: Task[]
     if (status) {
@@ -188,10 +201,10 @@ router.get('/', async (req: Request, res: Response) => {
         }
 
         // Parse aiScore once and reuse
-        const aiScoreData = safeJsonParse<{ comment?: string | null; suggestions?: string[] }>(
-            sub?.aiScore ?? null,
-            { comment: null, suggestions: [] }
-        )
+        const aiScoreData = safeJsonParse<{
+            comment?: string | null
+            suggestions?: string[]
+        }>(sub?.aiScore ?? null, { comment: null, suggestions: [] })
 
         return {
             ...task,
@@ -260,11 +273,17 @@ router.put(
         const { title, type, status }: UpdateTaskRequest = req.body
 
         // Validate type and status against valid enums
-        if (type && !isValidEnum(type, ['composition', 'mindmap', 'notes'] as const)) {
+        if (
+            type &&
+            !isValidEnum(type, ['composition', 'mindmap', 'notes'] as const)
+        ) {
             res.status(400).json({ error: 'Invalid task type' })
             return
         }
-        if (status && !isValidEnum(status, ['pending', 'completed', 'expired'] as const)) {
+        if (
+            status &&
+            !isValidEnum(status, ['pending', 'completed', 'expired'] as const)
+        ) {
             res.status(400).json({ error: 'Invalid task status' })
             return
         }
@@ -289,7 +308,7 @@ router.put(
     },
 )
 
-// Delete a task
+// Delete a task and its associated records
 router.delete(
     '/:id',
     async (
@@ -301,6 +320,10 @@ router.delete(
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
+        // Manual cleanup for tables without ON DELETE CASCADE
+        await db.delete(aiScoreLogs).where(eq(aiScoreLogs.taskId, taskId))
+        await db.delete(submissions).where(eq(submissions.taskId, taskId))
+        // taskConversations/taskMessages cascade automatically
         await db.delete(tasks).where(eq(tasks.id, taskId))
         res.json({ success: true })
     },
@@ -476,6 +499,20 @@ router.post(
             })
             .where(eq(submissions.id, submission.id))
 
+        // Record AI score log (snapshot of current content at scoring time)
+        try {
+            await db.insert(aiScoreLogs).values({
+                taskId,
+                submissionId: submission.id,
+                content: submission.content,
+                grade: aiResult.grade,
+                aiScore: JSON.stringify(aiResult),
+                scoredAt: new Date().toISOString(),
+            })
+        } catch (err) {
+            console.error('记录AI评分日志失败:', err)
+        }
+
         // Record new points
         const points = await recordPoints(
             aiResult.grade,
@@ -493,6 +530,206 @@ router.post(
             aiResult,
             pointsEarned: points,
         })
+    },
+)
+
+// Get AI score history for a task
+router.get(
+    '/:id/ai-score-logs',
+    async (
+        req: Request<{ id: string }, AiScoreLog[] | ApiErrorResponse>,
+        res: Response<AiScoreLog[] | ApiErrorResponse>,
+    ) => {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
+            res.status(400).json({ error: 'Invalid task id' })
+            return
+        }
+        const logs = await db
+            .select()
+            .from(aiScoreLogs)
+            .where(eq(aiScoreLogs.taskId, taskId))
+            .orderBy(desc(aiScoreLogs.createdAt))
+        res.json(logs as AiScoreLog[])
+    },
+)
+
+// AI-generate a demo submission for a task (saves to conversation)
+router.post(
+    '/:id/ai-demo',
+    async (
+        req: Request<
+            { id: string },
+            { demo: string } | ApiErrorResponse
+        >,
+        res: Response<{ demo: string } | ApiErrorResponse>,
+    ) => {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
+            res.status(400).json({ error: 'Invalid task id' })
+            return
+        }
+
+        const task = await fetchTaskById(taskId)
+        if (!task) {
+            res.status(404).json({ error: 'Task not found' })
+            return
+        }
+
+        const submission = await fetchSubmissionByTaskId(taskId)
+        const content = submission?.content ?? ''
+
+        const demo = await generateDemoSubmission(content, task.type, task.title, taskId)
+
+        // Save demo to conversation
+        let [conv] = await db
+            .select()
+            .from(taskConversations)
+            .where(eq(taskConversations.taskId, taskId))
+            .limit(1)
+        if (!conv) {
+            [conv] = await db
+                .insert(taskConversations)
+                .values({ taskId })
+                .returning()
+        }
+        await db.insert(taskMessages).values({
+            conversationId: conv.id,
+            role: 'assistant',
+            content: demo,
+        })
+        await db
+            .update(taskConversations)
+            .set({ updatedAt: new Date().toISOString() })
+            .where(eq(taskConversations.id, conv.id))
+
+        res.json({ demo })
+    },
+)
+
+// AI chat about a task (saves messages to conversation, uses full history)
+router.post(
+    '/:id/ai-chat',
+    async (
+        req: Request<
+            { id: string },
+            { reply: string } | ApiErrorResponse,
+            { message: string }
+        >,
+        res: Response<{ reply: string } | ApiErrorResponse>,
+    ) => {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
+            res.status(400).json({ error: 'Invalid task id' })
+            return
+        }
+
+        const task = await fetchTaskById(taskId)
+        if (!task) {
+            res.status(404).json({ error: 'Task not found' })
+            return
+        }
+
+        const { message } = req.body
+        if (!message) {
+            res.status(400).json({ error: 'message is required' })
+            return
+        }
+
+        // Get or create conversation
+        let [conv] = await db
+            .select()
+            .from(taskConversations)
+            .where(eq(taskConversations.taskId, taskId))
+            .limit(1)
+        if (!conv) {
+            [conv] = await db
+                .insert(taskConversations)
+                .values({ taskId })
+                .returning()
+        }
+
+        // Save user message
+        await db.insert(taskMessages).values({
+            conversationId: conv.id,
+            role: 'user',
+            content: message,
+        })
+
+        // Load full history for AI context
+        const existingMessages = await db
+            .select()
+            .from(taskMessages)
+            .where(eq(taskMessages.conversationId, conv.id))
+            .orderBy(asc(taskMessages.id))
+
+        const contextMessages: ChatMessage[] = existingMessages.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+        }))
+
+        const submission = await fetchSubmissionByTaskId(taskId)
+        const subContent = submission?.content ?? ''
+
+        const reply = await chatAboutTask(
+            subContent,
+            task.type,
+            task.title,
+            contextMessages,
+            taskId,
+        )
+
+        // Save AI reply
+        await db.insert(taskMessages).values({
+            conversationId: conv.id,
+            role: 'assistant',
+            content: reply,
+        })
+        await db
+            .update(taskConversations)
+            .set({ updatedAt: new Date().toISOString() })
+            .where(eq(taskConversations.id, conv.id))
+
+        res.json({ reply })
+    },
+)
+
+// Get conversation for a task
+router.get(
+    '/:id/conversation',
+    async (
+        req: Request<
+            { id: string },
+            { conversation: unknown; messages: unknown } | ApiErrorResponse
+        >,
+        res: Response<
+            { conversation: unknown; messages: unknown } | ApiErrorResponse
+        >,
+    ) => {
+        const taskId = parseTaskId(req.params.id)
+        if (taskId === null) {
+            res.status(400).json({ error: 'Invalid task id' })
+            return
+        }
+
+        const [conv] = await db
+            .select()
+            .from(taskConversations)
+            .where(eq(taskConversations.taskId, taskId))
+            .limit(1)
+
+        if (!conv) {
+            res.json({ conversation: null, messages: [] })
+            return
+        }
+
+        const messages = await db
+            .select()
+            .from(taskMessages)
+            .where(eq(taskMessages.conversationId, conv.id))
+            .orderBy(asc(taskMessages.id))
+
+        res.json({ conversation: conv, messages })
     },
 )
 

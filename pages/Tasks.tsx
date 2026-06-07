@@ -11,6 +11,7 @@ import TaskModalCreate from '@pages/layout/TaskModalCreate'
 import TaskModalEdit from '@pages/layout/TaskModalEdit'
 import TaskModalAIScore from '@pages/layout/TaskModalAIScore'
 import TaskModalAIResult from '@pages/layout/TaskModalAIResult'
+import TaskModalShare from '@pages/layout/TaskModalShare'
 
 export default function Tasks() {
     const { showSnackbar } = useSnackbar()
@@ -33,6 +34,17 @@ export default function Tasks() {
     // Edit task detail state
     const [editTask, setEditTask] = useState<Task | null>(null)
     const [editSaving, setEditSaving] = useState(false)
+
+    // Share modal state
+    const [shareTask, setShareTask] = useState<Task | null>(null)
+
+    const openShareModal = (task: Task) => {
+        setShareTask(task)
+    }
+
+    const closeShareModal = () => {
+        setShareTask(null)
+    }
 
     const loadTasks = useCallback(async () => {
         try {
@@ -159,6 +171,7 @@ export default function Tasks() {
                 onEdit={openEditModal}
                 onEditContent={(task) => setEditingTask(task)}
                 onScore={openScoreModal}
+                onShare={openShareModal}
                 onDelete={handleDelete}
                 onAdd={() => setShowCreate(true)}
             />
@@ -191,6 +204,12 @@ export default function Tasks() {
                 result={scoreResult}
                 points={scorePoints}
                 onCancel={closeScoreModal}
+            />
+
+            <TaskModalShare
+                open={!!shareTask}
+                task={shareTask}
+                onCancel={closeShareModal}
             />
 
             <Modal

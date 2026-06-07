@@ -71,10 +71,11 @@
 | AI 出题  | 根据年级和作业类型进行随机出题                           |
 | 周报分析 | 自动分析周报内容，生成表扬鼓励、困难方案、目标建议与评价 |
 | 周报对话 | 针对周报内容与 AI 进行追问对话                           |
+| 作业对话 | 在作业编辑器中与 AI 对话，支持生成示范作业与答疑         |
 
 - 集成 DeepSeek API，评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
-- 支持 AI 使用记录查询与 Token 用量统计（按 AI评分/AI起名/AI出题/周报分析/周报对话 分类）
+- 支持 AI 使用记录查询与 Token 用量统计（按 AI评分/AI起名/AI出题/**AI作业对话**/周报分析/周报对话 分类）
 
 #### 1.3 评分标准（统一作业评分）
 
@@ -189,7 +190,7 @@
 #### 3.5 AI 使用记录
 
 - DeepSeek API 调用记录（使用项目/任务名称/使用时间/Token 用量）
-- 按项目汇总统计（AI评分/AI起名/AI出题/周报分析/周报对话）
+- 按项目汇总统计（AI评分/AI起名/AI出题/AI作业对话/周报分析/周报对话）
 - 总调用次数与总 Token 消耗概览
 
 #### 3.6 规则配置
@@ -249,6 +250,8 @@ videos              -> id, path, title, md5(unique), views(0), resumeTime(0), fa
 weekly_reports      -> id, weekNumber, year, content(JSON), analysis(JSON), createdAt, updatedAt
 weekly_conversations-> id, reportId(FK), role(ai/student), createdAt
 weekly_messages     -> id, conversationId(FK), role, content, createdAt
+task_conversations  -> id, taskId(FK, CASCADE), createdAt, updatedAt
+task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
 ```
 
 ### 积分流转全景
@@ -280,13 +283,14 @@ study.webian.dev/
 │   │   ├── Modal.tsx           # 通用模态框（支持自定义 footer）
 │   │   ├── RulesPage.tsx       # 规则页面包装器
 │   │   ├── Snackbar.tsx        # 全局消息提示（Context Provider）
-│   │   └── Tabs.tsx            # 标签页组件
+│   │   ├── Tabs.tsx            # 标签页组件
+│   │   └── AiChatPanel.tsx     # 可复用的 AI 聊天面板组件
 │   ├── db/                     # 数据库层
 │   │   ├── index.ts            # 数据库连接（libSQL + Drizzle）
 │   │   ├── migrate.ts          # 迁移脚本（初始化表+默认数据）
-│   │   └── schema.ts           # Drizzle ORM Schema（11表：含周报3表）
+│   │   └── schema.ts           # Drizzle ORM Schema（13表：含周报3表+任务对话2表）
 │   ├── lib/                    # 工具库
-│   │   ├── api.ts              # 前端 API 客户端（12模块）
+│   │   ├── api.ts              # 前端 API 客户端（13模块）
 │   │   ├── default.ts          # 默认配置（规则/名言/AI提示词）
 │   │   ├── types.ts            # TypeScript 类型定义
 │   │   ├── utils.ts            # 工具函数（日期格式化/分页/状态映射）
@@ -300,7 +304,7 @@ study.webian.dev/
 │   │   ├── points.ts           # 积分流水（含预支/还款/月度结算）
 │   │   ├── rules-loader.ts     # 规则加载与初始化
 │   │   ├── summary-helper.ts   # 月度汇总计算
-│   │   ├── tasks.ts            # 作业管理（含AI评分/起名/出题）
+│   │   ├── tasks.ts            # 作业管理（含AI评分/起名/出题/对话/示范作业）
 │   │   ├── videos.ts           # 视频管理（扫描/流播/收藏/进度）
 │   │   ├── weekly.ts           # 周报管理（CRUD + AI分析 + 对话）
 │   │   └── rss.ts              # 科普 RSS 阅读器
@@ -446,6 +450,15 @@ study.webian.dev/
 - [x] 周报截图分享（html-to-image）
 - [x] Markdown 查看器排版美化
 - [x] 科普 RSS 阅读器
+
+### Phase 7 - 作业 AI 对话
+
+- [x] 可复用 AI 聊天面板组件（AiChatPanel）
+- [x] 生成示范作业（DeepSeek 根据作业题目生成示例）
+- [x] 作业答疑对话（基于作业内容进行 AI 辅导）
+- [x] 对话持久化（task_conversations + task_messages 表）
+- [x] 作业删除时级联清理对话记录
+- [x] AI 使用统计区分「AI作业对话」项目
 
 ## 本地开发
 

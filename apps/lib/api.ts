@@ -17,6 +17,7 @@ import type {
     SubmitTaskRequest,
     CreateExchangeRequest,
     AIScoreResult,
+    AiScoreLog,
     AIUsageLog,
     AIUsageSummary,
     PointAdvance,
@@ -28,6 +29,8 @@ import type {
     WeeklyAnalysis,
     WeeklyConversation,
     WeeklyMessage,
+    TaskConversation,
+    TaskMessage,
 } from '@apps/lib/types'
 import type { WeeklyReportContent } from '@apps/lib/weekly'
 
@@ -79,6 +82,8 @@ export const tasksApi = {
             aiResult: AIScoreResult
             pointsEarned: number
         }>(`/tasks/${id}/ai-score`, { method: 'POST' }),
+    aiScoreLogs: (id: number) =>
+        request<AiScoreLog[]>(`/tasks/${id}/ai-score-logs`),
     aiTitle: (id: number) =>
         request<{ title: string }>(`/tasks/${id}/ai-title`, { method: 'POST' }),
     aiGenerateTitle: (type: string, grade: number) =>
@@ -86,6 +91,18 @@ export const tasksApi = {
             method: 'POST',
             body: JSON.stringify({ type, grade }),
         }),
+    aiDemo: (id: number) =>
+        request<{ demo: string }>(`/tasks/${id}/ai-demo`, { method: 'POST' }),
+    aiChat: (id: number, message: string) =>
+        request<{ reply: string }>(`/tasks/${id}/ai-chat`, {
+            method: 'POST',
+            body: JSON.stringify({ message }),
+        }),
+    getConversation: (id: number) =>
+        request<{
+            conversation: TaskConversation | null
+            messages: TaskMessage[]
+        }>(`/tasks/${id}/conversation`),
 }
 
 // ===== Points =====
@@ -311,7 +328,9 @@ export const videosApi = {
     ): Promise<ScanResult> => {
         const res = await fetch(`${BASE}/videos/scan`, { method: 'POST' })
         if (!res.ok) {
-            const err = await res.json().catch(() => ({ error: res.statusText }))
+            const err = await res
+                .json()
+                .catch(() => ({ error: res.statusText }))
             throw new Error(err.error || `扫描失败: ${res.status}`)
         }
         const reader = res.body!.getReader()
@@ -320,32 +339,37 @@ export const videosApi = {
 
         return new Promise((resolve, reject) => {
             const pump = () => {
-                reader.read().then(({ done, value }) => {
-                    if (done) return
-                    buffer += decoder.decode(value, { stream: true })
-                    const lines = buffer.split('\n')
-                    buffer = lines.pop() || '' // 保留不完整的行
-                    for (const line of lines) {
-                        if (!line.trim()) continue
-                        try {
-                            const data = JSON.parse(line)
-                            if (data.type === 'progress') {
-                                onProgress(data.current, data.total)
-                            } else if (data.type === 'complete') {
-                                resolve({
-                                    total: data.total,
-                                    new: data.new,
-                                    skipped: data.skipped,
-                                    deleted: data.deleted ?? 0,
-                                    errors: data.errors,
-                                })
-                            } else if (data.type === 'error') {
-                                reject(new Error(data.message))
+                reader
+                    .read()
+                    .then(({ done, value }) => {
+                        if (done) return
+                        buffer += decoder.decode(value, { stream: true })
+                        const lines = buffer.split('\n')
+                        buffer = lines.pop() || '' // 保留不完整的行
+                        for (const line of lines) {
+                            if (!line.trim()) continue
+                            try {
+                                const data = JSON.parse(line)
+                                if (data.type === 'progress') {
+                                    onProgress(data.current, data.total)
+                                } else if (data.type === 'complete') {
+                                    resolve({
+                                        total: data.total,
+                                        new: data.new,
+                                        skipped: data.skipped,
+                                        deleted: data.deleted ?? 0,
+                                        errors: data.errors,
+                                    })
+                                } else if (data.type === 'error') {
+                                    reject(new Error(data.message))
+                                }
+                            } catch {
+                                /* skip malformed line */
                             }
-                        } catch { /* skip malformed line */ }
-                    }
-                    pump()
-                }).catch(reject)
+                        }
+                        pump()
+                    })
+                    .catch(reject)
             }
             pump()
         })
@@ -356,7 +380,9 @@ export const videosApi = {
             body: JSON.stringify({ title }),
         }),
     addView: (md5: string) =>
-        request<{ success: boolean }>(`/videos/${md5}/view`, { method: 'POST' }),
+        request<{ success: boolean }>(`/videos/${md5}/view`, {
+            method: 'POST',
+        }),
     saveResumeTime: (md5: string, time: number) =>
         request<{ success: boolean }>(`/videos/${md5}/resume-time`, {
             method: 'PUT',

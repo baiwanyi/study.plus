@@ -11,9 +11,7 @@ export const tasks = sqliteTable('tasks', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     title: text('title').notNull(),
     type: text('type', { enum: taskTypeValues }).notNull(),
-    status: text('status', { enum: taskStatus })
-        .notNull()
-        .default('pending'),
+    status: text('status', { enum: taskStatus }).notNull().default('pending'),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
@@ -65,6 +63,23 @@ export const options = sqliteTable('options', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     key: text('key').notNull().unique(),
     value: text('value').notNull(),
+})
+
+export const aiScoreLogs = sqliteTable('ai_score_logs', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taskId: integer('task_id')
+        .notNull()
+        .references(() => tasks.id),
+    submissionId: integer('submission_id')
+        .notNull()
+        .references(() => submissions.id),
+    content: text('content').notNull(),
+    grade: text('grade', { enum: defaultGradeValues }),
+    aiScore: text('ai_score').notNull(),
+    scoredAt: text('scored_at').notNull(),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
 })
 
 export const aiUsageLogs = sqliteTable('ai_usage_logs', {
@@ -143,6 +158,31 @@ export const weeklyConversations = sqliteTable('weekly_conversations', {
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
     updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const taskConversations = sqliteTable('task_conversations', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    taskId: integer('task_id')
+        .notNull()
+        .references(() => tasks.id, { onDelete: 'cascade' }),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const taskMessages = sqliteTable('task_messages', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    conversationId: integer('conversation_id')
+        .notNull()
+        .references(() => taskConversations.id, { onDelete: 'cascade' }),
+    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+    content: text('content').notNull(),
+    createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
 })

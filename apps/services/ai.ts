@@ -386,6 +386,154 @@ export async function analyzeWeeklyReport(
     }
 }
 
+export async function generateDemoSubmission(
+    content: string,
+    type: TaskType,
+    title?: string,
+    taskId?: number,
+): Promise<string> {
+    if (!DEEPSEEK_API_KEY) {
+        return 'AI 功能未配置，请设置 DEEPSEEK_API_KEY'
+    }
+
+    const taskTitle = title ? `《${title}》` : '未命名作业'
+    const taskType = taskTypeLabels[type]
+    const demoContent = content.slice(0, 1000) || '（暂无提交内容）'
+
+    const prompt = `你是一名优秀的学生，请根据以下作业信息，生成一篇高质量的示范作业。
+
+作业类型：${taskType}
+作业题目：${taskTitle}
+当前提交内容：${demoContent}
+
+要求：
+1. 写一篇完整的示范作业，体现高质量水平
+2. 布局清晰，使用 Markdown 格式
+3. 内容符合${taskType}的写作规范
+4. 字数在 300-800 字之间
+5. 示范作业应该能够启发学生更好的完成自己的作业
+
+请直接输出示范作业，不需要额外说明。`
+
+    try {
+        const response: Response = await fetch(
+            `${DEEPSEEK_BASE_URL}/chat/completions`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: [
+                        { role: 'user', content: prompt } as DeepSeekMessage,
+                    ],
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                }),
+            },
+        )
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error')
+            throw new Error(
+                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
+            )
+        }
+
+        const data: DeepSeekResponse =
+            (await response.json()) as DeepSeekResponse
+        const demo: string | undefined = data.choices?.[0]?.message?.content
+        if (!demo) throw new Error('Empty response from DeepSeek')
+
+        await logAiUsage('task-chat', data.usage, title || taskType, taskId)
+        return demo
+    } catch (error: unknown) {
+        const message: string =
+            error instanceof Error ? error.message : String(error)
+        console.error('AI demo submission error:', message)
+        return `生成示范作业出错：${message}，请稍后重试`
+    }
+}
+
+export async function chatAboutTask(
+    content: string,
+    type: TaskType,
+    title: string,
+    messages: ChatMessage[],
+    taskId?: number,
+): Promise<string> {
+    if (!DEEPSEEK_API_KEY) {
+        return 'AI 对话未配置，请设置 DEEPSEEK_API_KEY'
+    }
+
+    const taskTitle = title ? `《${title}》` : '未命名作业'
+    const taskType = taskTypeLabels[type]
+    const taskContent = content.slice(0, 1500) || '（暂无提交内容）'
+
+    const systemPrompt = `你是一位专业的作业辅导老师，请基于以下作业信息帮助学生。
+
+作业类型：${taskType}
+作业题目：${taskTitle}
+学生提交的作业内容：${taskContent}
+
+你的职责：
+1. 回答学生关于作业的疑问，提供指导和建议
+2. 帮助学生分析作业的优缺点，提出改进方向
+3. 用友善、鼓励的语气交流
+4. 回复使用 Markdown 格式，清晰易读
+5. 不要直接替学生完成作业，而是引导他们自己思考`
+
+    const apiMessages: DeepSeekMessage[] = [
+        { role: 'system', content: systemPrompt } as DeepSeekMessage,
+        ...messages.map((m) => ({
+            role: m.role as 'user' | 'assistant',
+            content: m.content,
+        })) as DeepSeekMessage[],
+    ]
+
+    try {
+        const response: Response = await fetch(
+            `${DEEPSEEK_BASE_URL}/chat/completions`,
+            {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+                },
+                body: JSON.stringify({
+                    model: 'deepseek-chat',
+                    messages: apiMessages,
+                    temperature: 0.7,
+                    max_tokens: 2000,
+                }),
+            },
+        )
+
+        if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error')
+            throw new Error(
+                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
+            )
+        }
+
+        const data: DeepSeekResponse =
+            (await response.json()) as DeepSeekResponse
+        const reply: string | undefined = data.choices?.[0]?.message?.content
+        if (!reply) throw new Error('Empty response from DeepSeek')
+
+        await logAiUsage('task-chat', data.usage, title || taskType, taskId)
+
+        return reply
+    } catch (error: unknown) {
+        const message: string =
+            error instanceof Error ? error.message : String(error)
+        console.error('AI task chat error:', message)
+        return `对话出错：${message}，请稍后重试`
+    }
+}
+
 export async function chatAboutWeeklyReport(
     content: WeeklyReportContent,
     messages: ChatMessage[],

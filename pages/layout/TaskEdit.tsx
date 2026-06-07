@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import mermaid from 'mermaid'
-import { Sparkles, Loader2, Check } from 'lucide-react'
+import { Sparkles, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import { tasksApi, systemAPI } from '@apps/lib/api'
-import type { Task } from '@apps/lib/types'
+import type { AiScoreLog, Task, ChatMessage } from '@apps/lib/types'
+import AiChatPanel from '@apps/components/AiChatPanel'
 import {
     taskTypeLabels,
     taskTypeColors,
@@ -31,17 +32,34 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
     const editingTaskIdRef = useRef<number | null>(null)
     const [generatingTitle, setGeneratingTitle] = useState(false)
     const [currentTask, setCurrentTask] = useState<Task | null>(null)
+    const [scoreLogs, setScoreLogs] = useState<AiScoreLog[]>([])
+    const [showLogs, setShowLogs] = useState(false)
+    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
+    const [chatting, setChatting] = useState(false)
+    const [generatingDemo, setGeneratingDemo] = useState(false)
 
     // Sync task from props
     useEffect(() => {
         if (task) {
             setCurrentTask(task)
             editingTaskIdRef.current = task.id
+            setChatMessages([])
             const content = task.submission?.content ?? ''
             setMdContent(content)
             lastSavedContentRef.current = content
             setLastSaved(null)
             setAutosaveStatus('idle')
+
+            // Load conversation history
+            tasksApi
+                .getConversation(task.id)
+                .then((res) => {
+                    if (editingTaskIdRef.current !== task.id) return
+                    setChatMessages(res.messages)
+                })
+                .catch(() => {
+                    // No conversation yet, keep empty
+                })
         } else {
             setCurrentTask(null)
             editingTaskIdRef.current = null
@@ -139,6 +157,58 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
         }
     }
 
+    // AI generate demo submission
+    const handleGenerateDemo = async () => {
+        if (!currentTask) return
+        setGeneratingDemo(true)
+        try {
+            await tasksApi.aiDemo(currentTask.id)
+            const conv = await tasksApi.getConversation(currentTask.id)
+            if (editingTaskIdRef.current !== currentTask.id) return
+            setChatMessages(conv.messages)
+        } catch (err) {
+            showSnackbar(
+                '生成示范作业失败: ' + formatErrorMessage(err),
+                'error',
+            )
+        } finally {
+            setGeneratingDemo(false)
+        }
+    }
+
+    // AI chat send
+    const handleChatSend = async (message: string) => {
+        if (!currentTask) return
+        const userMsg: ChatMessage = { role: 'user', content: message }
+        setChatMessages((prev) => [...prev, userMsg])
+        setChatting(true)
+        try {
+            await tasksApi.aiChat(currentTask.id, message)
+            const conv = await tasksApi.getConversation(currentTask.id)
+            if (editingTaskIdRef.current !== currentTask.id) return
+            setChatMessages(conv.messages)
+        } catch (err) {
+            showSnackbar(
+                'AI对话失败: ' + formatErrorMessage(err),
+                'error',
+            )
+        } finally {
+            setChatting(false)
+        }
+    }
+
+    // Fetch AI score history
+    useEffect(() => {
+        if (!currentTask?.submission?.scoredAt) {
+            setScoreLogs([])
+            return
+        }
+        tasksApi
+            .aiScoreLogs(currentTask.id)
+            .then(setScoreLogs)
+            .catch(() => setScoreLogs([]))
+    }, [currentTask?.id, currentTask?.submission?.scoredAt])
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -212,16 +282,88 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
                 </div>
             )}
 
-            <div className="flex-1 overflow-hidden" data-color-mode="light">
-                <MDEditor
-                    value={mdContent}
-                    onChange={(val: string) => setMdContent(val ?? '')}
-                    height="100%"
-                    preview="live"
-                    hideToolbar={false}
-                    previewOptions={mdEditorPreviewOptions}
-                />
+            <div className="flex-1 flex overflow-hidden">
+                <div data-color-mode="light" className="m-2 w-2/3">
+                    <MDEditor
+                        value={mdContent}
+                        onChange={(val: string) => setMdContent(val ?? '')}
+                        height="100%"
+                        preview="edit"
+                        previewOptions={mdEditorPreviewOptions}
+                    />
+                </div>
+                <div className="w-1/3 flex flex-col overflow-hidden">
+                    <AiChatPanel
+                        messages={chatMessages}
+                        onSend={handleChatSend}
+                        sending={chatting}
+                        onGenerateDemo={handleGenerateDemo}
+                        generatingDemo={generatingDemo}
+                        aiHelperName="小老师"
+                    />
+                </div>
             </div>
+
+            {/* AI 评分历史 */}
+            {scoreLogs.length > 0 && (
+                <div className="border-t border-gray-200 bg-white shrink-0">
+                    <button
+                        onClick={() => setShowLogs(!showLogs)}
+                        className="w-full px-4 py-2 flex items-center justify-between text-xs text-gray-500 hover:bg-gray-50">
+                        <span>评分历史 ({scoreLogs.length} 次)</span>
+                        {showLogs ? (
+                            <ChevronUp className="w-3 h-3" />
+                        ) : (
+                            <ChevronDown className="w-3 h-3" />
+                        )}
+                    </button>
+                    {showLogs && (
+                        <div className="max-h-48 overflow-y-auto px-4 pb-2 space-y-2">
+                            {scoreLogs.map((log) => {
+                                const parsed = (() => {
+                                    try {
+                                        return JSON.parse(log.aiScore) as {
+                                            score?: number
+                                            comment?: string
+                                        }
+                                    } catch {
+                                        return null
+                                    }
+                                })()
+                                return (
+                                    <div
+                                        key={log.id}
+                                        className="text-xs border border-gray-100 rounded p-2">
+                                        <div className="flex items-center justify-between text-gray-500">
+                                            <span>
+                                                {new Date(
+                                                    log.scoredAt,
+                                                ).toLocaleString('zh-CN', {
+                                                    month: '2-digit',
+                                                    day: '2-digit',
+                                                    hour: '2-digit',
+                                                    minute: '2-digit',
+                                                })}
+                                            </span>
+                                            <span className="font-medium text-gray-700">
+                                                {log.grade}{' '}
+                                                {parsed?.score != null
+                                                    ? `- ${parsed.score}分`
+                                                    : ''}
+                                            </span>
+                                        </div>
+                                        {parsed?.comment && (
+                                            <p className="mt-1 text-gray-600 line-clamp-2 leading-relaxed">
+                                                {parsed.comment}
+                                            </p>
+                                        )}
+                                    </div>
+                                )
+                            })}
+                        </div>
+                    )}
+                </div>
+            )}
 
             <div className="bg-gray-100 border-t border-gray-200 px-4 py-1.5 flex items-center justify-between text-xs text-gray-500 shrink-0">
                 <div className="flex items-center gap-4">

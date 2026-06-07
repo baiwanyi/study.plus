@@ -266,6 +266,21 @@ async function migrate(): Promise<void> {
         // Column already exists, ignore
     }
 
+    // Create ai_score_logs table for AI评分历史记录
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS ai_score_logs (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL REFERENCES tasks(id),
+      submission_id INTEGER NOT NULL REFERENCES submissions(id),
+      content TEXT NOT NULL,
+      grade TEXT CHECK(grade IN ('A+', 'A', 'B', 'C', 'D', 'E')),
+      ai_score TEXT NOT NULL,
+      scored_at TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created ai_score_logs table.')
+
     // Migrate from single 'default' key to separate keys
     // If old 'default' key exists, split it into separate rows
     const oldDefault = await client.execute(
@@ -514,13 +529,21 @@ async function migrate(): Promise<void> {
 
     // Add resume_time column for existing databases
     try {
-        await client.execute('ALTER TABLE videos ADD COLUMN resume_time INTEGER NOT NULL DEFAULT 0')
+        await client.execute(
+            'ALTER TABLE videos ADD COLUMN resume_time INTEGER NOT NULL DEFAULT 0',
+        )
         console.log('Added resume_time column to videos table.')
-    } catch { /* column already exists */ }
+    } catch {
+        /* column already exists */
+    }
     try {
-        await client.execute('ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0')
+        await client.execute(
+            'ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0',
+        )
         console.log('Added favorite column to videos table.')
-    } catch { /* column already exists */ }
+    } catch {
+        /* column already exists */
+    }
 
     // Create weekly_reports table
     await client.execute(`
@@ -532,6 +555,27 @@ async function migrate(): Promise<void> {
       analysis TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+    // Create task_conversations table
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS task_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+
+    // Create task_messages table
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS task_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL REFERENCES task_conversations(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
 
