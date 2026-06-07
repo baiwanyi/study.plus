@@ -12,7 +12,7 @@
 **核心功能：**
 
 - **积分奖惩管理**：创建作业，完成作业获得积分，积分可用于兑换奖励或预支
-- **作业提交与评分**：编写 Markdown 内容/思维导图，获得 DeepSeek AI 评分
+- **作业提交与评分**：编写作文/思维导图/读书笔记/数学/英语内容，获得 DeepSeek AI 评分
 - **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
 - **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
@@ -37,7 +37,7 @@
 | 后端服务 | Express 5 + tsx                           | RESTful API (端口 3001)              |
 | 数据库   | SQLite + @libsql/client                   | 轻量级本地数据库                     |
 | ORM      | Drizzle ORM + Drizzle Kit                 | 类型安全的 SQL 查询构建器 + 迁移工具 |
-| AI 能力  | DeepSeek API                              | 评分/起名/出题/周报分析/智能对话     |
+| AI 能力  | DeepSeek API (deepseek-v4-flash)          | 评分/起名/出题/周报分析/智能对话     |
 | 测试     | Vitest 4 + @testing-library/react + jsdom | 单元测试 + 组件测试 + API 集成测试   |
 | 视频播放 | HTML5 `<video>` + react-player            | 原生视频播放器，支持 Range 请求      |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
@@ -66,14 +66,14 @@
 
 | 能力     | 说明                                                     |
 |----------|----------------------------------------------------------|
-| AI 评分  | 对作文/思维导图/读书笔记评分 (A+~E)，返回评语+改进建议   |
+| AI 评分  | 对作文/思维导图/读书笔记/数学/英语评分 (A+~E)，返回评语+改进建议   |
 | AI 起名  | 根据提交内容自动生成任务标题（仅限「未命名」开头的任务） |
 | AI 出题  | 根据年级和作业类型进行随机出题                           |
 | 周报分析 | 自动分析周报内容，生成表扬鼓励、困难方案、目标建议与评价 |
 | 周报对话 | 针对周报内容与 AI 进行追问对话                           |
 | 作业对话 | 在作业编辑器中与 AI 对话，支持生成示范作业与答疑         |
 
-- 集成 DeepSeek API，评分依据题目（如有）或内容进行评判
+- 集成 DeepSeek API（deepseek-v4-flash 模型），评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
 - 支持 AI 使用记录查询与 Token 用量统计（按 AI评分/AI起名/AI出题/**AI作业对话**/周报分析/周报对话 分类）
 
@@ -170,7 +170,7 @@
 - AI 起名（根据内容自动生成任务标题，仅限「未命名」开头的任务）
 - AI 出题（根据年级和作业类型进行随机出题）
 - 作业创建/编辑/删除
-- 作业名称为空时自动命名为「未命名作文作业」或「未命名思维导图作业」
+- 作业名称支持作文、思维导图、读书笔记、数学、英语五种类型，为空时自动命名（如「未命名数学作业」）
 
 #### 3.3 积分记录
 
@@ -238,7 +238,7 @@
 ### 核心数据模型
 
 ```
-tasks               -> id, title, type(composition/mindmap), status(pending/completed/expired), createdAt
+tasks               -> id, title, type(composition/mindmap/notes/math/english), status(pending/completed/expired), createdAt
 submissions         -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
 point_records       -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType, createdAt
 exchanges           -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
