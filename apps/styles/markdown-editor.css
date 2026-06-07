@@ -1,0 +1,42 @@
+.w-md-editor-toolbar {
+    padding: 6px;
+}
+.w-md-editor-toolbar ul {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+/* Toolbar 按钮尺寸 */
+.w-md-editor-toolbar li > button {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    font-size: 14px;
+    transition: background-color 0.15s;
+}
+
+/* Toolbar 图标尺寸 */
+.w-md-editor-toolbar li > button svg {
+    width: 18px;
+    height: 18px;
+    color: currentColor;
+}
+
+/* Toolbar 按钮悬停效果 */
+.w-md-editor-toolbar li > button:hover {
+    color: #2271b1;
+    background-color: #f3f4f6;
+    border-radius: 4px;
+}
+
+.w-md-editor-toolbar li > button:hover svg {
+    color: #2271b1;
+}
+
+/* Toolbar 按钮激活状态 */
+.w-md-editor-toolbar li > button.active {
+    background-color: #e5e7eb;
+    border-radius: 4px;
+}

@@ -11,6 +11,7 @@ import {
     formatErrorMessage,
 } from '@apps/lib/utils'
 import { useSnackbar } from '@components/Snackbar'
+import '@apps/styles/markdown-editor.css'
 
 export interface EditTaskProps {
     task: Task | null
@@ -19,6 +20,18 @@ export interface EditTaskProps {
 
 export default function EditTask({ task, onCancel }: EditTaskProps) {
     const { showSnackbar } = useSnackbar()
+
+    const [previewMode, setPreviewMode] = useState<'live' | 'edit'>(() =>
+        window.innerWidth > 1280 ? 'live' : 'edit',
+    )
+
+    useEffect(() => {
+        const onResize = () => {
+            setPreviewMode(window.innerWidth > 1280 ? 'live' : 'edit')
+        }
+        window.addEventListener('resize', onResize)
+        return () => window.removeEventListener('resize', onResize)
+    }, [])
 
     const [mdContent, setMdContent] = useState('')
     const [saving, setSaving] = useState(false)
@@ -188,10 +201,7 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
             if (editingTaskIdRef.current !== currentTask.id) return
             setChatMessages(conv.messages)
         } catch (err) {
-            showSnackbar(
-                'AI对话失败: ' + formatErrorMessage(err),
-                'error',
-            )
+            showSnackbar('AI对话失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setChatting(false)
         }
@@ -235,11 +245,11 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
     return (
         <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
             <div className="bg-white border-b border-gray-200 px-6 py-3 flex items-center justify-between shrink-0">
-                <div className="flex items-center justify-between gap-3">
-                    <span
-                        className={`badge ${taskTypeColors[currentTask.type]}`}>
+                <div className="flex flex-5/6 items-center gap-3">
+                    <div
+                        className={`w-15 h-5 text-center block badge ${taskTypeColors[currentTask.type]}`}>
                         {taskTypeLabels[currentTask.type]}
-                    </span>
+                    </div>
                     <h2 className="text-sm font-normal text-gray-900">
                         {currentTask.title}
                     </h2>
@@ -252,7 +262,7 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
                         </button>
                     )}
                 </div>
-                <div className="flex items-center gap-3">
+                <div className="flex flex-1/6 items-center justify-end gap-3">
                     <button onClick={onCancel} className="btn btn-outline">
                         取消
                     </button>
@@ -283,16 +293,33 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
             )}
 
             <div className="flex-1 flex overflow-hidden">
-                <div data-color-mode="light" className="m-2 w-2/3">
+                <div data-color-mode="light" className="m-2 flex-1">
                     <MDEditor
                         value={mdContent}
                         onChange={(val: string) => setMdContent(val ?? '')}
                         height="100%"
-                        preview="edit"
+                        preview={previewMode}
                         previewOptions={mdEditorPreviewOptions}
+                        commandsFilter={(command) => {
+                            const hidden = [
+                                'image',
+                                'table',
+                                'orderedList',
+                                'codeBlock',
+                                'comment',
+                                'strikethrough',
+                                'olist',
+                                'code',
+                                'link',
+                                'help',
+                            ]
+                            return hidden.includes(command.keyCommand ?? '')
+                                ? false
+                                : command
+                        }}
                     />
                 </div>
-                <div className="w-1/3 flex flex-col overflow-hidden">
+                <div className="w-md flex flex-col overflow-hidden">
                     <AiChatPanel
                         messages={chatMessages}
                         onSend={handleChatSend}

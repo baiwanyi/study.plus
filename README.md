@@ -295,7 +295,7 @@ study.webian.dev/
 │   │   ├── types.ts            # TypeScript 类型定义
 │   │   ├── utils.ts            # 工具函数（日期格式化/分页/状态映射）
 │   │   ├── weekly.ts           # 周报 Zod Schema + 序列化工具
-│   │   └── react-md-editor.d.ts # Markdown 编辑器类型声明
+│   │   └── react-md-editor.d.ts # Markdown 编辑器类型声明（含 commands 自定义）
 │   ├── routes/                 # Express API 路由
 │   │   ├── advance-helper.ts   # 积分预支辅助
 │   │   ├── ai-usage.ts         # AI使用记录
@@ -313,6 +313,7 @@ study.webian.dev/
 │   │   └── points.ts           # 积分计算引擎
 │   ├── styles/                 # 全局样式文件
 │   │   ├── index.css           # Tailwind 4 + 自定义色板/组件类
+│   │   ├── markdown-editor.css # Markdown 编辑器 toolbar 样式
 │   │   └── markdown-viewer.css # Markdown 查看器排版
 │   ├── test/                   # 测试辅助
 │   └── __tests__/              # 测试文件
