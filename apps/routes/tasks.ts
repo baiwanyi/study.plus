@@ -121,7 +121,7 @@ router.get('/', async (req: Request, res: Response) => {
         rawStatus && isValidEnum(rawStatus, taskStatus) ? rawStatus : undefined
     const type: TaskType | undefined =
         rawType &&
-        isValidEnum(rawType, ['composition', 'mindmap', 'notes'] as const)
+        isValidEnum(rawType, taskTypeValues)
             ? (rawType as TaskType)
             : undefined
 
@@ -275,7 +275,7 @@ router.put(
         // Validate type and status against valid enums
         if (
             type &&
-            !isValidEnum(type, ['composition', 'mindmap', 'notes'] as const)
+            !isValidEnum(type, taskTypeValues)
         ) {
             res.status(400).json({ error: 'Invalid task type' })
             return

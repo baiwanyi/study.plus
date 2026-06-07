@@ -145,6 +145,8 @@ export const defaultTaskTitle = {
     mindmap: '围绕成长的思维导图',
     composition: '记一件有意义的事',
     notes: '读一本好书，写一篇读书笔记',
+    math: '复习本周数学重点知识',
+    english: '整理本周英语重点词汇和句型',
 }
 
 export const defaultPromptTaskTitleMindmap =

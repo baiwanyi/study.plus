@@ -15,11 +15,92 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes')),
+      type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes', 'math', 'english')),
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+
+    // Migrate tasks table to support math and english types
+    const tasksCheckResult = await client.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'",
+    )
+    const tasksSql = tasksCheckResult.rows[0]?.sql as string | undefined
+    if (tasksSql && tasksSql.includes('composition') && !tasksSql.includes('math')) {
+        console.log('Migrating tasks table to support math and english types...')
+        await client.execute('PRAGMA foreign_keys = OFF')
+        await client.execute('ALTER TABLE tasks RENAME TO tasks_old')
+        await client.execute(`
+      CREATE TABLE tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes', 'math', 'english')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+        await client.execute(
+            'INSERT INTO tasks (id, title, type, status, created_at) SELECT id, title, type, status, created_at FROM tasks_old',
+        )
+        await client.execute('DROP TABLE tasks_old')
+        await client.execute('PRAGMA foreign_keys = ON')
+        console.log('Tasks table migrated successfully.')
+    }
+
+    // Handle leftover tasks_old from a previous failed migration attempt
+    const tasksOldResult = await client.execute(
+        "SELECT name FROM sqlite_master WHERE type='table' AND name='tasks_old'",
+    )
+    if (tasksOldResult.rows.length > 0) {
+        console.log('Found leftover tasks_old table, migrating data...')
+        await client.execute('PRAGMA foreign_keys = OFF')
+        await client.execute('DELETE FROM tasks')
+        await client.execute(
+            'INSERT INTO tasks (id, title, type, status, created_at) SELECT id, title, type, status, created_at FROM tasks_old',
+        )
+        // Recalculate autoincrement sequence
+        const maxId = await client.execute(
+            'SELECT MAX(id) as max_id FROM tasks',
+        )
+        const nextId = (maxId.rows[0]?.max_id as number ?? 0) + 1
+        await client.execute(
+            `DELETE FROM sqlite_sequence WHERE name='tasks'`,
+        )
+        await client.execute(
+            `INSERT INTO sqlite_sequence (name, seq) VALUES ('tasks', ${nextId - 1})`,
+        )
+        await client.execute('DROP TABLE tasks_old')
+        await client.execute('PRAGMA foreign_keys = ON')
+        console.log('Leftover tasks_old migrated successfully.')
+    }
+
+    // Fix submissions FK if it still references tasks_old (from a previous failed migration)
+    await client.execute('PRAGMA foreign_keys = OFF')
+    const subFKResult = await client.execute(
+        'PRAGMA foreign_key_list(submissions)',
+    )
+    const subFKTable = subFKResult.rows[0]?.table as string | undefined
+    if (subFKTable === 'tasks_old') {
+        console.log('Fixing submissions FK reference from tasks_old to tasks...')
+        await client.execute('ALTER TABLE submissions RENAME TO submissions_old')
+        await client.execute(`
+      CREATE TABLE submissions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        task_id INTEGER NOT NULL REFERENCES tasks(id),
+        content TEXT NOT NULL,
+        grade TEXT CHECK(grade IN ('A+', 'A', 'B', 'C', 'D', 'E')),
+        ai_score TEXT,
+        scored_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+        await client.execute(
+            'INSERT INTO submissions (id, task_id, content, grade, ai_score, scored_at, created_at) SELECT id, task_id, content, grade, ai_score, scored_at, created_at FROM submissions_old',
+        )
+        await client.execute('DROP TABLE submissions_old')
+        console.log('Submissions FK fixed successfully.')
+    }
+    await client.execute('PRAGMA foreign_keys = ON')
 
     // Migrate submissions table to add 'E' grade support
     // Check if the current CHECK constraint includes 'E'

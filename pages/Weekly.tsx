@@ -9,7 +9,7 @@ import { useSnackbar } from '@apps/components/Snackbar'
 import WeeklyModalDelete from '@pages/layout/WeeklyModalDelete'
 import WeeklyModalEditor from '@pages/layout/WeeklyModalEditor'
 import WeeklyModalViewer from '@pages/layout/WeeklyModalViewer'
-import WeeklyModalSaveSelection from '@pages/layout/WeeklyModalSaveSelection'
+
 import type {
     WeeklyReport,
     WeeklyAnalysis,
@@ -65,7 +65,6 @@ export default function Weekly() {
         null,
     )
     const [confirmDelete, setConfirmDelete] = useState<number | null>(null)
-    const [showSaveDialog, setShowSaveDialog] = useState(false)
     const [aiHelperName, setAiHelperName] = useState(DEFAULT_WEEKLY_AI_HELPER)
 
     // ===== Auto-save refs =====
@@ -211,17 +210,15 @@ export default function Weekly() {
     const closeModal = () => {
         setModalOpen(false)
         setEditingReport(null)
-        setShowSaveDialog(false)
     }
 
-    // ===== Save Only (close after save) =====
-    const handleSaveOnly = async () => {
+    // ===== Save (close after save) =====
+    const handleSave = async () => {
         if (!form.learned.trim() || !form.difficulties.trim()) {
             showSnackbar('请至少填写"学到的东西"和"遇到的困难"', 'error')
             return
         }
         isAutoSavingRef.current = true
-        setAnalyzing(true)
         try {
             const currentWeek = getWeekNumber(new Date())
             if (editingReport) {
@@ -237,17 +234,15 @@ export default function Weekly() {
             lastSavedFormRef.current = JSON.stringify(form)
             showSnackbar('保存成功')
             await loadReports()
-            closeModal()
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
         } finally {
-            setAnalyzing(false)
             isAutoSavingRef.current = false
         }
     }
 
-    // ===== Save & Analyze (single button, stays open) =====
-    const handleSaveAndAnalyze = async () => {
+    // ===== Analyze current report (save first, stays open) =====
+    const handleAnalyze = async () => {
         if (!form.learned.trim() || !form.difficulties.trim()) {
             showSnackbar('请至少填写"学到的东西"和"遇到的困难"', 'error')
             return
@@ -502,13 +497,8 @@ export default function Weekly() {
                 onChatInputChange={setChatInput}
                 chatting={chatting}
                 onChat={handleChat}
-                onConfirm={() => {
-                    if (analysis) {
-                        handleSaveAndAnalyze()
-                    } else {
-                        setShowSaveDialog(true)
-                    }
-                }}
+                onAnalyze={handleAnalyze}
+                onConfirm={handleSave}
                 isDisabled={
                     !form.learned.trim() ||
                     !form.difficulties.trim() ||
@@ -522,14 +512,6 @@ export default function Weekly() {
                 }
                 onCancel={closeModal}
                 aiHelperName={aiHelperName}
-            />
-
-            <WeeklyModalSaveSelection
-                open={showSaveDialog}
-                analyzing={analyzing}
-                onCancel={() => setShowSaveDialog(false)}
-                onSaveOnly={handleSaveOnly}
-                onSaveAndAnalyze={handleSaveAndAnalyze}
             />
 
             <WeeklyModalViewer

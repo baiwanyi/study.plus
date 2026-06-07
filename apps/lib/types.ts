@@ -1,6 +1,6 @@
 import type { WeeklyReportContent } from './weekly'
 
-export type TaskType = 'composition' | 'mindmap' | 'notes'
+export type TaskType = 'composition' | 'mindmap' | 'notes' | 'math' | 'english'
 
 export type TaskStatus = 'pending' | 'completed' | 'expired'
 export type TaskClass =

@@ -8,6 +8,7 @@ import {
     Rows2,
     MessageSquareText,
     ClipboardList,
+    Sparkles,
 } from 'lucide-react'
 import Modal from '@apps/components/Modal'
 import Tabs from '@apps/components/Tabs'
@@ -57,6 +58,7 @@ export interface WeeklyModalEditorProps {
     onChatInputChange: (value: string) => void
     chatting: boolean
     onChat: () => void
+    onAnalyze: () => void
     onConfirm: () => void
     isDisabled: boolean
     onCancel: () => void
@@ -77,6 +79,7 @@ export default function WeeklyModalEditor({
     onChatInputChange,
     chatting,
     onChat,
+    onAnalyze,
     onConfirm,
     isDisabled,
     onCancel,
@@ -98,7 +101,7 @@ export default function WeeklyModalEditor({
             onCancel={onCancel}
             title={`第${weekNumber}周学习周报`}
             onConfirm={onConfirm}
-            confirmLabel={analysis ? '保存并分析' : '保存更改'}
+            confirmLabel="保存更改"
             isDisabled={isDisabled}
             size="full">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 overflow-hidden">
@@ -251,6 +254,18 @@ export default function WeeklyModalEditor({
                                 <div ref={chatEndRef} />
                             </div>
                             <div className="border-t border-gray-200 p-3 flex gap-2 shrink-0">
+                                <button
+                                    onClick={onAnalyze}
+                                    disabled={analyzing}
+                                    className="btn btn-outline btn-sm shrink-0"
+                                    title="周报分析">
+                                    {analyzing ? (
+                                        <Loader2 className="size-4 animate-spin" />
+                                    ) : (
+                                        <Sparkles className="size-4" />
+                                    )}
+                                    <span>周报分析</span>
+                                </button>
                                 <input
                                     type="text"
                                     value={chatInput}

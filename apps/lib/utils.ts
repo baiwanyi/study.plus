@@ -41,6 +41,8 @@ export const taskTypeColors: Record<TaskType, string> = {
     composition: 'bg-purple-100 text-purple-800',
     mindmap: 'bg-pink-100 text-pink-800',
     notes: 'bg-green-100 text-green-800',
+    math: 'bg-blue-100 text-blue-800',
+    english: 'bg-orange-100 text-orange-800',
 }
 
 export const taskStatus = ['pending', 'completed', 'expired'] as const
@@ -122,17 +124,21 @@ export const relatedTypeLabels: Record<RelatedType, string> = {
     advance: '积分预支',
 }
 
-export const taskTypeValues = ['composition', 'mindmap', 'notes'] as const
+export const taskTypeValues = ['composition', 'mindmap', 'notes', 'math', 'english'] as const
 export const taskTypeLabels: Record<TaskType, string> = {
     composition: '作文',
     mindmap: '思维导图',
     notes: '读书笔记',
+    math: '数学',
+    english: '英语',
 }
 
 export const taskTypeDefaultTitles: Record<TaskType, string> = {
     mindmap: '未命名思维导图',
     composition: '未命名作文',
     notes: '未命名读书笔记',
+    math: '未命名数学作业',
+    english: '未命名英语作业',
 }
 
 export const taskClassLabels: TaskClass[] = [

@@ -77,9 +77,69 @@ async function logAiUsage(
             totalTokens: usage.total_tokens ?? 0,
         })
     } catch (err) {
-        // AI 使用记录失败不影响主流程，仅记录日志
         const msg = err instanceof Error ? err.message : String(err)
         console.warn('[AI Usage Log Failed]', msg)
+    }
+}
+
+interface CallDeepSeekOptions {
+    messages: DeepSeekMessage[]
+    temperature?: number
+    max_tokens?: number
+    response_format?: { type: 'json_object' }
+    signal?: AbortSignal
+}
+
+interface CallDeepSeekResult {
+    content: string
+    usage?: DeepSeekUsage
+}
+
+async function callDeepSeek(
+    options: CallDeepSeekOptions,
+): Promise<CallDeepSeekResult> {
+    const { messages, temperature, max_tokens, response_format, signal } =
+        options
+
+    const response = await fetch(
+        `${DEEPSEEK_BASE_URL}/chat/completions`,
+        {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
+            },
+            signal: signal ?? AbortSignal.timeout(30_000),
+            body: JSON.stringify({
+                model: 'deepseek-v4-flash',
+                messages,
+                temperature: temperature ?? 0.7,
+                ...(max_tokens !== undefined ? { max_tokens } : {}),
+                ...(response_format ? { response_format } : {}),
+            }),
+        },
+    )
+
+    if (!response.ok) {
+        const errorText = await response.text().catch(() => 'Unknown error')
+        throw new Error(
+            `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
+        )
+    }
+
+    const data = (await response.json()) as DeepSeekResponse
+    const content: string | undefined = data.choices?.[0]?.message?.content
+    if (!content) throw new Error('Empty response from DeepSeek')
+
+    return { content, usage: data.usage }
+}
+
+/** Safely parse a JSON string with a fallback value */
+function safeJsonParse<T>(json: string, fallback: T): T {
+    try {
+        return JSON.parse(json) as T
+    } catch {
+        return fallback
     }
 }
 
@@ -87,67 +147,38 @@ export async function generateTaskTitle(
     type: TaskType,
     grade: number,
 ): Promise<string> {
-    const prompt = {
-        mindmap: defaultPromptTaskTitleMindmap.replace(
-            '{taskGrade}',
-            taskClassLabels[grade],
-        ),
+    const gradeLabel = taskClassLabels[grade]
+    const typeLabel = taskTypeLabels[type]
+    const promptMap: Partial<Record<TaskType, string>> = {
+        mindmap: defaultPromptTaskTitleMindmap.replace('{taskGrade}', gradeLabel),
         composition: defaultPromptTaskTitleComposition.replace(
             '{taskGrade}',
-            taskClassLabels[grade],
+            gradeLabel,
         ),
-        notes: defaultPromptTaskTitleNotes.replace(
-            '{taskGrade}',
-            taskClassLabels[grade],
-        ),
+        notes: defaultPromptTaskTitleNotes.replace('{taskGrade}', gradeLabel),
     }
 
     if (!DEEPSEEK_API_KEY) {
-        return `${taskClassLabels[grade]}${taskTypeLabels[type]}：${defaultTaskTitle[type]}`
+        return `${gradeLabel}${typeLabel}：${defaultTaskTitle[type]}`
     }
 
+    const userPrompt = promptMap[type] ?? `请为${gradeLabel}学生出一道${typeLabel}题目，要求新颖有趣。只返回题目文本。`
+
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        {
-                            role: 'user',
-                            content: prompt[type],
-                        } as DeepSeekMessage,
-                    ],
-                    temperature: 0.8,
-                    max_tokens: 60,
-                }),
-            },
-        )
+        const { content, usage } = await callDeepSeek({
+            messages: [
+                { role: 'user', content: userPrompt } as DeepSeekMessage,
+            ],
+            temperature: 0.8,
+            max_tokens: 60,
+        })
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
-        }
-
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const rawContent: string | undefined =
-            data.choices?.[0]?.message?.content
-        if (!rawContent) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('ai-task', data.usage, rawContent)
-        return rawContent
+        await logAiUsage('ai-task', usage, content)
+        return content
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('AI generate title error:', message)
-        return `${taskClassLabels[grade]}${taskTypeLabels[type]}：${defaultTaskTitle[type]}`
+        return `${gradeLabel}${typeLabel}：${defaultTaskTitle[type]}`
     }
 }
 
@@ -165,40 +196,16 @@ export async function generateTitle(
         .replace('{taskContent}', content.slice(0, 2000))
 
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'user', content: prompt } as DeepSeekMessage,
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 50,
-                }),
-            },
-        )
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [
+                { role: 'user', content: prompt } as DeepSeekMessage,
+            ],
+            temperature: 0.7,
+            max_tokens: 50,
+        })
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
-        }
-
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const rawContent: string | undefined =
-            data.choices?.[0]?.message?.content
-        if (!rawContent) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('ai-title', data.usage, rawContent, taskId)
-        return rawContent
+        await logAiUsage('ai-title', usage, reply, taskId)
+        return reply
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('AI title generation error:', message)
@@ -225,46 +232,24 @@ export async function scoreComposition(
     const prompt: string = defaultPromptScoreComposition
         .replace('{taskType}', taskTypeLabels[type])
         .replace('{taskTitle}', taskTitle)
-        .replace('{taskContent}', content)
+        .replace('{taskContent}', content.slice(0, 4000))
 
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'user', content: prompt } as DeepSeekMessage,
-                    ],
-                    temperature: 0.3,
-                    response_format: { type: 'json_object' },
-                }),
-            },
-        )
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [
+                { role: 'user', content: prompt } as DeepSeekMessage,
+            ],
+            temperature: 0.3,
+            response_format: { type: 'json_object' },
+        })
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
+        await logAiUsage('ai-score', usage, title, taskId)
+
+        const result = safeJsonParse<DeepSeekParsedResult | null>(reply, null)
+
+        if (!result || typeof result !== 'object') {
+            throw new Error('Invalid AI score response format')
         }
-
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const rawContent: string | undefined =
-            data.choices?.[0]?.message?.content
-        if (!rawContent) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('ai-score', data.usage, title, taskId)
-
-        const result: DeepSeekParsedResult = JSON.parse(
-            rawContent,
-        ) as DeepSeekParsedResult
 
         const grade: TaskGrade = defaultGradeValues.includes(
             result.grade as TaskGrade,
@@ -336,42 +321,33 @@ export async function analyzeWeeklyReport(
 注意：在回复内容中，请以「${teacherPrefix}」自称。如「${teacherPrefix}的小建议：」`
 
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'user', content: prompt } as DeepSeekMessage,
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 2000,
-                    response_format: { type: 'json_object' },
-                }),
-            },
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [
+                { role: 'user', content: prompt } as DeepSeekMessage,
+            ],
+            temperature: 0.7,
+            max_tokens: 2000,
+            response_format: { type: 'json_object' },
+        })
+
+        await logAiUsage(
+            'weekly-analyze',
+            usage,
+            weekLabel ? `${weekLabel}·周报分析` : '周报分析',
         )
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
+        const parsed = safeJsonParse<Partial<WeeklyAnalysis> | null>(reply, null)
+        if (!parsed || typeof parsed !== 'object') {
+            throw new Error('Invalid weekly analysis response format')
         }
 
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const rawContent: string | undefined =
-            data.choices?.[0]?.message?.content
-        if (!rawContent) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('weekly-analyze', data.usage, weekLabel ? `${weekLabel}·周报分析` : '周报分析')
-
-        return JSON.parse(rawContent) as WeeklyAnalysis
+        return {
+            praise: parsed.praise || '',
+            difficultyHelp: parsed.difficultyHelp || '',
+            goalAdvice: parsed.goalAdvice || '',
+            aiFeedbackAdvice: parsed.aiFeedbackAdvice || '',
+            summary: parsed.summary || '',
+        }
     } catch (error: unknown) {
         const message: string =
             error instanceof Error ? error.message : String(error)
@@ -416,39 +392,16 @@ export async function generateDemoSubmission(
 请直接输出示范作业，不需要额外说明。`
 
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: [
-                        { role: 'user', content: prompt } as DeepSeekMessage,
-                    ],
-                    temperature: 0.7,
-                    max_tokens: 2000,
-                }),
-            },
-        )
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [
+                { role: 'user', content: prompt } as DeepSeekMessage,
+            ],
+            temperature: 0.7,
+            max_tokens: 2000,
+        })
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
-        }
-
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const demo: string | undefined = data.choices?.[0]?.message?.content
-        if (!demo) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('task-chat', data.usage, title || taskType, taskId)
-        return demo
+        await logAiUsage('task-chat', usage, title || taskType, taskId)
+        return reply
     } catch (error: unknown) {
         const message: string =
             error instanceof Error ? error.message : String(error)
@@ -494,37 +447,13 @@ export async function chatAboutTask(
     ]
 
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: apiMessages,
-                    temperature: 0.7,
-                    max_tokens: 2000,
-                }),
-            },
-        )
+        const { content: reply, usage } = await callDeepSeek({
+            messages: apiMessages,
+            temperature: 0.7,
+            max_tokens: 2000,
+        })
 
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
-        }
-
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const reply: string | undefined = data.choices?.[0]?.message?.content
-        if (!reply) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('task-chat', data.usage, title || taskType, taskId)
-
+        await logAiUsage('task-chat', usage, title || taskType, taskId)
         return reply
     } catch (error: unknown) {
         const message: string =
@@ -571,36 +500,17 @@ export async function chatAboutWeeklyReport(
     ]
 
     try {
-        const response: Response = await fetch(
-            `${DEEPSEEK_BASE_URL}/chat/completions`,
-            {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-                },
-                body: JSON.stringify({
-                    model: 'deepseek-chat',
-                    messages: apiMessages,
-                    temperature: 0.7,
-                    max_tokens: 2000,
-                }),
-            },
+        const { content: reply, usage } = await callDeepSeek({
+            messages: apiMessages,
+            temperature: 0.7,
+            max_tokens: 2000,
+        })
+
+        await logAiUsage(
+            'weekly-chat',
+            usage,
+            weekLabel ? `${weekLabel}·周报对话` : '周报对话',
         )
-
-        if (!response.ok) {
-            const errorText = await response.text().catch(() => 'Unknown error')
-            throw new Error(
-                `DeepSeek API error ${response.status}: ${errorText.slice(0, 200)}`,
-            )
-        }
-
-        const data: DeepSeekResponse =
-            (await response.json()) as DeepSeekResponse
-        const reply: string | undefined = data.choices?.[0]?.message?.content
-        if (!reply) throw new Error('Empty response from DeepSeek')
-
-        await logAiUsage('weekly-chat', data.usage, weekLabel ? `${weekLabel}·周报对话` : '周报对话')
 
         return reply
     } catch (error: unknown) {
