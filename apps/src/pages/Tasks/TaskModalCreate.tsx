@@ -21,9 +21,11 @@ export function TaskModalCreate({
     const [title, setTitle] = useState('')
     const [type, setType] = useState<TaskType>('composition')
     const [isAICreateTitle, setIsAICreateTitle] = useState(false)
+    const [error, setError] = useState('')
 
     const handleAiCreateTitle = async () => {
         setIsAICreateTitle(true)
+        setError('')
         try {
             const systemData = (await optionsAPI.get('system')) as {
                 grade?: number
@@ -32,19 +34,30 @@ export function TaskModalCreate({
             const res = await tasksApi.aiGenerateTitle(type, grade)
             setTitle(res.title)
         } catch {
-            // silently fail
+            setError('AI 生成题目失败，请稍后重试')
         } finally {
             setIsAICreateTitle(false)
         }
     }
 
+    const resetState = () => {
+        setTitle('')
+        setType('composition')
+        setError('')
+    }
+
     const handleSave = () => {
-        onConfirm(title.trim(), type)
+        const trimmed = title.trim()
+        if (!trimmed) {
+            setError('请输入作业题目')
+            return
+        }
+        onConfirm(trimmed, type)
+        // 状态重置交由 handleClose 处理，避免 onConfirm 异步操作时表单被提前清空
     }
 
     const handleClose = () => {
-        setTitle('')
-        setType('composition')
+        resetState()
         onCancel()
     }
 
@@ -57,14 +70,17 @@ export function TaskModalCreate({
             title="新建作业">
             <div className="space-y-4">
                 <Tabs<TaskType>
-                    tabs={Object.entries(taskTypeLabels).map(
-                        ([val, label]) => ({
+                    tabs={Object.entries(taskTypeLabels)
+                        .filter(([val]) => val !== 'notes')
+                        .map(([val, label]) => ({
                             key: val as TaskType,
                             label,
-                        }),
-                    )}
+                        }))}
                     active={type}
-                    onChange={setType}
+                    onChange={(v) => {
+                        setType(v)
+                        if (error) setError('')
+                    }}
                     background="gray"
                     activeClassName="bg-white text-headline"
                 />
@@ -80,12 +96,19 @@ export function TaskModalCreate({
                         </button>
                     </div>
                     <textarea
-                        className="regular-text"
+                        className={`regular-text${error ? ' border-red-500' : ''}`}
                         value={title}
-                        onChange={(e) => setTitle(e.target.value)}
+                        onChange={(e) => {
+                            setTitle(e.target.value)
+                            if (error) setError('')
+                        }}
                         placeholder="请输入作业题目"
                         rows={3}
+                        maxLength={200}
                     />
+                    {error && (
+                        <p className="text-red-500 text-sm mt-1">{error}</p>
+                    )}
                 </div>
             </div>
         </Modal>
