@@ -1,0 +1,56 @@
+import { useMemo } from 'react'
+import type { PointStats, Task } from '@shared/types'
+
+interface WidgetStatsProps {
+    stats: PointStats | null
+    pendingTasks: Task[]
+    totalTasks: Task[]
+}
+
+export default function WidgetStats({
+    stats,
+    pendingTasks,
+    totalTasks,
+}: WidgetStatsProps) {
+    const statCards = useMemo(
+        () => [
+            {
+                label: '本月获取积分',
+                value: stats?.net ?? 0,
+                color:
+                    stats?.net && stats.net < 0
+                        ? 'text-danger'
+                        : 'text-success',
+            },
+            {
+                label: '本月兑换积分',
+                value: stats?.totalExchanges ?? 0,
+                color: 'text-danger',
+            },
+            {
+                label: '待完成作业',
+                value: pendingTasks.length,
+                color: 'text-warning',
+            },
+            {
+                label: '总作业数',
+                value: totalTasks.length,
+                color: 'text-info',
+            },
+        ],
+        [stats, pendingTasks.length, totalTasks.length],
+    )
+
+    return (
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            {statCards.map((card) => (
+                <div key={card.label} className="card">
+                    <p className="text-sm text-gray-500">{card.label}</p>
+                    <p className={`text-3xl font-bold mt-1 ${card.color}`}>
+                        {card.value}
+                    </p>
+                </div>
+            ))}
+        </div>
+    )
+}

@@ -1,5 +1,7 @@
 node_modules/
 dist/
+data/
 .env
-data/*.db
 *.log
+server/data/
+server/data/study.db

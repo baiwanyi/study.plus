@@ -81,7 +81,7 @@ let _configLoaded = false
 export async function loadConfig(): Promise<void> {
     if (_configLoaded) return
     try {
-        const { systemAPI } = await import('@/api')
+        const { systemAPI } = await import('@apps/api')
         _runtimeConfig = await systemAPI.get()
         _configLoaded = true
     } catch {

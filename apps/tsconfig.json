@@ -19,7 +19,8 @@
         "noUnusedLocals": true,
         "noUnusedParameters": true,
         "paths": {
-            "@/*": ["./src/*"],
+            "@apps/*": ["./src/*"],
+            "@components/*": ["./src/components/*"],
             "@shared/*": ["../shared/src/*"]
         }
     },

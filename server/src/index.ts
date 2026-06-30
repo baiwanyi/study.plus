@@ -33,7 +33,7 @@ app.use('/api/weekly', weeklyRouter)
 
 // List images in public/images/ directory for share background picker
 app.get('/api/images', (_req: Request, res: Response) => {
-    const imagesDir = path.resolve(import.meta.dirname, '..', '..', 'public', 'images')
+    const imagesDir = path.resolve(import.meta.dirname, '..', '..', 'apps', 'public', 'images')
     try {
         const files = fs
             .readdirSync(imagesDir)

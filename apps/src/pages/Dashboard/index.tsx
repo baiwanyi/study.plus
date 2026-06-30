@@ -1,0 +1,97 @@
+import { useState, useEffect, useMemo } from 'react'
+import { tasksApi, pointsApi } from '@apps/api'
+import type { Task, PointStats, MonthSummary } from '@shared/types'
+import { getCurrentMonth } from '@apps/utils'
+import Loading from '@components/Loading'
+import WidgetStats from './WidgetStats'
+import WidgetAdvanceStats from './WidgetAdvanceStats'
+import WidgetBalance from './WidgetBalance'
+import WidgetCustomRules from './WidgetCustomRules'
+import WidgetExamScoreRules from './WidgetExamScoreRules'
+import WidgetHomeworkGradeRules from './WidgetHomeworkGradeRules'
+import WidgetExchangeRules from './WidgetExchangeRules'
+import WidgetPendingTasks from './WidgetPendingTasks'
+import Help from './Help'
+import Share from './Share'
+
+export default function Dashboard() {
+    const [tasks, setTasks] = useState<Task[]>([])
+    const [stats, setStats] = useState<PointStats | null>(null)
+    const [summary, setSummary] = useState<MonthSummary | null>(null)
+    const [loading, setLoading] = useState(true)
+
+    const loadData = async () => {
+        try {
+            const [tasksData, statsData, summaryData] = await Promise.all([
+                tasksApi.list().catch(() => null),
+                pointsApi.stats().catch(() => null),
+                pointsApi.summary().catch(() => null),
+            ])
+            setTasks(tasksData ?? [])
+            setStats(statsData ?? null)
+            setSummary(summaryData ?? null)
+        } catch (err) {
+            console.error('Failed to load dashboard:', err)
+        } finally {
+            setLoading(false)
+        }
+    }
+
+    useEffect(() => {
+        loadData()
+    }, [])
+
+    const pendingTasks = useMemo(
+        () => tasks.filter((t) => t.status === 'pending'),
+        [tasks],
+    )
+    const month = getCurrentMonth()
+
+    if (loading) {
+        return <Loading />
+    }
+
+    return (
+        <div className="space-y-6">
+            <div className="flex items-center justify-between">
+                <h2 className="text-2xl font-bold text-gray-900">首页看板</h2>
+                <div className="flex items-center space-x-4">
+                    <Help />
+                    <Share />
+                </div>
+            </div>
+
+            {/* Stats Cards */}
+            <WidgetStats
+                stats={stats}
+                pendingTasks={pendingTasks}
+                totalTasks={tasks}
+            />
+
+            {/* Advance Stats */}
+            <WidgetAdvanceStats />
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                {/* Net Change & Balance */}
+                <WidgetBalance summary={summary} month={month} />
+                {/* Pending Tasks */}
+                <WidgetPendingTasks pendingTasks={pendingTasks} />
+            </div>
+
+            {/* All Rules List */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                {/* Exam Score Rules */}
+                <WidgetExamScoreRules />
+
+                {/* Homework Grade Rules */}
+                <WidgetHomeworkGradeRules />
+
+                {/* Exchange Rules */}
+                <WidgetExchangeRules />
+            </div>
+
+            {/* Custom Rules */}
+            <WidgetCustomRules />
+        </div>
+    )
+}

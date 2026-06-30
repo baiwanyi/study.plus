@@ -5,13 +5,11 @@ import path from 'path'
 
 export default defineConfig({
     root: __dirname,
-    plugins: [
-        react(),
-        babel({ presets: [reactCompilerPreset()] }),
-    ],
+    plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, 'src'),
+            '@apps': path.resolve(__dirname, 'src'),
+            '@components': path.resolve(__dirname, 'src', 'components'),
             '@shared': path.resolve(__dirname, '..', 'shared', 'src'),
         },
     },

@@ -1,5 +1,5 @@
 import React from 'react'
-import { getPageSize } from '@/lib/utils'
+import { getPageSize } from '@apps/utils'
 export interface Column<T> {
     key: string
     header: React.ReactNode

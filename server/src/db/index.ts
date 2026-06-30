@@ -5,13 +5,13 @@ import path from 'path'
 import fs from 'fs'
 import dotenv from 'dotenv'
 
-const appRoot = path.resolve(import.meta.dirname, '..', '..')
-const envPath = path.resolve(appRoot, '.env')
+const serverRoot = path.resolve(import.meta.dirname, '..', '..')
+const envPath = path.resolve(serverRoot, '.env')
 dotenv.config({ path: envPath })
 
 const DB_PATH: string = process.env.DB_PATH
-    ? path.resolve(appRoot, process.env.DB_PATH)
-    : path.resolve(appRoot, 'data/study.db')
+    ? path.resolve(serverRoot, process.env.DB_PATH)
+    : path.resolve(serverRoot, 'data', 'study.db')
 
 const dir: string = path.dirname(DB_PATH)
 if (!fs.existsSync(dir)) {
