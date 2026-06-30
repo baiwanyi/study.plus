@@ -1,7 +1,7 @@
 import { useRef, useEffect, useState } from 'react'
 import MDEditor from '@uiw/react-md-editor'
 import { Bot, Send, Loader2, Sparkles } from 'lucide-react'
-import type { ChatMessage } from '@apps/lib/types'
+import type { ChatMessage } from '@/lib/types'
 
 export interface AiChatPanelProps {
     messages: ChatMessage[]
