@@ -1,3 +1,5 @@
+'use client'
+
 import { useMemo } from 'react'
 import type { PointStats, Task } from '@shared/types'
 
@@ -7,7 +9,7 @@ interface WidgetStatsProps {
     totalTasks: Task[]
 }
 
-export default function WidgetStats({
+export function WidgetStats({
     stats,
     pendingTasks,
     totalTasks,

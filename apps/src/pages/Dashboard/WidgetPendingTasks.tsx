@@ -1,6 +1,8 @@
-import type { Task } from '@shared/types'
-import { taskTypeLabels, taskTypeColors } from '@apps/utils'
+'use client'
+
+import { taskTypeLabels, taskTypeColors } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
+import type { Task } from '@shared/types'
 
 interface WidgetPendingTasksProps {
     pendingTasks: Task[]
@@ -29,9 +31,7 @@ const columns: Column<Task>[] = [
     },
 ]
 
-export default function WidgetPendingTasks({
-    pendingTasks,
-}: WidgetPendingTasksProps) {
+export function WidgetPendingTasks({ pendingTasks }: WidgetPendingTasksProps) {
     return (
         <div className="card space-y-4">
             <h3>待完成作业</h3>

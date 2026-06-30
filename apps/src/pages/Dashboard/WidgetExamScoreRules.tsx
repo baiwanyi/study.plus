@@ -1,9 +1,11 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/api'
-import type { ExamRuleRange } from '@shared/types'
-import { pointColors, pointSymbol } from '@apps/utils'
+import { optionsAPI } from '@apps/utils/api'
+import { pointColors, pointSymbol } from '@apps/utils/client'
 import { parseExamData } from '@apps/pages/Options/OptionsRulesExam'
 import { DataTable, type Column } from '@components/DataTable'
+import type { ExamRuleRange } from '@shared/types'
 
 const columns: Column<ExamRuleRange>[] = [
     {
@@ -30,7 +32,7 @@ const columns: Column<ExamRuleRange>[] = [
     },
 ]
 
-export default function WidgetExamScoreRules() {
+export function WidgetExamScoreRules() {
     const [examRules, setExamRules] = useState<ExamRuleRange[]>([])
 
     useEffect(() => {

@@ -1,4 +1,6 @@
-import React, { useEffect } from 'react'
+'use client'
+
+import { useEffect, type FC, type ReactNode } from 'react'
 import { X, LoaderCircle } from 'lucide-react'
 
 export interface ModalProps {
@@ -8,12 +10,12 @@ export interface ModalProps {
     isLoading?: boolean
     isDisabled?: boolean
     isScroll?: boolean
-    title?: React.ReactNode
-    children: React.ReactNode
+    title?: ReactNode
+    children: ReactNode
     danger?: boolean
-    footer?: boolean | React.ReactNode
+    footer?: boolean | ReactNode
     confirmLabel?: string
-    confirmIcon?: React.ReactNode
+    confirmIcon?: ReactNode
     size?: 'sm' | 'md' | 'lg' | 'xl' | 'full'
 }
 
@@ -30,7 +32,7 @@ const sizeClasses: Record<string, string> = {
     full: 'max-w-[95vw]',
 }
 
-const Modal: React.FC<ModalProps> = ({
+export const Modal: FC<ModalProps> = ({
     open,
     onCancel,
     onConfirm,
@@ -107,5 +109,3 @@ const Modal: React.FC<ModalProps> = ({
         </div>
     )
 }
-
-export default Modal

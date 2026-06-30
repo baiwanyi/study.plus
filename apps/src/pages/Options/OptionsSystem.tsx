@@ -1,9 +1,11 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { optionsAPI, quotesApi } from '@apps/api'
-import { defaultQuotes, defaultExchangeRuleRemarks } from '@shared/constants'
-import { useSnackbar } from '@components/Snackbar'
-import { formatErrorMessage, taskClassLabels } from '@apps/utils'
+import { optionsAPI, quotesApi } from '@apps/utils/api'
+import { formatErrorMessage, taskClassLabels } from '@apps/utils/client'
 import { RulesPage } from '@components/RulesPage'
+import { useSnackbar } from '@components/Snackbar'
+import { defaultQuotes, defaultExchangeRuleRemarks } from '@shared/constants'
 
 interface SystemSettings {
     monthlyBasePoints: number
@@ -74,7 +76,11 @@ export function RulesSystem() {
                 if (cancelled) return
                 if (typeof data === 'string') {
                     setSettings((prev) => ({ ...prev, weeklyAiName: data }))
-                } else if (data && typeof data === 'object' && 'display_name' in data) {
+                } else if (
+                    data &&
+                    typeof data === 'object' &&
+                    'display_name' in data
+                ) {
                     const dn = (data as Record<string, unknown>).display_name
                     if (typeof dn === 'string') {
                         setSettings((prev) => ({ ...prev, weeklyAiName: dn }))
@@ -120,7 +126,9 @@ export function RulesSystem() {
             })
             await quotesApi.update(quotes)
             await optionsAPI.update('exchangeRuleRemarks', exchangeRuleRemarks)
-            await optionsAPI.update('weeklyAiHelper', { display_name: settings.weeklyAiName })
+            await optionsAPI.update('weeklyAiHelper', {
+                display_name: settings.weeklyAiName,
+            })
             showSnackbar('保存成功！')
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')

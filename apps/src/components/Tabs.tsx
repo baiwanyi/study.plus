@@ -1,3 +1,5 @@
+'use client'
+
 export interface TabItem<T extends string = string> {
     key: T
     label: string
@@ -12,7 +14,7 @@ export interface TabsProps<T extends string = string> {
     onChange: (key: T) => void
 }
 
-export default function Tabs<T extends string = string>({
+export function Tabs<T extends string = string>({
     tabs,
     active,
     background = 'white',

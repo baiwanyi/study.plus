@@ -1,12 +1,4 @@
 import {
-    taskTypeLabels,
-    taskClassLabels,
-    defaultGradeValues,
-    taskTypeDefaultTitles,
-} from '@shared/utils'
-import type { TaskType, TaskGrade, WeeklyAnalysis, ChatMessage } from '@shared/types'
-import type { WeeklyReportContent } from '@shared/weekly'
-import {
     defaultTaskTitle,
     defaultPromptTaskTitleComposition,
     defaultPromptTaskTitleMindmap,
@@ -14,10 +6,23 @@ import {
     defaultPromptGenerateTitle,
     defaultPromptScoreComposition,
 } from '@shared/constants'
+import {
+    taskTypeLabels,
+    taskClassLabels,
+    defaultGradeValues,
+    taskTypeDefaultTitles,
+} from '@shared/utils'
+import type {
+    TaskType,
+    TaskGrade,
+    WeeklyAnalysis,
+    ChatMessage,
+} from '@shared/types'
+import type { WeeklyReportContent } from '@shared/weekly'
 
-const DEEPSEEK_BASE_URL: string =
+const DEEPSEEK_BASE_URL =
     process.env.DEEPSEEK_BASE_URL || 'https://api.deepseek.com'
-const DEEPSEEK_API_KEY: string | undefined = process.env.DEEPSEEK_API_KEY
+const DEEPSEEK_API_KEY = process.env.DEEPSEEK_API_KEY
 
 export interface AIScoreResult {
     grade: TaskGrade
@@ -101,24 +106,21 @@ async function callDeepSeek(
     const { messages, temperature, max_tokens, response_format, signal } =
         options
 
-    const response = await fetch(
-        `${DEEPSEEK_BASE_URL}/chat/completions`,
-        {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
-            },
-            signal: signal ?? AbortSignal.timeout(30_000),
-            body: JSON.stringify({
-                model: 'deepseek-v4-flash',
-                messages,
-                temperature: temperature ?? 0.7,
-                ...(max_tokens !== undefined ? { max_tokens } : {}),
-                ...(response_format ? { response_format } : {}),
-            }),
+    const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         },
-    )
+        signal: signal ?? AbortSignal.timeout(30_000),
+        body: JSON.stringify({
+            model: 'deepseek-v4-flash',
+            messages,
+            temperature: temperature ?? 0.7,
+            ...(max_tokens !== undefined ? { max_tokens } : {}),
+            ...(response_format ? { response_format } : {}),
+        }),
+    })
 
     if (!response.ok) {
         const errorText = await response.text().catch(() => 'Unknown error')
@@ -128,7 +130,7 @@ async function callDeepSeek(
     }
 
     const data = (await response.json()) as DeepSeekResponse
-    const content: string | undefined = data.choices?.[0]?.message?.content
+    const content = data.choices?.[0]?.message?.content
     if (!content) throw new Error('Empty response from DeepSeek')
 
     return { content, usage: data.usage }
@@ -149,7 +151,10 @@ export async function generateTaskTitle(
     const gradeLabel = taskClassLabels[grade]
     const typeLabel = taskTypeLabels[type]
     const promptMap: Partial<Record<TaskType, string>> = {
-        mindmap: defaultPromptTaskTitleMindmap.replace('{taskGrade}', gradeLabel),
+        mindmap: defaultPromptTaskTitleMindmap.replace(
+            '{taskGrade}',
+            gradeLabel,
+        ),
         composition: defaultPromptTaskTitleComposition.replace(
             '{taskGrade}',
             gradeLabel,
@@ -161,13 +166,13 @@ export async function generateTaskTitle(
         return `${gradeLabel}${typeLabel}：${defaultTaskTitle[type]}`
     }
 
-    const userPrompt = promptMap[type] ?? `请为${gradeLabel}学生出一道${typeLabel}题目，要求新颖有趣。只返回题目文本。`
+    const userPrompt =
+        promptMap[type] ??
+        `请为${gradeLabel}学生出一道${typeLabel}题目，要求新颖有趣。只返回题目文本。`
 
     try {
         const { content, usage } = await callDeepSeek({
-            messages: [
-                { role: 'user', content: userPrompt } as DeepSeekMessage,
-            ],
+            messages: [{ role: 'user', content: userPrompt }],
             temperature: 0.8,
             max_tokens: 60,
         })
@@ -190,15 +195,13 @@ export async function generateTitle(
         return taskTypeDefaultTitles[type]
     }
 
-    const prompt: string = defaultPromptGenerateTitle
+    const prompt = defaultPromptGenerateTitle
         .replace('{taskType}', taskTypeLabels[type])
         .replace('{taskContent}', content.slice(0, 2000))
 
     try {
         const { content: reply, usage } = await callDeepSeek({
-            messages: [
-                { role: 'user', content: prompt } as DeepSeekMessage,
-            ],
+            messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 50,
         })
@@ -227,17 +230,63 @@ export async function scoreComposition(
         }
     }
 
+    // For book notes (notes type), parse JSON structured data into readable text
+    let processedContent = content
+    if (type === 'notes') {
+        try {
+            const parsed = JSON.parse(content) as {
+                bookInfo?: {
+                    bookName?: string
+                    chapter?: string
+                    author?: string
+                }
+                goodWords?: string
+                excerpts?: Array<{ sentence?: string; insight?: string }>
+                reflection?: { mainContent?: string; thoughts?: string }
+            }
+            const lines = []
+            if (parsed.bookInfo) {
+                lines.push(`书名：${parsed.bookInfo.bookName || ''}`)
+                lines.push(`篇目：${parsed.bookInfo.chapter || ''}`)
+                lines.push(`作者：${parsed.bookInfo.author || ''}`)
+                lines.push('')
+            }
+            if (parsed.goodWords) {
+                const words = parsed.goodWords.split('\n').filter(Boolean)
+                lines.push(`累积好词：${words.join('、')}`)
+                lines.push('')
+            }
+            if (parsed.excerpts && parsed.excerpts.length > 0) {
+                lines.push('摘抄赏析：')
+                parsed.excerpts.forEach((ex) => {
+                    lines.push(
+                        `- "${ex.sentence || ''}"（赏析：${ex.insight || ''}）`,
+                    )
+                })
+                lines.push('')
+            }
+            lines.push('读后感：')
+            if (parsed.reflection?.mainContent) {
+                lines.push(`[主要内容] ${parsed.reflection.mainContent}`)
+            }
+            if (parsed.reflection?.thoughts) {
+                lines.push(`[我的感想] ${parsed.reflection.thoughts}`)
+            }
+            processedContent = lines.join('\n')
+        } catch {
+            // fallback to raw content
+        }
+    }
+
     const taskTitle = title ? `题目：${title}` : '无指定题目，请根据内容评判'
-    const prompt: string = defaultPromptScoreComposition
+    const prompt = defaultPromptScoreComposition
         .replace('{taskType}', taskTypeLabels[type])
         .replace('{taskTitle}', taskTitle)
-        .replace('{taskContent}', content.slice(0, 4000))
+        .replace('{taskContent}', processedContent.slice(0, 4000))
 
     try {
         const { content: reply, usage } = await callDeepSeek({
-            messages: [
-                { role: 'user', content: prompt } as DeepSeekMessage,
-            ],
+            messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
             response_format: { type: 'json_object' },
         })
@@ -250,10 +299,9 @@ export async function scoreComposition(
             throw new Error('Invalid AI score response format')
         }
 
-        const grade: TaskGrade = defaultGradeValues.includes(
-            result.grade as TaskGrade,
-        )
-            ? (result.grade as TaskGrade)
+        const parsedGrade = result.grade as TaskGrade
+        const grade: TaskGrade = defaultGradeValues.includes(parsedGrade)
+            ? parsedGrade
             : 'B'
 
         return {
@@ -265,8 +313,7 @@ export async function scoreComposition(
                 : [],
         }
     } catch (error: unknown) {
-        const message: string =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI scoring error:', message)
         return {
             grade: 'B',
@@ -321,9 +368,7 @@ export async function analyzeWeeklyReport(
 
     try {
         const { content: reply, usage } = await callDeepSeek({
-            messages: [
-                { role: 'user', content: prompt } as DeepSeekMessage,
-            ],
+            messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 2000,
             response_format: { type: 'json_object' },
@@ -335,7 +380,10 @@ export async function analyzeWeeklyReport(
             weekLabel ? `${weekLabel}·周报分析` : '周报分析',
         )
 
-        const parsed = safeJsonParse<Partial<WeeklyAnalysis> | null>(reply, null)
+        const parsed = safeJsonParse<Partial<WeeklyAnalysis> | null>(
+            reply,
+            null,
+        )
         if (!parsed || typeof parsed !== 'object') {
             throw new Error('Invalid weekly analysis response format')
         }
@@ -348,8 +396,7 @@ export async function analyzeWeeklyReport(
             summary: parsed.summary || '',
         }
     } catch (error: unknown) {
-        const message: string =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI weekly analyze error:', message)
         return {
             praise: `分析出错：${message}，请稍后重试`,
@@ -392,9 +439,7 @@ export async function generateDemoSubmission(
 
     try {
         const { content: reply, usage } = await callDeepSeek({
-            messages: [
-                { role: 'user', content: prompt } as DeepSeekMessage,
-            ],
+            messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 2000,
         })
@@ -402,8 +447,7 @@ export async function generateDemoSubmission(
         await logAiUsage('task-chat', usage, title || taskType, taskId)
         return reply
     } catch (error: unknown) {
-        const message: string =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI demo submission error:', message)
         return `生成示范作业出错：${message}，请稍后重试`
     }
@@ -438,11 +482,11 @@ export async function chatAboutTask(
 5. 不要直接替学生完成作业，而是引导他们自己思考`
 
     const apiMessages: DeepSeekMessage[] = [
-        { role: 'system', content: systemPrompt } as DeepSeekMessage,
+        { role: 'system', content: systemPrompt },
         ...messages.map((m) => ({
-            role: m.role as 'user' | 'assistant',
+            role: m.role,
             content: m.content,
-        })) as DeepSeekMessage[],
+        })),
     ]
 
     try {
@@ -455,8 +499,7 @@ export async function chatAboutTask(
         await logAiUsage('task-chat', usage, title || taskType, taskId)
         return reply
     } catch (error: unknown) {
-        const message: string =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI task chat error:', message)
         return `对话出错：${message}，请稍后重试`
     }
@@ -491,11 +534,11 @@ export async function chatAboutWeeklyReport(
 - 改进方法：${content.improvement}`
 
     const apiMessages: DeepSeekMessage[] = [
-        { role: 'system', content: systemPrompt } as DeepSeekMessage,
+        { role: 'system', content: systemPrompt },
         ...messages.map((m) => ({
-            role: m.role as 'user' | 'assistant',
+            role: m.role,
             content: m.content,
-        })) as DeepSeekMessage[],
+        })),
     ]
 
     try {
@@ -513,8 +556,7 @@ export async function chatAboutWeeklyReport(
 
         return reply
     } catch (error: unknown) {
-        const message: string =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI weekly chat error:', message)
         return `对话出错：${message}，请稍后重试`
     }

@@ -1,10 +1,12 @@
-import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
-import { toPng } from 'html-to-image'
-import mermaid from 'mermaid'
+'use client'
+
 import MDEditor from '@uiw/react-md-editor'
+import { toPng } from 'html-to-image'
 import { BookOpen, Sparkles } from 'lucide-react'
-import { defaultGradeColors } from '@apps/utils'
-import Modal from '@components/Modal'
+import mermaid from 'mermaid'
+import { useRef, useState, useEffect, useCallback, useMemo, memo } from 'react'
+import { defaultGradeColors } from '@apps/utils/client'
+import { Modal } from '@components/Modal'
 import '@apps/styles/markdown-viewer.css'
 import type { Task, TaskGrade, AIScoreResult } from '@shared/types'
 
@@ -137,7 +139,7 @@ function parseAiScore(raw: string | null): AIScoreResult | null {
     }
 }
 
-export default memo(
+export const TaskModalShare = memo(
     function TaskModalShare({ open, task, onCancel }: TaskModalShareProps) {
         const contentRef = useRef<HTMLDivElement>(null)
         const aiScore = useMemo(
@@ -196,7 +198,14 @@ export default memo(
                             data-color-mode="light">
                             {task?.submission?.content ? (
                                 <MDEditor.Markdown
-                                    source={task.submission.content}
+                                    source={
+                                        task.type === 'notes'
+                                            ? formatBookNoteContent(
+                                                  task.submission.content,
+                                                  task.createdAt,
+                                              )
+                                            : task.submission.content
+                                    }
                                     {...mdEditorPreviewOptions}
                                 />
                             ) : (
@@ -323,4 +332,94 @@ export default memo(
 // 辅助：将 AIScoreResult 的 grade 转成 TaskGrade 颜色查找所用的类型
 function aiGrade(grade: string): TaskGrade {
     return grade as TaskGrade
+}
+
+/** 将读书笔记 JSON 格式化为可读的 Markdown 文本 */
+function formatBookNoteContent(content: string, createdAt?: string): string {
+    try {
+        const parsed = JSON.parse(content) as {
+            bookInfo?: {
+                bookName?: string
+                chapter?: string
+                author?: string
+            }
+            goodWords?: string
+            excerpts?: Array<{ sentence?: string; insight?: string }>
+            reflection?: { mainContent?: string; thoughts?: string }
+        }
+        // 如果不是读书笔记结构（缺少 bookInfo 等关键字段），返回原文
+        if (!parsed.bookInfo && !parsed.excerpts && !parsed.reflection) {
+            return content
+        }
+        const lines: string[] = []
+
+        if (parsed.bookInfo) {
+            const { bookName, chapter, author } = parsed.bookInfo
+            if (bookName?.trim() || chapter?.trim() || author?.trim()) {
+                lines.push('## 📖 书籍信息')
+                if (bookName) lines.push(`- **书名**：${bookName}`)
+                if (chapter) lines.push(`- **篇目**：${chapter}`)
+                if (author) lines.push(`- **作者**：${author}`)
+                if (createdAt) {
+                    const date = createdAt.slice(0, 10)
+                    lines.push(`- **日期**：${date}`)
+                }
+                lines.push('')
+            }
+        }
+
+        if (parsed.goodWords?.trim()) {
+            const words = parsed.goodWords
+                .split('\n')
+                .map((w) => w.trim())
+                .filter(Boolean)
+            if (words.length > 0) {
+                lines.push('## 📝 累积好词')
+                lines.push(words.join('、'))
+                lines.push('')
+            }
+        }
+
+        if (parsed.excerpts && parsed.excerpts.length > 0) {
+            lines.push('## ✨ 摘抄赏析')
+            parsed.excerpts.forEach((ex, i) => {
+                if (i > 0) lines.push('---')
+                if (ex.sentence?.trim()) {
+                    lines.push('**摘抄：**')
+                    lines.push(ex.sentence)
+                }
+                if (ex.insight?.trim()) {
+                    lines.push('')
+                    lines.push('**赏析：**')
+                    lines.push(ex.insight)
+                }
+                lines.push('')
+            })
+        }
+
+        if (parsed.reflection) {
+            const { mainContent, thoughts } = parsed.reflection
+            if (mainContent?.trim() || thoughts?.trim()) {
+                lines.push('## ✍️ 读后感')
+                if (mainContent?.trim()) {
+                    lines.push('')
+                    lines.push('**主要内容**')
+                    lines.push('')
+                    lines.push(mainContent)
+                    lines.push('')
+                }
+                if (thoughts?.trim()) {
+                    lines.push('')
+                    lines.push('**我的感想**')
+                    lines.push('')
+                    lines.push(thoughts)
+                    lines.push('')
+                }
+            }
+        }
+
+        return lines.join('\n') || content
+    } catch {
+        return content
+    }
 }

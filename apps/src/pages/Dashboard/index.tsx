@@ -1,20 +1,22 @@
-import { useState, useEffect, useMemo } from 'react'
-import { tasksApi, pointsApi } from '@apps/api'
-import type { Task, PointStats, MonthSummary } from '@shared/types'
-import { getCurrentMonth } from '@apps/utils'
-import Loading from '@components/Loading'
-import WidgetStats from './WidgetStats'
-import WidgetAdvanceStats from './WidgetAdvanceStats'
-import WidgetBalance from './WidgetBalance'
-import WidgetCustomRules from './WidgetCustomRules'
-import WidgetExamScoreRules from './WidgetExamScoreRules'
-import WidgetHomeworkGradeRules from './WidgetHomeworkGradeRules'
-import WidgetExchangeRules from './WidgetExchangeRules'
-import WidgetPendingTasks from './WidgetPendingTasks'
-import Help from './Help'
-import Share from './Share'
+'use client'
 
-export default function Dashboard() {
+import { useState, useEffect, useMemo } from 'react'
+import { tasksApi, pointsApi } from '@apps/utils/api'
+import { getCurrentMonth } from '@apps/utils/client'
+import { Loading } from '@components/Loading'
+import { WidgetStats } from './WidgetStats'
+import { WidgetAdvanceStats } from './WidgetAdvanceStats'
+import { WidgetBalance } from './WidgetBalance'
+import { WidgetCustomRules } from './WidgetCustomRules'
+import { WidgetExamScoreRules } from './WidgetExamScoreRules'
+import { WidgetHomeworkGradeRules } from './WidgetHomeworkGradeRules'
+import { WidgetExchangeRules } from './WidgetExchangeRules'
+import { WidgetPendingTasks } from './WidgetPendingTasks'
+import { Help } from './Help'
+import { Share } from './Share'
+import type { Task, PointStats, MonthSummary } from '@shared/types'
+
+export function Dashboard() {
     const [tasks, setTasks] = useState<Task[]>([])
     const [stats, setStats] = useState<PointStats | null>(null)
     const [summary, setSummary] = useState<MonthSummary | null>(null)

@@ -1,7 +1,8 @@
-import { Router, type Request, type Response } from 'express'
+import { desc, sql } from 'drizzle-orm'
+import { Router } from 'express'
+import type { Request, Response } from 'express'
 import { db } from '../db/index'
 import { aiUsageLogs } from '../db/schema'
-import { desc, sql } from 'drizzle-orm'
 
 const router = Router()
 
@@ -27,4 +28,4 @@ router.get('/summary', async (_req: Request, res: Response) => {
     res.json(summary)
 })
 
-export default router
+export { router as aiUsageRouter }

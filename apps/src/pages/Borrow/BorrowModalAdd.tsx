@@ -1,5 +1,7 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import Modal from '@components/Modal'
+import { Modal } from '@components/Modal'
 
 interface BorrowModalAddProps {
     open: boolean
@@ -14,7 +16,7 @@ const DEFAULT_BASE_RATIO = 16
 
 function calculateRepayment(amount: number, installments: number) {
     const tierIndex = INSTALLMENT_OPTIONS.indexOf(
-        installments as typeof INSTALLMENT_OPTIONS[number],
+        installments as (typeof INSTALLMENT_OPTIONS)[number],
     )
     const ratio = DEFAULT_BASE_RATIO + tierIndex * 2
     const totalRepayment = Math.round(amount * (1 + ratio / 100))
@@ -22,7 +24,7 @@ function calculateRepayment(amount: number, installments: number) {
     return { ratio, totalRepayment, installmentAmount }
 }
 
-export default function BorrowModalAdd({
+export function BorrowModalAdd({
     open,
     onCancel,
     onConfirm,
@@ -30,9 +32,8 @@ export default function BorrowModalAdd({
     maxPendingAmount,
 }: BorrowModalAddProps) {
     const [amount, setAmount] = useState('')
-    const [installments, setInstallments] = useState<
-        typeof INSTALLMENT_OPTIONS[number]
-    >(1)
+    const [installments, setInstallments] =
+        useState<(typeof INSTALLMENT_OPTIONS)[number]>(1)
     const [creating, setCreating] = useState(false)
 
     useEffect(() => {
@@ -49,8 +50,7 @@ export default function BorrowModalAdd({
         ? calculateRepayment(numAmount, installments)
         : null
 
-    const exceedsCredit =
-        calc !== null && calc.totalRepayment > remainingCredit
+    const exceedsCredit = calc !== null && calc.totalRepayment > remainingCredit
 
     const handleCreate = async () => {
         if (!calc || !isValidAmount) return
@@ -68,8 +68,7 @@ export default function BorrowModalAdd({
         setAmount('')
     }
 
-    const isDisabled =
-        creating || !isValidAmount || exceedsCredit
+    const isDisabled = creating || !isValidAmount || exceedsCredit
 
     return (
         <Modal
@@ -101,7 +100,9 @@ export default function BorrowModalAdd({
                         value={installments}
                         onChange={(e) =>
                             setInstallments(
-                                Number(e.target.value) as typeof INSTALLMENT_OPTIONS[number],
+                                Number(
+                                    e.target.value,
+                                ) as (typeof INSTALLMENT_OPTIONS)[number],
                             )
                         }>
                         {INSTALLMENT_OPTIONS.map((n) => (
@@ -129,8 +130,8 @@ export default function BorrowModalAdd({
                         <div className="flex justify-between">
                             <span className="text-gray-500">每期应还</span>
                             <span className="font-medium text-gray-800">
-                                {calc.installmentAmount} 积分 ×{' '}
-                                {installments} 期
+                                {calc.installmentAmount} 积分 × {installments}{' '}
+                                期
                             </span>
                         </div>
                         <div className="flex justify-between pt-1 border-t border-gray-200">

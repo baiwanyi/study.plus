@@ -1,6 +1,8 @@
+'use client'
+
 import { useState, useEffect } from 'react'
+import { Modal } from '@components/Modal'
 import type { ExchangeItemRule } from '@shared/types'
-import Modal from '@components/Modal'
 
 interface ExchangesModalAddProps {
     open: boolean
@@ -10,7 +12,7 @@ interface ExchangesModalAddProps {
     availableBalance: number
 }
 
-export default function ExchangesModalAdd({
+export function ExchangesModalAdd({
     open,
     onCancel,
     onConfirm,

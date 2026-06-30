@@ -1,8 +1,10 @@
+'use client'
+
 import { useState, useMemo } from 'react'
-import type { PointAdvance } from '@shared/types'
-import { getPageSize, paginate, formatDate } from '@apps/utils'
+import { getPageSize, paginate, formatDate } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
-import BorrowStatsCards from './BorrowStatsCards'
+import { BorrowStatsCards } from './BorrowStatsCards'
+import type { PointAdvance } from '@shared/types'
 
 interface BorrowListTableProps {
     advances: PointAdvance[]
@@ -16,7 +18,7 @@ function getStatusLabel(status: 'active' | 'completed'): string {
     return status === 'active' ? '进行中' : '已完成'
 }
 
-export default function BorrowListTable({ advances }: BorrowListTableProps) {
+export function BorrowListTable({ advances }: BorrowListTableProps) {
     const [page, setPage] = useState(1)
     const pageSize = getPageSize()
 

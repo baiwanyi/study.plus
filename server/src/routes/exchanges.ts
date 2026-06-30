@@ -1,11 +1,9 @@
-import { Router, type Request, type Response } from 'express'
+import { eq, desc, and, gte, lte } from 'drizzle-orm'
+import { Router } from 'express'
+import type { Request, Response } from 'express'
 import { db } from '../db/index'
 import { exchanges, pointRecords, monthSummary } from '../db/schema'
-import { eq, desc, and, gte, lte } from 'drizzle-orm'
-import {
-    loadRulesWithSrc,
-    getExchangeItemLabel,
-} from './rules-loader'
+import { loadRulesWithSrc, getExchangeItemLabel } from './rules-loader'
 import { recomputeMonthSummary } from './summary-helper'
 import type {
     Exchange,
@@ -193,4 +191,4 @@ router.post(
     },
 )
 
-export default router
+export { router as exchangesRouter }

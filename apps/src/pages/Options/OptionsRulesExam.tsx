@@ -1,14 +1,16 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import type { ExamRuleRange } from '@shared/types'
-import { optionsAPI } from '@apps/api'
-import { useSnackbar } from '@components/Snackbar'
-import { formatErrorMessage } from '@apps/utils'
+import { optionsAPI } from '@apps/utils/api'
+import { formatErrorMessage } from '@apps/utils/client'
+import { DataTable, type Column } from '@components/DataTable'
 import {
     RulesPage,
     RenderDeleteButton,
     RenderInput,
 } from '@components/RulesPage'
-import { DataTable, type Column } from '@components/DataTable'
+import { useSnackbar } from '@components/Snackbar'
+import type { ExamRuleRange } from '@shared/types'
 
 const defaultRanges: ExamRuleRange[] = []
 

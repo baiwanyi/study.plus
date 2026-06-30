@@ -1,13 +1,15 @@
-import { useState, useEffect } from 'react'
-import { advancesApi } from '@apps/api'
-import type { PointAdvance, AdvanceSummary } from '@shared/types'
-import { isAdmin, formatErrorMessage } from '@apps/utils'
-import { useSnackbar } from '@components/Snackbar'
-import Loading from '@components/Loading'
-import BorrowListTable from './BorrowListTable'
-import BorrowModalAdd from './BorrowModalAdd'
+'use client'
 
-export default function Borrow() {
+import { useState, useEffect } from 'react'
+import { advancesApi } from '@apps/utils/api'
+import { isAdmin, formatErrorMessage } from '@apps/utils/client'
+import { useSnackbar } from '@components/Snackbar'
+import { Loading } from '@components/Loading'
+import { BorrowListTable } from './BorrowListTable'
+import { BorrowModalAdd } from './BorrowModalAdd'
+import type { PointAdvance, AdvanceSummary } from '@shared/types'
+
+export function Borrow() {
     const { showSnackbar } = useSnackbar()
     const [advances, setAdvances] = useState<PointAdvance[]>([])
     const [summary, setSummary] = useState<AdvanceSummary | null>(null)

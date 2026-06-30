@@ -1,24 +1,26 @@
-import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
+'use client'
+
 import MDEditor from '@uiw/react-md-editor'
-import mermaid from 'mermaid'
 import { Sparkles, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
-import { tasksApi, systemAPI } from '@apps/api'
-import type { AiScoreLog, Task, ChatMessage } from '@shared/types'
-import AiChatPanel from '@components/AiChatPanel'
+import mermaid from 'mermaid'
+import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
+import '@apps/styles/markdown-editor.css'
+import { tasksApi, systemAPI } from '@apps/utils/api'
 import {
     taskTypeLabels,
     taskTypeColors,
     formatErrorMessage,
-} from '@apps/utils'
+} from '@apps/utils/client'
+import AiChatPanel from '@components/AiChatPanel'
 import { useSnackbar } from '@components/Snackbar'
-import '@apps/styles/markdown-editor.css'
+import type { AiScoreLog, Task, ChatMessage } from '@shared/types'
 
 export interface EditTaskProps {
     task: Task | null
     onCancel: () => void
 }
 
-export default function EditTask({ task, onCancel }: EditTaskProps) {
+export function EditTask({ task, onCancel }: EditTaskProps) {
     const { showSnackbar } = useSnackbar()
 
     const [previewMode, setPreviewMode] = useState<'live' | 'edit'>(() =>
@@ -219,6 +221,10 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
             .catch(() => setScoreLogs([]))
     }, [currentTask?.id, currentTask?.submission?.scoredAt])
 
+    const handleMdChange = useCallback((val: string | undefined) => {
+        setMdContent(val ?? '')
+    }, [])
+
     // Cleanup on unmount
     useEffect(() => {
         return () => {
@@ -230,8 +236,8 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
 
     if (!currentTask) return null
 
-    const hasSuggestions =
-        currentTask.aiSuggestions && currentTask.aiSuggestions.length > 0
+    const aiSuggestions = currentTask.aiSuggestions
+    const hasSuggestions = aiSuggestions && aiSuggestions.length > 0
 
     const autoconfirmLabel =
         autosaveStatus === 'saving'
@@ -283,7 +289,7 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
                         <div className="space-y-1 text-sm font-medium text-warning">
                             <h6 className="text-warning">改进建议</h6>
                             <ul className="list-disc list-inside">
-                                {currentTask.aiSuggestions!.map((s, i) => (
+                                {aiSuggestions.map((s, i) => (
                                     <li key={i}>{s}</li>
                                 ))}
                             </ul>
@@ -296,27 +302,11 @@ export default function EditTask({ task, onCancel }: EditTaskProps) {
                 <div data-color-mode="light" className="m-2 flex-1">
                     <MDEditor
                         value={mdContent}
-                        onChange={(val: string) => setMdContent(val ?? '')}
+                        onChange={handleMdChange}
                         height="100%"
                         preview={previewMode}
                         previewOptions={mdEditorPreviewOptions}
-                        commandsFilter={(command) => {
-                            const hidden = [
-                                'image',
-                                'table',
-                                'orderedList',
-                                'codeBlock',
-                                'comment',
-                                'strikethrough',
-                                'olist',
-                                'code',
-                                'link',
-                                'help',
-                            ]
-                            return hidden.includes(command.keyCommand ?? '')
-                                ? false
-                                : command
-                        }}
+                        commandsFilter={mdEditorCommandsFilter}
                     />
                 </div>
                 <div className="w-md flex flex-col overflow-hidden">
@@ -529,6 +519,23 @@ function extractText(children: React.ReactNode): string {
     }
     return ''
 }
+
+// MDEditor hidden command keys (stable reference to avoid inline lambda recreation)
+const HIDDEN_COMMANDS = new Set([
+    'image',
+    'table',
+    'orderedList',
+    'codeBlock',
+    'comment',
+    'strikethrough',
+    'olist',
+    'code',
+    'link',
+    'help',
+])
+
+const mdEditorCommandsFilter = (command: { keyCommand?: string }) =>
+    HIDDEN_COMMANDS.has(command.keyCommand ?? '') ? false : command
 
 // Preview options for MDEditor with mermaid support
 const mdEditorPreviewOptions = {

@@ -1,12 +1,12 @@
 'use client'
 
+import { ArrowLeft, ExternalLink, Calendar, Newspaper } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { rssApi } from '@apps/api'
-import type { RssFeedItem, RssPostDetail } from '@apps/api'
-import Tabs from '@components/Tabs'
-import Loading from '@components/Loading'
-import { ArrowLeft, ExternalLink, Calendar, Newspaper } from 'lucide-react'
+import { rssApi } from '@apps/utils/api'
+import { Loading } from '@components/Loading'
+import { Tabs } from '@components/Tabs'
+import type { RssFeedItem, RssPostDetail } from '@apps/utils/api'
 
 const CATEGORIES = [
     { key: '', label: '首页' },
@@ -17,7 +17,7 @@ const CATEGORIES = [
     { key: '21', label: '人文考古' },
 ]
 
-export default function RssReader() {
+export function RssReader() {
     const [searchParams, setSearchParams] = useSearchParams()
     const cat = searchParams.get('cat') || ''
     const postId = searchParams.get('post')

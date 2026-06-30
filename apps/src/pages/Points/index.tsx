@@ -1,18 +1,24 @@
+'use client'
+
 import { useState, useEffect, useCallback } from 'react'
-import { pointsApi, optionsAPI } from '@apps/api'
+import { pointsApi, optionsAPI } from '@apps/utils/api'
+import {
+    getCurrentMonth,
+    isAdmin,
+    formatErrorMessage,
+} from '@apps/utils/client'
+import { Loading } from '@components/Loading'
+import { useSnackbar } from '@components/Snackbar'
+import { PointsListTable } from './PointsListTable'
+import { PointsModalAdd } from './PointsModalAdd'
 import type {
     PointRecord,
     HomeworkGradeRule,
     CustomRule,
     ExamRuleRange,
 } from '@shared/types'
-import { getCurrentMonth, isAdmin, formatErrorMessage } from '@apps/utils'
-import { useSnackbar } from '@components/Snackbar'
-import PointsListTable from './PointsListTable'
-import PointsModalAdd from './PointsModalAdd'
-import Loading from '@components/Loading'
 
-export default function Points() {
+export function Points() {
     const { showSnackbar } = useSnackbar()
     const [records, setRecords] = useState<PointRecord[]>([])
     const [loading, setLoading] = useState(true)

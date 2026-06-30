@@ -1,4 +1,6 @@
-import Modal from '@components/Modal'
+'use client'
+
+import { Modal } from '@components/Modal'
 
 export interface DeleteModalProps {
     confirmId: number | null
@@ -6,7 +8,7 @@ export interface DeleteModalProps {
     onConfirm: (id: number) => void
 }
 
-export default function WeeklyModalDelete({
+export function WeeklyModalDelete({
     confirmId,
     onCancel,
     onConfirm,

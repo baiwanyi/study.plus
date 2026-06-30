@@ -1,7 +1,9 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import type { MonthSummary, ExchangeItemRule } from '@shared/types'
-import { optionsAPI } from '@apps/api'
+import { optionsAPI } from '@apps/utils/api'
 import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
+import type { MonthSummary, ExchangeItemRule } from '@shared/types'
 
 const DEFAULT_RATIO = 5
 const DEFAULT_POINTS = 1
@@ -11,7 +13,7 @@ interface WidgetBalanceProps {
     month: string
 }
 
-export default function WidgetBalance({ summary, month }: WidgetBalanceProps) {
+export function WidgetBalance({ summary, month }: WidgetBalanceProps) {
     const [exchangeRules, setExchangeRules] = useState<ExchangeItemRule[]>([])
 
     useEffect(() => {

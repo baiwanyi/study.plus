@@ -1,11 +1,7 @@
+'use client'
+
 import { useState, useEffect, type ReactNode } from 'react'
-import type {
-    PointCategoryType,
-    PointRecordType,
-    CustomRule,
-    ExamRuleRange,
-} from '@shared/types'
-import { remarkApi } from '@apps/api'
+import { remarkApi } from '@apps/utils/api'
 import {
     defaultGradeValues,
     pointSymbol,
@@ -15,9 +11,15 @@ import {
     relatedTypeLabels,
     toPointType,
     toPointSymbol,
-} from '@apps/utils'
-import Modal from '@components/Modal'
-import Tabs from '@components/Tabs'
+} from '@apps/utils/client'
+import { Modal } from '@components/Modal'
+import { Tabs } from '@components/Tabs'
+import type {
+    PointCategoryType,
+    PointRecordType,
+    CustomRule,
+    ExamRuleRange,
+} from '@shared/types'
 
 const categoryOptions: { key: PointCategoryType; label: string }[] = [
     { key: 'exam', label: '单元测评' },
@@ -62,7 +64,7 @@ interface PointsModalAddProps {
  * @param customRules - 自定义积分规则列表
  * @param examRules - 考试评分规则列表
  */
-export default function PointsModalAdd({
+export function PointsModalAdd({
     open,
     onCancel,
     onConfirm,
@@ -235,7 +237,9 @@ export default function PointsModalAdd({
                         key={grade}
                         onClick={() => setAddGrade(grade)}
                         className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-all ${
-                            addGrade === grade ? 'btn btn-primary' : 'btn btn-outline'
+                            addGrade === grade
+                                ? 'btn btn-primary'
+                                : 'btn btn-outline'
                         }`}>
                         {grade}
                     </button>
@@ -355,7 +359,9 @@ export default function PointsModalAdd({
                         ) : (
                             customRules
                                 .filter((r) => r.type === customRuleTab)
-                                .sort((a, b) => a.name.localeCompare(b.name, 'zh-CN'))
+                                .sort((a, b) =>
+                                    a.name.localeCompare(b.name, 'zh-CN'),
+                                )
                                 .map((rule, idx) => {
                                     const ruleId = rule.id ?? rule.name
                                     const isSelected =

@@ -1,3 +1,5 @@
+'use client'
+
 import type { ReactNode } from 'react'
 import { Plus, Trash2 } from 'lucide-react'
 

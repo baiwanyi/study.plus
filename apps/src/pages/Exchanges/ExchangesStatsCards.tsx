@@ -1,3 +1,5 @@
+'use client'
+
 import { useMemo } from 'react'
 import type { MonthSummary } from '@shared/types'
 
@@ -5,9 +7,7 @@ interface ExchangesStatsCardsProps {
     summary: MonthSummary | null
 }
 
-export default function ExchangesStatsCards({
-    summary,
-}: ExchangesStatsCardsProps) {
+export function ExchangesStatsCards({ summary }: ExchangesStatsCardsProps) {
     const availableBalance = summary?.availableBalance ?? 0
     const totalBalance = summary?.balance ?? 0
     const totalExchanges = summary?.totalExchanges ?? 0

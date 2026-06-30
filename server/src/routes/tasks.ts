@@ -1,7 +1,16 @@
-import { Router, type Request, type Response } from 'express'
-import { db } from '../db/index'
-import { tasks, submissions, pointRecords, aiScoreLogs, taskConversations, taskMessages } from '../db/schema'
 import { eq, desc, asc, and, inArray } from 'drizzle-orm'
+import { Router } from 'express'
+import type { Request, Response } from 'express'
+import { toTaskType, taskStatus, taskTypeValues } from '@shared/utils'
+import { db } from '../db/index'
+import {
+    tasks,
+    submissions,
+    pointRecords,
+    aiScoreLogs,
+    taskConversations,
+    taskMessages,
+} from '../db/schema'
 import {
     scoreComposition,
     generateTitle,
@@ -14,19 +23,18 @@ import { loadRules } from './rules-loader'
 import { recomputeMonthSummary } from './summary-helper'
 import type {
     AiScoreLog,
-    Task,
-    Submission,
     ChatMessage,
     CreateTaskRequest,
-    UpdateTaskRequest,
     SubmitTaskRequest,
     SubmitTaskResponse,
-    TaskType,
+    Submission,
+    Task,
     TaskStatus,
+    TaskType,
+    UpdateTaskRequest,
     ApiErrorResponse,
     ApiSuccessResponse,
 } from '@shared/types'
-import { toTaskType, taskStatus, taskTypeValues } from '@shared/utils'
 
 const router = Router()
 
@@ -110,8 +118,7 @@ router.get('/', async (req: Request, res: Response) => {
     const status: TaskStatus | undefined =
         rawStatus && isValidEnum(rawStatus, taskStatus) ? rawStatus : undefined
     const type: TaskType | undefined =
-        rawType &&
-        isValidEnum(rawType, taskTypeValues)
+        rawType && isValidEnum(rawType, taskTypeValues)
             ? (rawType as TaskType)
             : undefined
 
@@ -142,11 +149,7 @@ router.get('/', async (req: Request, res: Response) => {
             ? await db
                   .select()
                   .from(submissions)
-                  .where(
-                      taskIds.length === 1
-                          ? eq(submissions.taskId, taskIds[0])
-                          : inArray(submissions.taskId, taskIds),
-                  )
+                  .where(inArray(submissions.taskId, taskIds))
             : []
     const subMap = new Map<number, Submission>()
     for (const s of allSubs) {
@@ -162,9 +165,7 @@ router.get('/', async (req: Request, res: Response) => {
                   .where(
                       and(
                           eq(pointRecords.relatedType, 'submission'),
-                          subIds.length === 1
-                              ? eq(pointRecords.relatedId, subIds[0])
-                              : inArray(pointRecords.relatedId, subIds),
+                          inArray(pointRecords.relatedId, subIds),
                       ),
                   )
             : []
@@ -255,29 +256,22 @@ router.put(
         }
         const { title, type, status }: UpdateTaskRequest = req.body
 
-        if (
-            type &&
-            !isValidEnum(type, taskTypeValues)
-        ) {
+        if (type && !isValidEnum(type, taskTypeValues)) {
             res.status(400).json({ error: 'Invalid task type' })
             return
         }
-        if (
-            status &&
-            !isValidEnum(status, taskStatus)
-        ) {
+        if (status && !isValidEnum(status, taskStatus)) {
             res.status(400).json({ error: 'Invalid task status' })
             return
         }
 
-        const updateData: Partial<{ title: string; type: string; status: string }> = {}
-        if (title) updateData.title = title
-        if (type) updateData.type = type
-        if (status) updateData.status = status
-
         const result = await db
             .update(tasks)
-            .set(updateData)
+            .set({
+                ...(title ? { title } : {}),
+                ...(type ? { type } : {}),
+                ...(status ? { status } : {}),
+            })
             .where(eq(tasks.id, taskId))
             .returning()
         if (!result[0]) {
@@ -299,7 +293,27 @@ router.delete(
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
-        await db.delete(aiScoreLogs).where(eq(aiScoreLogs.taskId, taskId))
+        // Delete child rows before the task; taskConversations/taskMessages use ON DELETE CASCADE
+        const subs = await db
+            .select({ id: submissions.id })
+            .from(submissions)
+            .where(eq(submissions.taskId, taskId))
+        const subIds = subs.map((s) => s.id)
+        if (subIds.length > 0) {
+            await db
+                .delete(pointRecords)
+                .where(
+                    and(
+                        eq(pointRecords.relatedType, 'submission'),
+                        inArray(pointRecords.relatedId, subIds),
+                    ),
+                )
+        }
+        try {
+            await db.delete(aiScoreLogs).where(eq(aiScoreLogs.taskId, taskId))
+        } catch {
+            // ai_score_logs table may not exist in old DBs
+        }
         await db.delete(submissions).where(eq(submissions.taskId, taskId))
         await db.delete(tasks).where(eq(tasks.id, taskId))
         res.json({ success: true })
@@ -518,10 +532,7 @@ router.get(
 router.post(
     '/:id/ai-demo',
     async (
-        req: Request<
-            { id: string },
-            { demo: string } | ApiErrorResponse
-        >,
+        req: Request<{ id: string }, { demo: string } | ApiErrorResponse>,
         res: Response<{ demo: string } | ApiErrorResponse>,
     ) => {
         const taskId = parseTaskId(req.params.id)
@@ -539,7 +550,12 @@ router.post(
         const submission = await fetchSubmissionByTaskId(taskId)
         const content = submission?.content ?? ''
 
-        const demo = await generateDemoSubmission(content, task.type, task.title, taskId)
+        const demo = await generateDemoSubmission(
+            content,
+            task.type,
+            task.title,
+            taskId,
+        )
 
         let [conv] = await db
             .select()
@@ -547,7 +563,7 @@ router.post(
             .where(eq(taskConversations.taskId, taskId))
             .limit(1)
         if (!conv) {
-            [conv] = await db
+            ;[conv] = await db
                 .insert(taskConversations)
                 .values({ taskId })
                 .returning()
@@ -600,7 +616,7 @@ router.post(
             .where(eq(taskConversations.taskId, taskId))
             .limit(1)
         if (!conv) {
-            [conv] = await db
+            ;[conv] = await db
                 .insert(taskConversations)
                 .values({ taskId })
                 .returning()
@@ -686,4 +702,4 @@ router.get(
     },
 )
 
-export default router
+export { router as tasksRouter }

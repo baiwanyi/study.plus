@@ -1,8 +1,10 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { advancesApi } from '@apps/api'
+import { advancesApi } from '@apps/utils/api'
 import type { AdvanceSummary } from '@shared/types'
 
-export default function WidgetAdvanceStats() {
+export function WidgetAdvanceStats() {
     const [summary, setSummary] = useState<AdvanceSummary | null>(null)
 
     useEffect(() => {

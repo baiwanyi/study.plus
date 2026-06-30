@@ -1,5 +1,7 @@
+'use client'
+
 import { useState } from 'react'
-import Tabs from '@components/Tabs'
+import { Tabs } from '@components/Tabs'
 import type { TabItem } from '@components/Tabs'
 import { RulesHomework } from './OptionsRulesHomework'
 import { RulesExam } from './OptionsRulesExam'
@@ -17,7 +19,7 @@ const tabs: TabItem<TabKey>[] = [
     { key: 'system', label: '系统设置' },
 ]
 
-export default function Rules() {
+export function Rules() {
     const [activeTab, setActiveTab] = useState<TabKey>('homework')
 
     return (

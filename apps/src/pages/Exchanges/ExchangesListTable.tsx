@@ -1,13 +1,16 @@
-import { useState, useEffect, useMemo } from 'react'
-import type { Exchange, ExchangeItemRule } from '@shared/types'
+'use client'
+
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     formatDate,
     exchangeStatusLabels,
     exchangeStatusColors,
     paginate,
+    getPageSize,
     isAdmin,
-} from '@apps/utils'
+} from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
+import type { Exchange, ExchangeItemRule } from '@shared/types'
 
 interface ExchangesListTableProps {
     exchanges: Exchange[]
@@ -34,18 +37,25 @@ const getExchangeDetail = (
     return `${Number.isInteger(quantity) ? quantity : quantity.toFixed(1)} ${rate.unit}`
 }
 
-export default function ExchangesListTable({
+export function ExchangesListTable({
     exchanges,
     exchangeRules,
     onRevoke,
 }: ExchangesListTableProps) {
     const [page, setPage] = useState(1)
+    const pageSize = getPageSize()
+    const prevLenRef = useRef(exchanges.length)
     const pagedExchanges = useMemo(
-        () => paginate(exchanges, page),
-        [exchanges, page],
+        () => paginate(exchanges, page, pageSize),
+        [exchanges, page, pageSize],
     )
 
-    useEffect(() => setPage(1), [exchanges.length])
+    useEffect(() => {
+        if (exchanges.length !== prevLenRef.current) {
+            prevLenRef.current = exchanges.length
+            setPage(1)
+        }
+    }, [exchanges.length])
 
     const columns: Column<Exchange>[] = [
         {

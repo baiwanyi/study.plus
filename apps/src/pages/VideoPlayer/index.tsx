@@ -1,8 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
-import { videosApi } from '@apps/api'
-import type { Video, ScanResult } from '@shared/types'
-import Loading from '@components/Loading'
+'use client'
+
 import {
     Edit3,
     Check,
@@ -22,8 +19,13 @@ import {
     House,
     ShieldAlert,
 } from 'lucide-react'
-import { isAdmin } from '@apps/utils'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
+import { videosApi } from '@apps/utils/api'
+import { isAdmin } from '@apps/utils/client'
+import { Loading } from '@components/Loading'
 import { useSnackbar } from '@components/Snackbar'
+import type { Video, ScanResult } from '@shared/types'
 
 /** Fisher-Yates 洗牌 */
 function shuffle<T>(arr: T[]): T[] {
@@ -35,7 +37,7 @@ function shuffle<T>(arr: T[]): T[] {
     return a
 }
 
-export default function VideoPlayer() {
+export function VideoPlayer() {
     const { md5 } = useParams<{ md5: string }>()
     const { showSnackbar } = useSnackbar()
     const navigate = useNavigate()

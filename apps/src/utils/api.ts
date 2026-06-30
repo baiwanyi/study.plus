@@ -1,38 +1,40 @@
+'use client'
+
 import {
-    defaultExamRemark,
-    defaultSubmissionRemark,
     defaultCustomRemark,
+    defaultExamRemark,
     defaultQuotes,
+    defaultSubmissionRemark,
 } from '@shared/constants'
+import type { WeeklyReportContent } from '@shared/weekly'
 import type {
-    Task,
-    Submission,
-    PointRecord,
-    Exchange,
-    MonthSummary,
-    PointStats,
-    ShareStats,
-    CreateTaskRequest,
-    UpdateTaskRequest,
-    SubmitTaskRequest,
-    CreateExchangeRequest,
-    AIScoreResult,
+    AdvanceSummary,
     AiScoreLog,
+    AIScoreResult,
     AIUsageLog,
     AIUsageSummary,
-    PointAdvance,
     CreateAdvanceRequest,
-    AdvanceSummary,
-    Video,
+    CreateExchangeRequest,
+    CreateTaskRequest,
+    Exchange,
+    MonthSummary,
+    PointAdvance,
+    PointRecord,
+    PointStats,
     ScanResult,
-    WeeklyReport,
+    ShareStats,
+    Submission,
+    SubmitTaskRequest,
+    Task,
+    TaskConversation,
+    TaskMessage,
+    UpdateTaskRequest,
+    Video,
     WeeklyAnalysis,
     WeeklyConversation,
     WeeklyMessage,
-    TaskConversation,
-    TaskMessage,
+    WeeklyReport,
 } from '@shared/types'
-import type { WeeklyReportContent } from '@shared/weekly'
 
 const BASE = '/api'
 
@@ -183,8 +185,7 @@ export const remarkApi = {
                     custom: option.custom ?? defaultRemark.custom,
                 }
             }
-        } catch {
-        }
+        } catch {}
         return defaultRemark
     },
     update: async (options: RemarkOptions) => {
@@ -201,8 +202,7 @@ export const quotesApi = {
                 const option = data as { quotes: string[] }
                 if (Array.isArray(option.quotes)) return option.quotes
             }
-        } catch {
-        }
+        } catch {}
         return defaultQuotes
     },
     update: async (quotes: string[]) => {
@@ -325,7 +325,10 @@ export const videosApi = {
                 reader
                     .read()
                     .then(({ done, value }) => {
-                        if (done) return
+                        if (done) {
+                            reject(new Error('流意外结束，未收到完成信号'))
+                            return
+                        }
                         buffer += decoder.decode(value, { stream: true })
                         const lines = buffer.split('\n')
                         buffer = lines.pop() || ''
@@ -346,8 +349,7 @@ export const videosApi = {
                                 } else if (data.type === 'error') {
                                     reject(new Error(data.message))
                                 }
-                            } catch {
-                            }
+                            } catch {}
                         }
                         pump()
                     })

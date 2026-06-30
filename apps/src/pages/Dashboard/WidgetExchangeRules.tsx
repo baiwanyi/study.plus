@@ -1,13 +1,17 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/api'
+import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
+import { optionsAPI } from '@apps/utils/api'
+import { DataTable, type Column } from '@components/DataTable'
 import { defaultExchangeRuleRemarks } from '@shared/constants'
 import type { ExchangeItemRule } from '@shared/types'
-import { DataTable, type Column } from '@components/DataTable'
-import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
 
-export default function WidgetExchangeRules() {
+export function WidgetExchangeRules() {
     const [exchangeRules, setExchangeRules] = useState<ExchangeItemRule[]>([])
-    const [timeRules, setTimeRules] = useState<string[]>(defaultExchangeRuleRemarks)
+    const [timeRules, setTimeRules] = useState<string[]>(
+        defaultExchangeRuleRemarks,
+    )
 
     useEffect(() => {
         let cancelled = false

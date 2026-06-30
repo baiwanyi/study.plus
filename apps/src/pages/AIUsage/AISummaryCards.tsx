@@ -1,15 +1,13 @@
-import type { AIUsageSummary } from '@shared/types'
-import { taskAILabels } from '@apps/utils'
+'use client'
 
-function formatNumber(n: number): string {
-    return n.toLocaleString()
-}
+import { formatNumber, taskAILabels } from '@apps/utils/client'
+import type { AIUsageSummary } from '@shared/types'
 
 interface AISummaryCardsProps {
     summary: AIUsageSummary[]
 }
 
-export default function AISummaryCards({ summary }: AISummaryCardsProps) {
+export function AISummaryCards({ summary }: AISummaryCardsProps) {
     const totalTokens = summary.reduce((sum, s) => sum + s.totalTokens, 0)
     const totalCalls = summary.reduce((sum, s) => sum + s.count, 0)
 

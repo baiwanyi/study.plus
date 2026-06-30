@@ -1,5 +1,7 @@
-import React from 'react'
-import { getPageSize } from '@apps/utils'
+'use client'
+
+import type React from 'react'
+import { getPageSize } from '@apps/utils/client'
 export interface Column<T> {
     key: string
     header: React.ReactNode
@@ -19,6 +21,7 @@ export interface DataTableProps<T> {
     rowKey?: string | ((record: T, index: number) => string)
 }
 
+// `any` needed for dynamic index access `record[col.key]` in the fallback render
 export function DataTable<T extends Record<string, any>>({
     captionText,
     data,

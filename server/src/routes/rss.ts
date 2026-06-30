@@ -74,8 +74,11 @@ function parseRssFeed(xml: string): RssFeedItem[] {
             const decodedDesc = description ? decodeEntities(description) : ''
             const decodedEncoded = encoded ? decodeEntities(encoded) : ''
             const image = decodedEncoded
-                ? (extractFirstImage(decodedEncoded) || extractFirstImage(decodedDesc))
-                : (decodedDesc ? extractFirstImage(decodedDesc) : undefined)
+                ? extractFirstImage(decodedEncoded) ||
+                  extractFirstImage(decodedDesc)
+                : decodedDesc
+                  ? extractFirstImage(decodedDesc)
+                  : undefined
             items.push({
                 id: postId,
                 title: decodeEntities(title),
@@ -102,7 +105,8 @@ const CAT_FEEDS: Record<number, string> = {
 router.get('/feed', async (req: Request, res: Response) => {
     try {
         const cat = req.query.cat ? Number(req.query.cat) : 0
-        const url = cat && CAT_FEEDS[cat] ? CAT_FEEDS[cat] : `${FEED_BASE}/?feed=rss2`
+        const url =
+            cat && CAT_FEEDS[cat] ? CAT_FEEDS[cat] : `${FEED_BASE}/?feed=rss2`
 
         const response = await fetch(url)
         if (!response.ok) {
@@ -126,7 +130,13 @@ router.get('/post/:id', async (req: Request, res: Response) => {
             res.status(404).json({ error: '文章不存在' })
             return
         }
-        const data = await response.json()
+        const data = (await response.json()) as {
+            id: number
+            title: { rendered: string }
+            content: { rendered: string }
+            date: string
+            excerpt: { rendered: string }
+        }
         res.json({
             id: data.id,
             title: data.title.rendered,
@@ -139,4 +149,4 @@ router.get('/post/:id', async (req: Request, res: Response) => {
     }
 })
 
-export default router
+export { router as rssRouter }

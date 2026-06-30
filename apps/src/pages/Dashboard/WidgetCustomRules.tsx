@@ -1,11 +1,13 @@
+'use client'
+
 import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/api'
-import type { CustomRule } from '@shared/types'
-import { pointColors, pointSymbol } from '@apps/utils'
+import { optionsAPI } from '@apps/utils/api'
+import { pointColors, pointSymbol } from '@apps/utils/client'
 import { parseCustomData } from '@apps/pages/Options/OptionsRulesCustom'
 import { DataTable, type Column } from '@components/DataTable'
+import type { CustomRule } from '@shared/types'
 
-export default function WidgetCustomRules() {
+export function WidgetCustomRules() {
     const [customRules, setCustomRules] = useState<CustomRule[]>([])
 
     useEffect(() => {

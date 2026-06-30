@@ -1,6 +1,8 @@
-import type { AIUsageSummary } from '@shared/types'
+'use client'
+
+import { taskAILabels, formatNumber } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
-import { taskAILabels, formatNumber } from '@apps/utils'
+import type { AIUsageSummary } from '@shared/types'
 
 const columns: Column<AIUsageSummary>[] = [
     {
@@ -39,7 +41,7 @@ interface AISummaryTableProps {
     summary: AIUsageSummary[]
 }
 
-export default function AISummaryTable({ summary }: AISummaryTableProps) {
+export function AISummaryTable({ summary }: AISummaryTableProps) {
     if (summary.length === 0) return null
 
     return (

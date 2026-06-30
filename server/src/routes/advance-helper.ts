@@ -1,7 +1,7 @@
-import { db } from '../db/index'
-import { options } from '../db/schema'
 import { eq } from 'drizzle-orm'
 import { defaultSystemSettings } from '@shared/constants'
+import { db } from '../db/index'
+import { options } from '../db/schema'
 
 interface SystemSettings {
     advanceRepayRatio: number
@@ -16,9 +16,7 @@ export async function loadSystemSettings(): Promise<SystemSettings> {
             .from(options)
             .where(eq(options.key, 'system'))
         if (rows[0]) {
-            const parsed = JSON.parse(
-                rows[0].value,
-            ) as Partial<SystemSettings>
+            const parsed = JSON.parse(rows[0].value) as Partial<SystemSettings>
             return {
                 ...defaultSystemSettings,
                 ...parsed,

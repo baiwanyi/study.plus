@@ -1,12 +1,14 @@
-import { useState, useEffect } from 'react'
-import { aiUsageApi } from '@apps/api'
-import type { AIUsageLog, AIUsageSummary } from '@shared/types'
-import Loading from '@components/Loading'
-import AISummaryCards from './AISummaryCards'
-import AISummaryTable from './AISummaryTable'
-import AIListTable from './AIListTable'
+'use client'
 
-export default function AIUsage() {
+import { useState, useEffect } from 'react'
+import { aiUsageApi } from '@apps/utils/api'
+import { Loading } from '@components/Loading'
+import { AISummaryCards } from './AISummaryCards'
+import { AISummaryTable } from './AISummaryTable'
+import { AIListTable } from './AIListTable'
+import type { AIUsageLog, AIUsageSummary } from '@shared/types'
+
+export function AIUsage() {
     const [aiLogs, setLogs] = useState<AIUsageLog[]>([])
     const [summary, setSummary] = useState<AIUsageSummary[]>([])
     const [loading, setLoading] = useState(true)

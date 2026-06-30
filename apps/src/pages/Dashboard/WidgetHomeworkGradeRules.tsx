@@ -1,11 +1,13 @@
-import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/api'
-import type { HomeworkGradeRule } from '@shared/types'
-import { parseHomeworkData } from '@apps/pages/Options/OptionsRulesHomework'
-import { DataTable, type Column } from '@components/DataTable'
-import { pointColors, pointSymbol } from '@apps/utils'
+'use client'
 
-export default function WidgetHomeworkGradeRules() {
+import { useState, useEffect } from 'react'
+import { parseHomeworkData } from '@apps/pages/Options/OptionsRulesHomework'
+import { optionsAPI } from '@apps/utils/api'
+import { pointColors, pointSymbol } from '@apps/utils/client'
+import { DataTable, type Column } from '@components/DataTable'
+import type { HomeworkGradeRule } from '@shared/types'
+
+export function WidgetHomeworkGradeRules() {
     const [homeworkRules, setHomeworkRules] = useState<HomeworkGradeRule[]>([])
 
     useEffect(() => {

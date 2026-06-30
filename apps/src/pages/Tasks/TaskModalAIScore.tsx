@@ -1,5 +1,7 @@
+'use client'
+
+import { Modal } from '@components/Modal'
 import type { Task } from '@shared/types'
-import Modal from '@components/Modal'
 
 interface TaskModalAIScoreProps {
     open: boolean
@@ -9,7 +11,7 @@ interface TaskModalAIScoreProps {
     onScore: () => void
 }
 
-export default function TaskModalAIScore({
+export function TaskModalAIScore({
     open,
     task,
     scoring,

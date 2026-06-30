@@ -1,6 +1,8 @@
+'use client'
+
+import { defaultGradeColors } from '@apps/utils/client'
+import { Modal } from '@components/Modal'
 import type { Task, AIScoreResult } from '@shared/types'
-import { defaultGradeColors } from '@apps/utils'
-import Modal from '@components/Modal'
 
 interface TaskModalAIResultProps {
     open: boolean
@@ -10,7 +12,7 @@ interface TaskModalAIResultProps {
     onCancel: () => void
 }
 
-export default function TaskModalAIResult({
+export function TaskModalAIResult({
     open,
     result,
     points,

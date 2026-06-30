@@ -1,9 +1,11 @@
+'use client'
+
 import { useState } from 'react'
+import { tasksApi, optionsAPI } from '@apps/utils/api'
+import { taskTypeLabels } from '@apps/utils/client'
+import { Modal } from '@components/Modal'
+import { Tabs } from '@components/Tabs'
 import type { TaskType } from '@shared/types'
-import { taskTypeLabels } from '@apps/utils'
-import { tasksApi, optionsAPI } from '@apps/api'
-import Modal from '@components/Modal'
-import Tabs from '@components/Tabs'
 
 interface TaskModalCreateProps {
     open: boolean
@@ -11,7 +13,7 @@ interface TaskModalCreateProps {
     onConfirm: (title: string, type: TaskType) => void
 }
 
-export default function TaskModalCreate({
+export function TaskModalCreate({
     open,
     onCancel,
     onConfirm,

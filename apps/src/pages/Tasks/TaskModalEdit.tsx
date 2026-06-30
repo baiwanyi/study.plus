@@ -1,7 +1,9 @@
+'use client'
+
 import { useState, useEffect } from 'react'
+import { taskTypeLabels } from '@apps/utils/client'
+import { Modal } from '@components/Modal'
 import type { Task, TaskType } from '@shared/types'
-import { taskTypeLabels } from '@apps/utils'
-import Modal from '@components/Modal'
 
 interface TaskModalEditProps {
     open: boolean
@@ -11,7 +13,7 @@ interface TaskModalEditProps {
     isLoading: boolean
 }
 
-export default function TaskModalEdit({
+export function TaskModalEdit({
     open,
     task,
     onCancel,

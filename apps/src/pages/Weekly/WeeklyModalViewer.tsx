@@ -1,18 +1,20 @@
-import { useRef, useCallback } from 'react'
+'use client'
+
 import MDEditor from '@uiw/react-md-editor'
-import { BookOpen, Target, Wrench, Sparkles, Share2 } from 'lucide-react'
 import { toPng } from 'html-to-image'
-import Modal from '@components/Modal'
+import { BookOpen, Target, Wrench, Sparkles, Share2 } from 'lucide-react'
+import { useRef, useCallback } from 'react'
+import '@apps/styles/markdown-viewer.css'
+import { Modal } from '@components/Modal'
 import { parseContent } from '@shared/weekly'
 import type { WeeklyAnalysis, WeeklyReport } from '@shared/types'
-import '@apps/styles/markdown-viewer.css'
 
 export interface WeeklyModalViewerProps {
     report: WeeklyReport | null
     onCancel: () => void
 }
 
-export default function WeeklyModalViewer({
+export function WeeklyModalViewer({
     report,
     onCancel,
 }: WeeklyModalViewerProps) {

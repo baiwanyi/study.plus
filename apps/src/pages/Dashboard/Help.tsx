@@ -1,9 +1,11 @@
+'use client'
+
+import MDEditor from '@uiw/react-md-editor'
+import { X, CircleQuestionMark } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'
-import { X, CircleQuestionMark } from 'lucide-react'
 import { useSnackbar } from '@components/Snackbar'
-import Tabs from '@components/Tabs'
-import MDEditor from '@uiw/react-md-editor'
+import { Tabs } from '@components/Tabs'
 
 const helpTabs = [
     { key: 'faq' as const, label: '常见问题', file: '/docs/faq.md' },
@@ -21,7 +23,7 @@ const helpTabs = [
 
 type HelpTabKey = (typeof helpTabs)[number]['key']
 
-export default function Help() {
+export function Help() {
     const [showHelp, setShowHelp] = useState(false)
     const [helpTab, setHelpTab] = useState<HelpTabKey>('faq')
     const [helpContents, setHelpContents] = useState<Record<string, string>>({})

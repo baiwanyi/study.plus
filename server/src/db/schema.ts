@@ -1,7 +1,6 @@
 import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
 import {
     defaultGradeValues,
-    taskTypeValues,
     taskStatus,
     relatedTypeValues,
     exchangeStatusValues,
@@ -10,7 +9,7 @@ import {
 export const tasks = sqliteTable('tasks', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     title: text('title').notNull(),
-    type: text('type', { enum: taskTypeValues }).notNull(),
+    type: text('type', { enum: ['composition', 'mindmap', 'notes'] }).notNull(),
     status: text('status', { enum: taskStatus }).notNull().default('pending'),
     createdAt: text('created_at')
         .notNull()

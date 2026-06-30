@@ -1,19 +1,22 @@
-import { useState, useEffect, useCallback } from 'react'
-import { tasksApi } from '@apps/api'
-import type { Task, TaskType, AIScoreResult } from '@shared/types'
-import { formatErrorMessage, taskTypeDefaultTitles } from '@apps/utils'
-import { useSnackbar } from '@components/Snackbar'
-import Modal from '@components/Modal'
-import Loading from '@components/Loading'
-import ListTask from './TaskListTable'
-import EditTask from './TaskEdit'
-import TaskModalCreate from './TaskModalCreate'
-import TaskModalEdit from './TaskModalEdit'
-import TaskModalAIScore from './TaskModalAIScore'
-import TaskModalAIResult from './TaskModalAIResult'
-import TaskModalShare from './TaskModalShare'
+'use client'
 
-export default function Tasks() {
+import { useState, useEffect, useCallback } from 'react'
+import { tasksApi } from '@apps/utils/api'
+import { formatErrorMessage, taskTypeDefaultTitles } from '@apps/utils/client'
+import { Loading } from '@components/Loading'
+import { Modal } from '@components/Modal'
+import { useSnackbar } from '@components/Snackbar'
+import { BookNoteEditor } from './BookNoteEditor'
+import { EditTask } from './TaskEdit'
+import { ListTask } from './TaskListTable'
+import { TaskModalAIScore } from './TaskModalAIScore'
+import { TaskModalAIResult } from './TaskModalAIResult'
+import { TaskModalCreate } from './TaskModalCreate'
+import { TaskModalEdit } from './TaskModalEdit'
+import { TaskModalShare } from './TaskModalShare'
+import type { Task, TaskType, AIScoreResult } from '@shared/types'
+
+export function Tasks() {
     const { showSnackbar } = useSnackbar()
     const [tasks, setTasks] = useState<Task[]>([])
     const [loading, setLoading] = useState(true)
@@ -46,6 +49,18 @@ export default function Tasks() {
         setShareTask(null)
     }
 
+    const handleEditContent = useCallback((task: Task) => {
+        setEditingTask(task)
+    }, [])
+
+    const handleAdd = useCallback(() => {
+        setShowCreate(true)
+    }, [])
+
+    const handleCloseCreate = useCallback(() => {
+        setShowCreate(false)
+    }, [])
+
     const loadTasks = useCallback(async () => {
         try {
             const data = await tasksApi.list()
@@ -55,6 +70,15 @@ export default function Tasks() {
         } finally {
             setLoading(false)
         }
+    }, [])
+
+    const closeEditor = useCallback(() => {
+        setEditingTask(null)
+        loadTasks()
+    }, [loadTasks])
+
+    const closeDeleteConfirm = useCallback(() => {
+        setDeleteId(null)
     }, [])
 
     useEffect(() => {
@@ -68,6 +92,18 @@ export default function Tasks() {
             setShowCreate(false)
             showSnackbar('作业创建成功')
             loadTasks()
+        } catch (err) {
+            showSnackbar('创建失败: ' + formatErrorMessage(err), 'error')
+        }
+    }
+
+    const handleAddBookNote = async () => {
+        try {
+            const task = await tasksApi.create({
+                title: '未命名读书笔记',
+                type: 'notes',
+            })
+            setEditingTask(task)
         } catch (err) {
             showSnackbar('创建失败: ' + formatErrorMessage(err), 'error')
         }
@@ -153,15 +189,10 @@ export default function Tasks() {
 
     // Full-screen Markdown editor for editing submission content
     if (editingTask) {
-        return (
-            <EditTask
-                task={editingTask}
-                onCancel={() => {
-                    setEditingTask(null)
-                    loadTasks()
-                }}
-            />
-        )
+        if (editingTask.type === 'notes') {
+            return <BookNoteEditor task={editingTask} onCancel={closeEditor} />
+        }
+        return <EditTask task={editingTask} onCancel={closeEditor} />
     }
 
     return (
@@ -169,16 +200,17 @@ export default function Tasks() {
             <ListTask
                 tasks={tasks}
                 onEdit={openEditModal}
-                onEditContent={(task) => setEditingTask(task)}
+                onEditContent={handleEditContent}
                 onScore={openScoreModal}
                 onShare={openShareModal}
                 onDelete={handleDelete}
-                onAdd={() => setShowCreate(true)}
+                onAdd={handleAdd}
+                onAddBookNote={handleAddBookNote}
             />
 
             <TaskModalCreate
                 open={showCreate}
-                onCancel={() => setShowCreate(false)}
+                onCancel={handleCloseCreate}
                 onConfirm={handleCreate}
             />
 
@@ -218,7 +250,7 @@ export default function Tasks() {
                 confirmLabel="删除"
                 danger
                 onConfirm={confirmDelete}
-                onCancel={() => setDeleteId(null)}>
+                onCancel={closeDeleteConfirm}>
                 <p className="text-sm text-gray-600">
                     确定删除此作业？删除后不可恢复。
                 </p>

@@ -1,18 +1,19 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
-import { Plus, SquarePen, Trash2, Eye, Check, X } from 'lucide-react'
-import { DataTable } from '@components/DataTable'
-import Tabs from '@components/Tabs'
-import { weeklyApi, optionsAPI } from '@apps/api'
-import { formatDate, formatErrorMessage, isAdmin } from '@apps/utils'
-import { DEFAULT_WEEKLY_AI_HELPER } from '@shared/constants'
-import { useSnackbar } from '@components/Snackbar'
-import WeeklyModalDelete from './WeeklyModalDelete'
-import WeeklyModalEditor from './WeeklyModalEditor'
-import WeeklyModalViewer from './WeeklyModalViewer'
+'use client'
 
+import { Plus, SquarePen, Trash2, Eye, Check, X } from 'lucide-react'
+import { useState, useEffect, useCallback, useRef } from 'react'
+import { weeklyApi, optionsAPI } from '@apps/utils/api'
+import { formatDate, formatErrorMessage, isAdmin } from '@apps/utils/client'
+import { DataTable } from '@components/DataTable'
+import { useSnackbar } from '@components/Snackbar'
+import { Tabs } from '@components/Tabs'
+import { DEFAULT_WEEKLY_AI_HELPER } from '@shared/constants'
+import { parseContent } from '@shared/weekly'
+import { WeeklyModalDelete } from './WeeklyModalDelete'
+import { WeeklyModalEditor } from './WeeklyModalEditor'
+import { WeeklyModalViewer } from './WeeklyModalViewer'
 import type { WeeklyReport, WeeklyAnalysis, WeeklyMessage } from '@shared/types'
 import type { WeeklyReportContent } from '@shared/weekly'
-import { parseContent } from '@shared/weekly'
 
 /** 获取当前是年度的第几周（ISO 周） */
 function getWeekNumber(date: Date): number {
@@ -41,7 +42,7 @@ const emptyContent: WeeklyReportContent = {
     improvement: '',
 }
 
-export default function Weekly() {
+export function Weekly() {
     const { showSnackbar } = useSnackbar()
     const currentYear = new Date().getFullYear()
     const [reports, setReports] = useState<WeeklyReport[]>([])

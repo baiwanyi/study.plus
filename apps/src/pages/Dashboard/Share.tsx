@@ -1,12 +1,14 @@
-import { useState, useCallback, useEffect } from 'react'
-import Modal from '@components/Modal'
-import Loading from '@components/Loading'
-import { ExternalLink, ChevronDown } from 'lucide-react'
-import { pointsApi, quotesApi, imagesApi } from '@apps/api'
-import type { ShareStats } from '@shared/types'
-import { formatNumber, formatErrorMessage } from '@apps/utils'
-import './share.css'
+'use client'
+
 import { toPng } from 'html-to-image'
+import { ExternalLink, ChevronDown } from 'lucide-react'
+import { useState, useCallback, useEffect, type ReactNode } from 'react'
+import { pointsApi, quotesApi, imagesApi } from '@apps/utils/api'
+import { formatNumber, formatErrorMessage } from '@apps/utils/client'
+import { Loading } from '@components/Loading'
+import { Modal } from '@components/Modal'
+import './share.css'
+import type { ShareStats } from '@shared/types'
 
 let cachedImages: string[] | null = null
 
@@ -31,7 +33,7 @@ function StatCard({
     className,
 }: {
     title: string
-    children: React.ReactNode
+    children: ReactNode
     className?: string
 }) {
     return (
@@ -42,7 +44,7 @@ function StatCard({
     )
 }
 
-export default function Share() {
+export function Share() {
     const [showShare, setShowShare] = useState(false)
     const [imageUrls, setImageUrls] = useState<string[]>([])
     const [imageUrl, setImageUrl] = useState('/images/share-1.jpg')
@@ -63,7 +65,9 @@ export default function Share() {
 
     // Fetch available images on mount
     useEffect(() => {
-        getImageUrls().then(setImageUrls).catch(() => {})
+        getImageUrls()
+            .then(setImageUrls)
+            .catch(() => {})
     }, [])
 
     const handleCloseShare = useCallback(() => setShowShare(false), [])

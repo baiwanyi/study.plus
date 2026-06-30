@@ -39,7 +39,9 @@ export interface Rules {
 }
 
 function getPointsForHomeworkGrade(rules: Rules, grade: string): number {
-    const rule: GradePoints | undefined = rules.gradingScale.homework.find((g: GradePoints) => g.grade === grade)
+    const rule: GradePoints | undefined = rules.gradingScale.homework.find(
+        (g: GradePoints) => g.grade === grade,
+    )
     return rule ? rule.points : 0
 }
 
@@ -47,9 +49,12 @@ export function getPointsForGrade(rules: Rules, grade: string): number {
     return getPointsForHomeworkGrade(rules, grade)
 }
 
-export function getPointsForExamScore(rules: Rules, score: number): ExamScoreRule | null {
+export function getPointsForExamScore(
+    rules: Rules,
+    score: number,
+): ExamScoreRule | null {
     const matched = rules.examScoreRules.find(
-        (r: ExamScoreRule) => score >= r.min && score <= r.max
+        (r: ExamScoreRule) => score >= r.min && score <= r.max,
     )
     return matched ?? null
 }

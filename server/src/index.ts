@@ -1,21 +1,22 @@
-import express, { type Express, type Request, type Response } from 'express'
-import path from 'path'
+import { eq } from 'drizzle-orm'
+import express from 'express'
+import type { Request, Response } from 'express'
 import fs from 'fs'
-import tasksRouter from './routes/tasks'
-import pointsRouter from './routes/points'
-import exchangesRouter from './routes/exchanges'
-import rulesRouter from './routes/options'
-import aiUsageRouter from './routes/ai-usage'
-import videosRouter from './routes/videos'
-import rssRouter from './routes/rss'
-import weeklyRouter from './routes/weekly'
+import path from 'path'
 import { db } from './db/index'
 import { options } from './db/schema'
-import { eq } from 'drizzle-orm'
 import { isFirstDayOfMonth } from './routes/advance-helper'
+import { aiUsageRouter } from './routes/ai-usage'
+import { exchangesRouter } from './routes/exchanges'
+import { rulesRouter } from './routes/options'
+import { pointsRouter } from './routes/points'
+import { rssRouter } from './routes/rss'
+import { tasksRouter } from './routes/tasks'
+import { videosRouter } from './routes/videos'
+import { weeklyRouter } from './routes/weekly'
 
-const app: Express = express()
-const PORT: number = Number(process.env.PORT) || 3001
+const app = express()
+const PORT = Number(process.env.PORT) || 3001
 
 // Middleware
 app.use(express.json({ limit: '10mb' }))
@@ -108,8 +109,10 @@ function setupMonthlyRepayment(): void {
                     `http://localhost:${PORT}/api/points/advances/repay`,
                     { method: 'POST' },
                 )
-                const result: { success: boolean; repaid: number } =
-                    await res.json()
+                const result = (await res.json()) as {
+                    success: boolean
+                    repaid: number
+                }
                 if (result.success && result.repaid > 0) {
                     console.log(
                         `[Scheduled] 每月还款成功，共扣减 ${result.repaid} 积分`,

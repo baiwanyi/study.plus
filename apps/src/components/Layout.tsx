@@ -13,9 +13,9 @@ import {
     Rss,
     NotebookPen,
 } from 'lucide-react'
-import { quotesApi } from '@apps/api'
+import { quotesApi } from '@apps/utils/api'
 import { defaultQuotes } from '@shared/constants'
-import { isAdmin } from '@apps/utils'
+import { isAdmin } from '@apps/utils/client'
 
 const baseNavItems = [
     { to: '/', label: '首页看板', icon: LayoutGrid },

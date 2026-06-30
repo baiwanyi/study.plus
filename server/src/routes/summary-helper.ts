@@ -1,9 +1,8 @@
+import { eq, and, gte, lte, sql, ne, like } from 'drizzle-orm'
 import { db } from '../db/index'
 import { pointRecords, monthSummary, exchanges } from '../db/schema'
-import { eq, and, gte, lte, sql, ne, like } from 'drizzle-orm'
 import { loadRules } from './rules-loader'
 import type { MonthSummary } from '@shared/types'
-
 
 interface ComputedSummary extends MonthSummary {
     totalEarn: number
@@ -146,7 +145,11 @@ export async function recomputeMonthSummary(
     const advanceEarn = Number(advanceEarnResult[0]?.total) || 0
 
     const balance = summary.basePoints + totalEarn - totalDeduct
-    const availableBalance = summary.basePoints - rules.monthlyBasePoints - totalExchanges + advanceEarn
+    const availableBalance =
+        summary.basePoints -
+        rules.monthlyBasePoints -
+        totalExchanges +
+        advanceEarn
 
     await db
         .update(monthSummary)

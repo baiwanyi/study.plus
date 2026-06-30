@@ -1,4 +1,13 @@
-import { createContext, useContext, useState, useCallback } from 'react'
+'use client'
+
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useState,
+    type ReactNode,
+} from 'react'
+import { Check, X, Info } from 'lucide-react'
 
 type SnackbarType = 'success' | 'error' | 'info'
 
@@ -21,7 +30,7 @@ export function useSnackbar() {
     return ctx
 }
 
-export function SnackbarProvider({ children }: { children: React.ReactNode }) {
+export function SnackbarProvider({ children }: { children: ReactNode }) {
     const [snackbar, setSnackbar] = useState<SnackbarState>({
         open: false,
         message: '',
@@ -50,11 +59,13 @@ export function SnackbarProvider({ children }: { children: React.ReactNode }) {
                           : 'snackbar-success'
                 }`}>
                 <span className="snackbar-icon">
-                    {snackbar.type === 'success'
-                        ? '✓'
-                        : snackbar.type === 'error'
-                          ? '✕'
-                          : 'ℹ'}
+                    {snackbar.type === 'success' ? (
+                        <Check className="size-4" />
+                    ) : snackbar.type === 'error' ? (
+                        <X className="size-4" />
+                    ) : (
+                        <Info className="size-4" />
+                    )}
                 </span>
                 <span>{snackbar.message}</span>
             </div>

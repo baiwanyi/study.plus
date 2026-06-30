@@ -3,18 +3,18 @@ import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@components/Layout'
 import { SnackbarProvider } from '@components/Snackbar'
-import { loadConfig, isAdmin } from '@apps/utils'
-import Dashboard from '@apps/pages/Dashboard'
-import Tasks from '@apps/pages/Tasks'
-import Points from '@apps/pages/Points'
-import Exchanges from '@apps/pages/Exchanges'
-import Options from '@apps/pages/Options'
-import Borrow from '@apps/pages/Borrow'
-import VideoPlayer from '@apps/pages/VideoPlayer'
-import TVFav from '@apps/pages/TVFav'
-import AIUsage from '@apps/pages/AIUsage'
-import RssReader from '@apps/pages/RssReader'
-import Weekly from '@apps/pages/Weekly'
+import { loadConfig, isAdmin } from '@apps/utils/client'
+import { Dashboard } from '@apps/pages/Dashboard'
+import { Tasks } from '@apps/pages/Tasks'
+import { Points } from '@apps/pages/Points'
+import { Exchanges } from '@apps/pages/Exchanges'
+import { Rules } from '@apps/pages/Options'
+import { Borrow } from '@apps/pages/Borrow'
+import { VideoPlayer } from '@apps/pages/VideoPlayer'
+import { TVFav } from '@apps/pages/TVFav'
+import { AIUsage } from '@apps/pages/AIUsage'
+import { RssReader } from '@apps/pages/RssReader'
+import { Weekly } from '@apps/pages/Weekly'
 import '@apps/styles/index.css'
 
 // Preload runtime config (DB overrides env defaults)
@@ -34,7 +34,7 @@ const AppRoutes = () => (
                 <Route path="tv/fav" element={<TVFav />} />
                 <Route path="tv/:md5" element={<VideoPlayer />} />
                 <Route path="tv" element={<VideoPlayer />} />
-                {isAdmin() && <Route path="options" element={<Options />} />}
+                {isAdmin() && <Route path="options" element={<Rules />} />}
                 <Route path="usage" element={<AIUsage />} />
                 <Route path="*" element={<Navigate to="/" replace />} />
             </Route>

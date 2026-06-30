@@ -1,14 +1,17 @@
-import { Router, type Request, type Response } from 'express'
-import { db } from '../db/index'
-import { pointRecords, exchanges, pointAdvances, monthSummary } from '../db/schema'
 import { eq, ne, desc, and, gte, lte, sql, inArray } from 'drizzle-orm'
+import { Router } from 'express'
+import type { Request, Response } from 'express'
+import { db } from '../db/index'
+import {
+    pointRecords,
+    exchanges,
+    pointAdvances,
+    monthSummary,
+} from '../db/schema'
 import { getPointsForGrade, getPointsForExamScore } from '../services/points'
 import { loadRules } from './rules-loader'
 import { recomputeMonthSummary } from './summary-helper'
-import {
-    loadSystemSettings,
-    isFirstDayOfMonth,
-} from './advance-helper'
+import { loadSystemSettings, isFirstDayOfMonth } from './advance-helper'
 import type {
     PointRecord,
     CreatePointRecordRequest,
@@ -107,7 +110,12 @@ router.post(
         req: Request<
             {},
             PointRecord | ApiErrorResponse,
-            { category: string; grade: string; remark?: string; relatedId?: string }
+            {
+                category: string
+                grade: string
+                remark?: string
+                relatedId?: string
+            }
         >,
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
@@ -533,13 +541,14 @@ router.get(
 
 router.get(
     '/advances',
-    async (
-        req: Request,
-        res: Response<PointAdvance[] | ApiErrorResponse>,
-    ) => {
+    async (req: Request, res: Response<PointAdvance[] | ApiErrorResponse>) => {
         try {
             const rawStatus = req.query.status as string | undefined
-            if (rawStatus && rawStatus !== 'active' && rawStatus !== 'completed') {
+            if (
+                rawStatus &&
+                rawStatus !== 'active' &&
+                rawStatus !== 'completed'
+            ) {
                 res.status(400).json({
                     error: `无效的状态值 "${rawStatus}"，仅支持 active 或 completed`,
                 })
@@ -566,8 +575,7 @@ router.get(
     async (_req: Request, res: Response<AdvanceSummary | ApiErrorResponse>) => {
         try {
             const settings = await loadSystemSettings()
-            const maxPendingAmount =
-                settings.maxPendingAmount ?? 500
+            const maxPendingAmount = settings.maxPendingAmount ?? 500
             const activeAdvances = (await db
                 .select()
                 .from(pointAdvances)
@@ -611,11 +619,7 @@ router.get(
 router.post(
     '/advances',
     async (
-        req: Request<
-            {},
-            PointAdvance | ApiErrorResponse,
-            CreateAdvanceRequest
-        >,
+        req: Request<{}, PointAdvance | ApiErrorResponse, CreateAdvanceRequest>,
         res: Response<PointAdvance | ApiErrorResponse>,
     ) => {
         try {
@@ -647,9 +651,7 @@ router.post(
             const ratio = baseRatio + tierIndex * 2
 
             const totalRepayment = Math.round(amount * (1 + ratio / 100))
-            const installmentAmount = Math.ceil(
-                totalRepayment / installments,
-            )
+            const installmentAmount = Math.ceil(totalRepayment / installments)
 
             const activeAdvances = (await db
                 .select()
@@ -687,9 +689,7 @@ router.post(
                 relatedId: result[0].id,
             })
 
-            await recomputeMonthSummary(
-                new Date().toISOString().slice(0, 7),
-            )
+            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
             res.status(201).json(result[0] as PointAdvance)
         } catch (err) {
             console.error('Error in POST /points/advances:', err)
@@ -763,4 +763,4 @@ router.post(
     },
 )
 
-export default router
+export { router as pointsRouter }

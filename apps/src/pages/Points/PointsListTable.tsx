@@ -1,22 +1,35 @@
-import { useState, useEffect, useMemo } from 'react'
-import type { PointRecord } from '@shared/types'
+'use client'
+
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     formatDate,
     pointTypeLabels,
     pointTypeColors,
     paginate,
-} from '@apps/utils'
+    getPageSize,
+} from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
+import type { PointRecord } from '@shared/types'
 
 interface PointsListTableProps {
     records: PointRecord[]
 }
 
-export default function PointsListTable({ records }: PointsListTableProps) {
+export function PointsListTable({ records }: PointsListTableProps) {
     const [page, setPage] = useState(1)
-    const pagedRecords = useMemo(() => paginate(records, page), [records, page])
+    const pageSize = getPageSize()
+    const prevLenRef = useRef(records.length)
+    const pagedRecords = useMemo(
+        () => paginate(records, page, pageSize),
+        [records, page, pageSize],
+    )
 
-    useEffect(() => setPage(1), [records.length])
+    useEffect(() => {
+        if (records.length !== prevLenRef.current) {
+            prevLenRef.current = records.length
+            setPage(1)
+        }
+    }, [records.length])
 
     const columns: Column<PointRecord>[] = [
         {

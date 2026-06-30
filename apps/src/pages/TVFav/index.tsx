@@ -1,13 +1,15 @@
+'use client'
+
+import { ChevronLeft } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { videosApi } from '@apps/api'
-import type { Video } from '@shared/types'
+import { videosApi } from '@apps/utils/api'
+import { formatDate } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
-import { formatDate } from '@apps/utils'
-import Loading from '@components/Loading'
-import { ChevronLeft } from 'lucide-react'
+import { Loading } from '@components/Loading'
+import type { Video } from '@shared/types'
 
-export default function TVFav() {
+export function TVFav() {
     const navigate = useNavigate()
     const [list, setList] = useState<Video[]>([])
     const [loading, setLoading] = useState(true)

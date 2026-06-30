@@ -1,10 +1,12 @@
+'use client'
+
 interface BorrowStatsCardsProps {
     totalAmount: number
     totalPaid: number
     totalRemaining: number
 }
 
-export default function BorrowStatsCards({
+export function BorrowStatsCards({
     totalAmount,
     totalPaid,
     totalRemaining,

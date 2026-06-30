@@ -1,4 +1,5 @@
-import { useState, useRef, useEffect } from 'react'
+'use client'
+
 import MDEditor from '@uiw/react-md-editor'
 import {
     Bot,
@@ -10,11 +11,12 @@ import {
     ClipboardList,
     Sparkles,
 } from 'lucide-react'
-import Modal from '@components/Modal'
-import Tabs from '@components/Tabs'
+import { useState, useRef, useEffect } from 'react'
+import '@apps/styles/markdown-viewer.css'
+import { Modal } from '@components/Modal'
+import { Tabs } from '@components/Tabs'
 import type { WeeklyAnalysis, WeeklyMessage } from '@shared/types'
 import type { WeeklyReportContent } from '@shared/weekly'
-import '@apps/styles/markdown-viewer.css'
 
 // ===== Constants =====
 
@@ -67,7 +69,7 @@ export interface WeeklyModalEditorProps {
 
 // ===== Component =====
 
-export default function WeeklyModalEditor({
+export function WeeklyModalEditor({
     open,
     weekNumber,
     form,
@@ -451,7 +453,7 @@ function MarkdownField({
             <div className="[&_.w-md-editor]:h-auto! [&_.w-md-editor-content]:h-auto! [&_.w-md-editor-text]:min-h-15!">
                 <MDEditor
                     value={value}
-                    onChange={(val) => onChange(val ?? '')}
+                    onChange={(val: string | undefined) => onChange(val ?? '')}
                     preview="edit"
                     hideToolbar
                     textareaProps={{ placeholder }}

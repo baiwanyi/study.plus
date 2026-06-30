@@ -1,5 +1,7 @@
-import { useState, useEffect, useMemo } from 'react'
-import type { Task } from '@shared/types'
+'use client'
+
+import { BookOpen } from 'lucide-react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     taskTypeLabels,
     taskTypeColors,
@@ -8,11 +10,15 @@ import {
     defaultGradeColors,
     formatDate,
     paginate,
+    getPageSize,
     isAdmin,
     pointColors,
     pointSymbol,
-} from '@apps/utils'
+} from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
+import type { Task } from '@shared/types'
+
+const TRUNCATE_LENGTH = 16
 
 export interface ListTaskProps {
     tasks: Task[]
@@ -22,9 +28,10 @@ export interface ListTaskProps {
     onShare: (task: Task) => void
     onDelete: (id: number) => void
     onAdd: () => void
+    onAddBookNote: () => void
 }
 
-export default function ListTask({
+export function ListTask({
     tasks,
     onEdit,
     onEditContent,
@@ -32,12 +39,23 @@ export default function ListTask({
     onShare,
     onDelete,
     onAdd,
+    onAddBookNote,
 }: ListTaskProps) {
     const [page, setPage] = useState(1)
     const isAdminRole = isAdmin()
-    const pagedTasks = useMemo(() => paginate(tasks, page), [tasks, page])
+    const pageSize = getPageSize()
+    const pagedTasks = useMemo(
+        () => paginate(tasks, page, pageSize),
+        [tasks, page, pageSize],
+    )
 
-    useEffect(() => setPage(1), [tasks.length])
+    const prevLenRef = useRef(tasks.length)
+    useEffect(() => {
+        if (tasks.length !== prevLenRef.current) {
+            prevLenRef.current = tasks.length
+            setPage(1)
+        }
+    }, [tasks.length])
 
     const taskColumns: Column<Task>[] = [
         {
@@ -48,8 +66,8 @@ export default function ListTask({
                     onClick={() => isAdminRole && onEdit(task)}
                     className={`font-medium text-headline truncate max-w-75 ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
                     title={task.title}>
-                    {task.title.length > 16
-                        ? `${task.title.slice(0, 16)}...`
+                    {task.title.length > TRUNCATE_LENGTH
+                        ? `${task.title.slice(0, TRUNCATE_LENGTH)}...`
                         : task.title}
                 </button>
             ),
@@ -81,8 +99,8 @@ export default function ListTask({
             header: '评语',
             render: (task) =>
                 task.aiComment ? (
-                    task.aiComment.length > 16 ? (
-                        task.aiComment.slice(0, 16) + '...'
+                    task.aiComment.length > TRUNCATE_LENGTH ? (
+                        task.aiComment.slice(0, TRUNCATE_LENGTH) + '...'
                     ) : (
                         task.aiComment
                     )
@@ -175,9 +193,15 @@ export default function ListTask({
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2>作业管理</h2>
-                <button onClick={onAdd} className="btn btn-primary">
-                    添加作业
-                </button>
+                <div className="flex items-center gap-2">
+                    <button onClick={onAddBookNote} className="btn btn-outline">
+                        <BookOpen className="w-4 h-4 mr-1" />
+                        添加读书笔记
+                    </button>
+                    <button onClick={onAdd} className="btn btn-primary">
+                        添加作业
+                    </button>
+                </div>
             </div>
 
             <div className="card overflow-hidden p-0!">

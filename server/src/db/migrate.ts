@@ -1,4 +1,3 @@
-import { client } from './index'
 import {
     defaultQuotes,
     defaultHomeworkRules,
@@ -7,6 +6,7 @@ import {
     defaultSystemSettings,
     DEFAULT_WEEKLY_AI_HELPER,
 } from '@shared/constants'
+import { client } from './index'
 
 console.log('Running database migration...')
 
@@ -15,36 +15,11 @@ async function migrate(): Promise<void> {
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       title TEXT NOT NULL,
-      type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes', 'math', 'english')),
+      type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes')),
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-
-    const tasksCheckResult = await client.execute(
-        "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'",
-    )
-    const tasksSql = tasksCheckResult.rows[0]?.sql as string | undefined
-    if (tasksSql && tasksSql.includes('composition') && !tasksSql.includes('math')) {
-        console.log('Migrating tasks table to support math and english types...')
-        await client.execute('PRAGMA foreign_keys = OFF')
-        await client.execute('ALTER TABLE tasks RENAME TO tasks_old')
-        await client.execute(`
-      CREATE TABLE tasks (
-        id INTEGER PRIMARY KEY AUTOINCREMENT,
-        title TEXT NOT NULL,
-        type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes', 'math', 'english')),
-        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
-      )
-    `)
-        await client.execute(
-            'INSERT INTO tasks (id, title, type, status, created_at) SELECT id, title, type, status, created_at FROM tasks_old',
-        )
-        await client.execute('DROP TABLE tasks_old')
-        await client.execute('PRAGMA foreign_keys = ON')
-        console.log('Tasks table migrated successfully.')
-    }
 
     const tasksOldResult = await client.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='tasks_old'",
@@ -52,33 +27,75 @@ async function migrate(): Promise<void> {
     if (tasksOldResult.rows.length > 0) {
         console.log('Found leftover tasks_old table, migrating data...')
         await client.execute('PRAGMA foreign_keys = OFF')
-        await client.execute('DELETE FROM tasks')
-        await client.execute(
-            'INSERT INTO tasks (id, title, type, status, created_at) SELECT id, title, type, status, created_at FROM tasks_old',
+        const oldCount = await client.execute(
+            'SELECT COUNT(*) as cnt FROM tasks_old',
         )
-        const maxId = await client.execute(
-            'SELECT MAX(id) as max_id FROM tasks',
-        )
-        const nextId = (maxId.rows[0]?.max_id as number ?? 0) + 1
-        await client.execute(
-            `DELETE FROM sqlite_sequence WHERE name='tasks'`,
-        )
-        await client.execute(
-            `INSERT INTO sqlite_sequence (name, seq) VALUES ('tasks', ${nextId - 1})`,
-        )
-        await client.execute('DROP TABLE tasks_old')
-        await client.execute('PRAGMA foreign_keys = ON')
-        console.log('Leftover tasks_old migrated successfully.')
+        const hasData =
+            ((oldCount.rows[0] as { cnt?: number } | undefined)?.cnt ?? 0) > 0
+        if (!hasData) {
+            console.log('tasks_old is empty, dropping without restoring.')
+            await client.execute('DROP TABLE tasks_old')
+            await client.execute('PRAGMA foreign_keys = ON')
+        } else {
+            await client.execute('DELETE FROM tasks')
+            await client.execute(
+                "INSERT INTO tasks (id, title, type, status, created_at) SELECT id, title, type, status, created_at FROM tasks_old WHERE type IN ('composition', 'mindmap', 'notes')",
+            )
+            const maxId = await client.execute(
+                'SELECT MAX(id) as max_id FROM tasks',
+            )
+            const nextId = Number(maxId.rows[0]?.max_id ?? 0) + 1
+            await client.execute({
+                sql: 'DELETE FROM sqlite_sequence WHERE name = ?',
+                args: ['tasks'],
+            })
+            await client.execute({
+                sql: 'INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)',
+                args: ['tasks', nextId - 1],
+            })
+            await client.execute('DROP TABLE tasks_old')
+            await client.execute('PRAGMA foreign_keys = ON')
+            console.log('Leftover tasks_old migrated successfully.')
+        }
     }
 
     await client.execute('PRAGMA foreign_keys = OFF')
+
+    // Migrate tasks table: remove math and english types
+    const currentTasksSql = await client.execute(
+        "SELECT sql FROM sqlite_master WHERE type='table' AND name='tasks'",
+    )
+    const currentTasksCheck = currentTasksSql.rows[0]?.sql as string | undefined
+    if (currentTasksCheck && currentTasksCheck.includes('math')) {
+        console.log('Migrating tasks table to remove math and english types...')
+        await client.execute('ALTER TABLE tasks RENAME TO tasks_old')
+        await client.execute(`
+      CREATE TABLE tasks (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes')),
+        status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
+        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      )
+    `)
+        await client.execute(
+            "INSERT INTO tasks (id, title, type, status, created_at) SELECT id, title, type, status, created_at FROM tasks_old WHERE type IN ('composition', 'mindmap', 'notes')",
+        )
+        await client.execute('DROP TABLE tasks_old')
+        console.log('Tasks table migrated to remove math/english types.')
+    }
+
     const subFKResult = await client.execute(
         'PRAGMA foreign_key_list(submissions)',
     )
     const subFKTable = subFKResult.rows[0]?.table as string | undefined
     if (subFKTable === 'tasks_old') {
-        console.log('Fixing submissions FK reference from tasks_old to tasks...')
-        await client.execute('ALTER TABLE submissions RENAME TO submissions_old')
+        console.log(
+            'Fixing submissions FK reference from tasks_old to tasks...',
+        )
+        await client.execute(
+            'ALTER TABLE submissions RENAME TO submissions_old',
+        )
         await client.execute(`
       CREATE TABLE submissions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -200,45 +217,38 @@ async function migrate(): Promise<void> {
                 await client.execute('DROP TABLE exchanges_old')
                 console.log('Exchanges table migrated successfully.')
             }
-        } catch {
-        }
+        } catch {}
     }
 
     try {
         await client.execute('ALTER TABLE tasks DROP COLUMN points')
         console.log('Dropped unused column: tasks.points')
-    } catch {
-    }
+    } catch {}
     try {
         await client.execute('ALTER TABLE tasks DROP COLUMN deadline')
         console.log('Dropped unused column: tasks.deadline')
-    } catch {
-    }
+    } catch {}
 
     try {
         await client.execute('ALTER TABLE submissions DROP COLUMN self_grade')
         console.log('Dropped unused column: submissions.self_grade')
-    } catch {
-    }
+    } catch {}
 
     try {
         await client.execute(
             'ALTER TABLE submissions ADD COLUMN scored_at TEXT',
         )
         console.log('Added scored_at column to submissions table.')
-    } catch {
-    }
+    } catch {}
 
     try {
         await client.execute('ALTER TABLE exchanges DROP COLUMN expires_at')
         console.log('Dropped unused column: exchanges.expires_at')
-    } catch {
-    }
+    } catch {}
     try {
         await client.execute('ALTER TABLE exchanges DROP COLUMN revoked_at')
         console.log('Dropped unused column: exchanges.revoked_at')
-    } catch {
-    }
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS options (
@@ -304,16 +314,14 @@ async function migrate(): Promise<void> {
             'ALTER TABLE ai_usage_logs ADD COLUMN task_title TEXT',
         )
         console.log('Added task_title column to ai_usage_logs table.')
-    } catch {
-    }
+    } catch {}
 
     try {
         await client.execute(
             'ALTER TABLE ai_usage_logs ADD COLUMN task_id INTEGER',
         )
         console.log('Added task_id column to ai_usage_logs table.')
-    } catch {
-    }
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS ai_score_logs (
@@ -532,7 +540,7 @@ async function migrate(): Promise<void> {
         )
     }
 
-    const currentMonth: string = new Date().toISOString().slice(0, 7)
+    const currentMonth = new Date().toISOString().slice(0, 7)
     const existingMonth = await client.execute({
         sql: 'SELECT id FROM month_summary WHERE month = ?',
         args: [currentMonth],
@@ -563,15 +571,13 @@ async function migrate(): Promise<void> {
             'ALTER TABLE videos ADD COLUMN resume_time INTEGER NOT NULL DEFAULT 0',
         )
         console.log('Added resume_time column to videos table.')
-    } catch {
-    }
+    } catch {}
     try {
         await client.execute(
             'ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0',
         )
         console.log('Added favorite column to videos table.')
-    } catch {
-    }
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS weekly_reports (

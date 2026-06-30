@@ -1,16 +1,23 @@
-import { Router, type Request, type Response } from 'express'
-import { db, client } from '../db/index'
-import { videos } from '../db/schema'
 import { eq, sql } from 'drizzle-orm'
+import { Router } from 'express'
+import type { Request, Response } from 'express'
+import crypto from 'crypto'
 import fs from 'fs'
 import path from 'path'
-import crypto from 'crypto'
+import { db, client } from '../db/index'
+import { videos } from '../db/schema'
 import type { ApiErrorResponse } from '@shared/types'
 
 const router = Router()
 
 const VIDEO_EXTENSIONS = new Set([
-    '.mp4', '.avi', '.mkv', '.mov', '.wmv', '.flv', '.webm',
+    '.mp4',
+    '.avi',
+    '.mkv',
+    '.mov',
+    '.wmv',
+    '.flv',
+    '.webm',
 ])
 
 function scanDirectory(dir: string): string[] {
@@ -94,9 +101,13 @@ router.post('/scan', async (_req: Request, res: Response) => {
             args: [],
         })
         const systemConfig = optionRow.rows[0]?.value
-            ? (JSON.parse(optionRow.rows[0].value as string) as Record<string, unknown>)
+            ? (JSON.parse(optionRow.rows[0].value as string) as Record<
+                  string,
+                  unknown
+              >)
             : {}
-        const videoDir = (systemConfig.videoDirectory as string | undefined) || ''
+        const videoDir =
+            (systemConfig.videoDirectory as string | undefined) || ''
         if (!videoDir || !fs.existsSync(videoDir)) {
             res.status(400).json({
                 error: '视频目录未配置或不存在，请在系统设置中配置',
@@ -127,7 +138,10 @@ router.post('/scan', async (_req: Request, res: Response) => {
                 if (existing.length > 0) {
                     skipCount++
                 } else {
-                    const fileName = path.basename(filePath, path.extname(filePath))
+                    const fileName = path.basename(
+                        filePath,
+                        path.extname(filePath),
+                    )
                     await db.insert(videos).values({
                         path: filePath,
                         title: fileName,
@@ -138,12 +152,17 @@ router.post('/scan', async (_req: Request, res: Response) => {
             } catch (err) {
                 errors.push(`${filePath}: ${(err as Error).message}`)
             }
-            res.write(JSON.stringify({ type: 'progress', current: i + 1, total }) + '\n')
+            res.write(
+                JSON.stringify({ type: 'progress', current: i + 1, total }) +
+                    '\n',
+            )
         }
 
         let deletedCount = 0
         try {
-            const allVideos = await db.select({ id: videos.id, path: videos.path }).from(videos)
+            const allVideos = await db
+                .select({ id: videos.id, path: videos.path })
+                .from(videos)
             for (const v of allVideos) {
                 if (!fs.existsSync(v.path)) {
                     await db.delete(videos).where(eq(videos.id, v.id))
@@ -154,20 +173,24 @@ router.post('/scan', async (_req: Request, res: Response) => {
             errors.push(`清理失效记录失败: ${(err as Error).message}`)
         }
 
-        res.write(JSON.stringify({
-            type: 'complete',
-            total,
-            new: newCount,
-            skipped: skipCount,
-            deleted: deletedCount,
-            errors,
-        }) + '\n')
+        res.write(
+            JSON.stringify({
+                type: 'complete',
+                total,
+                new: newCount,
+                skipped: skipCount,
+                deleted: deletedCount,
+                errors,
+            }) + '\n',
+        )
         res.end()
     } catch (err) {
         if (!res.headersSent) {
             res.status(500).json({ error: String(err) })
         } else {
-            res.write(JSON.stringify({ type: 'error', message: String(err) }) + '\n')
+            res.write(
+                JSON.stringify({ type: 'error', message: String(err) }) + '\n',
+            )
             res.end()
         }
     }
@@ -203,114 +226,140 @@ router.put(
     },
 )
 
-router.post('/:md5/view', async (req: Request<{ md5: string }>, res: Response) => {
-    try {
-        const { md5 } = req.params
-        const rows = await db
-            .update(videos)
-            .set({ views: sql`views + 1` })
-            .where(eq(videos.md5, md5))
-            .returning()
-        if (!rows[0]) {
-            res.status(404).json({ error: '视频未找到' })
-            return
+router.post(
+    '/:md5/view',
+    async (req: Request<{ md5: string }>, res: Response) => {
+        try {
+            const { md5 } = req.params
+            const rows = await db
+                .update(videos)
+                .set({ views: sql`views + 1` })
+                .where(eq(videos.md5, md5))
+                .returning()
+            if (!rows[0]) {
+                res.status(404).json({ error: '视频未找到' })
+                return
+            }
+            res.json({ success: true })
+        } catch (err) {
+            console.error('增加浏览次数失败:', err)
+            res.status(500).json({ error: String(err) })
         }
-        res.json({ success: true })
-    } catch (err) {
-        console.error('增加浏览次数失败:', err)
-        res.status(500).json({ error: String(err) })
-    }
-})
+    },
+)
 
-router.get('/stream/:md5', async (req: Request<{ md5: string }>, res: Response) => {
-    try {
-        const { md5 } = req.params
-        const rows = await db
-            .select()
-            .from(videos)
-            .where(eq(videos.md5, md5))
-            .limit(1)
-        if (!rows[0]) {
-            res.status(404).json({ error: '视频未找到' })
-            return
+router.get(
+    '/stream/:md5',
+    async (req: Request<{ md5: string }>, res: Response) => {
+        try {
+            const { md5 } = req.params
+            const rows = await db
+                .select()
+                .from(videos)
+                .where(eq(videos.md5, md5))
+                .limit(1)
+            if (!rows[0]) {
+                res.status(404).json({ error: '视频未找到' })
+                return
+            }
+
+            const filePath = rows[0].path
+            if (!fs.existsSync(filePath)) {
+                res.status(404).json({ error: '视频文件不存在' })
+                return
+            }
+
+            const stat = fs.statSync(filePath)
+            const fileSize = stat.size
+            const ext = path.extname(filePath).toLowerCase()
+
+            const mimeTypes: Record<string, string> = {
+                '.mp4': 'video/mp4',
+                '.avi': 'video/x-msvideo',
+                '.mkv': 'video/x-matroska',
+                '.mov': 'video/quicktime',
+                '.wmv': 'video/x-ms-wmv',
+                '.flv': 'video/x-flv',
+                '.webm': 'video/webm',
+            }
+            const contentType = mimeTypes[ext] || 'video/mp4'
+
+            const range = req.headers.range
+            if (range) {
+                const parts = range.replace(/bytes=/, '').split('-')
+                const start = parseInt(parts[0], 10)
+                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+                const chunkSize = end - start + 1
+
+                res.writeHead(206, {
+                    'Content-Range': `bytes ${start}-${end}/${fileSize}`,
+                    'Accept-Ranges': 'bytes',
+                    'Content-Length': chunkSize,
+                    'Content-Type': contentType,
+                })
+                const stream = fs.createReadStream(filePath, { start, end })
+                stream.pipe(res)
+            } else {
+                res.writeHead(200, {
+                    'Content-Length': fileSize,
+                    'Content-Type': contentType,
+                })
+                fs.createReadStream(filePath).pipe(res)
+            }
+        } catch (err) {
+            console.error('流式传输视频失败:', err)
+            res.status(500).json({ error: String(err) })
         }
+    },
+)
 
-        const filePath = rows[0].path
-        if (!fs.existsSync(filePath)) {
-            res.status(404).json({ error: '视频文件不存在' })
-            return
+router.put(
+    '/:md5/resume-time',
+    async (
+        req: Request<{ md5: string }, unknown, { time: number }>,
+        res: Response,
+    ) => {
+        try {
+            const { md5 } = req.params
+            const { time } = req.body
+            await db
+                .update(videos)
+                .set({ resumeTime: Math.max(0, time) })
+                .where(eq(videos.md5, md5))
+            res.json({ success: true })
+        } catch (err) {
+            console.error('保存播放进度失败:', err)
+            res.status(500).json({ error: String(err) })
         }
+    },
+)
 
-        const stat = fs.statSync(filePath)
-        const fileSize = stat.size
-        const ext = path.extname(filePath).toLowerCase()
-
-        const mimeTypes: Record<string, string> = {
-            '.mp4': 'video/mp4',
-            '.avi': 'video/x-msvideo',
-            '.mkv': 'video/x-matroska',
-            '.mov': 'video/quicktime',
-            '.wmv': 'video/x-ms-wmv',
-            '.flv': 'video/x-flv',
-            '.webm': 'video/webm',
+router.post(
+    '/:md5/toggle-favorite',
+    async (req: Request<{ md5: string }>, res: Response) => {
+        try {
+            const { md5 } = req.params
+            const rows = await db
+                .select({ favorite: videos.favorite })
+                .from(videos)
+                .where(eq(videos.md5, md5))
+                .limit(1)
+            if (!rows[0]) {
+                res.status(404).json({ error: '视频未找到' })
+                return
+            }
+            const newFav = rows[0].favorite ? 0 : 1
+            const updated = await db
+                .update(videos)
+                .set({ favorite: newFav })
+                .where(eq(videos.md5, md5))
+                .returning()
+            res.json(updated[0])
+        } catch (err) {
+            console.error('切换收藏失败:', err)
+            res.status(500).json({ error: String(err) })
         }
-        const contentType = mimeTypes[ext] || 'video/mp4'
+    },
+)
 
-        const range = req.headers.range
-        if (range) {
-            const parts = range.replace(/bytes=/, '').split('-')
-            const start = parseInt(parts[0], 10)
-            const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
-            const chunkSize = end - start + 1
-
-            res.writeHead(206, {
-                'Content-Range': `bytes ${start}-${end}/${fileSize}`,
-                'Accept-Ranges': 'bytes',
-                'Content-Length': chunkSize,
-                'Content-Type': contentType,
-            })
-            const stream = fs.createReadStream(filePath, { start, end })
-            stream.pipe(res)
-        } else {
-            res.writeHead(200, {
-                'Content-Length': fileSize,
-                'Content-Type': contentType,
-            })
-            fs.createReadStream(filePath).pipe(res)
-        }
-    } catch (err) {
-        console.error('流式传输视频失败:', err)
-        res.status(500).json({ error: String(err) })
-    }
-})
-
-router.put('/:md5/resume-time', async (req: Request<{ md5: string }, unknown, { time: number }>, res: Response) => {
-    try {
-        const { md5 } = req.params
-        const { time } = req.body
-        await db.update(videos).set({ resumeTime: Math.max(0, time) }).where(eq(videos.md5, md5))
-        res.json({ success: true })
-    } catch (err) {
-        console.error('保存播放进度失败:', err)
-        res.status(500).json({ error: String(err) })
-    }
-})
-
-router.post('/:md5/toggle-favorite', async (req: Request<{ md5: string }>, res: Response) => {
-    try {
-        const { md5 } = req.params
-        const rows = await db.select({ favorite: videos.favorite }).from(videos).where(eq(videos.md5, md5)).limit(1)
-        if (!rows[0]) {
-            res.status(404).json({ error: '视频未找到' })
-            return
-        }
-        const newFav = rows[0].favorite ? 0 : 1
-        const updated = await db.update(videos).set({ favorite: newFav }).where(eq(videos.md5, md5)).returning()
-        res.json(updated[0])
-    } catch (err) {
-        console.error('切换收藏失败:', err)
-        res.status(500).json({ error: String(err) })
-    }
-})
-
-export default router
+export { router as videosRouter }

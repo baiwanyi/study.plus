@@ -1,16 +1,18 @@
-import { useState, useEffect, useCallback } from 'react'
-import { exchangesApi, pointsApi, optionsAPI } from '@apps/api'
-import type { Exchange, MonthSummary, ExchangeItemRule } from '@shared/types'
-import { formatErrorMessage, isAdmin } from '@apps/utils'
-import { useSnackbar } from '@components/Snackbar'
-import Modal from '@components/Modal'
-import ExchangesStatsCards from './ExchangesStatsCards'
-import ExchangesListTable from './ExchangesListTable'
-import ExchangesModalAdd from './ExchangesModalAdd'
-import Loading from '@components/Loading'
-import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
+'use client'
 
-export default function Exchanges() {
+import { useState, useEffect, useCallback } from 'react'
+import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
+import { exchangesApi, pointsApi, optionsAPI } from '@apps/utils/api'
+import { formatErrorMessage, isAdmin } from '@apps/utils/client'
+import { Loading } from '@components/Loading'
+import { Modal } from '@components/Modal'
+import { useSnackbar } from '@components/Snackbar'
+import { ExchangesListTable } from './ExchangesListTable'
+import { ExchangesModalAdd } from './ExchangesModalAdd'
+import { ExchangesStatsCards } from './ExchangesStatsCards'
+import type { Exchange, MonthSummary, ExchangeItemRule } from '@shared/types'
+
+export function Exchanges() {
     const { showSnackbar } = useSnackbar()
     const [exchanges, setExchanges] = useState<Exchange[]>([])
     const [summary, setSummary] = useState<MonthSummary | null>(null)
