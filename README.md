@@ -41,16 +41,21 @@
 | 测试     | Vitest 4 + @testing-library/react + jsdom | 单元测试 + 组件测试 + API 集成测试   |
 | 视频播放 | HTML5 `<video>` + react-player            | 原生视频播放器，支持 Range 请求      |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
+| 项目管理 | pnpm workspace monorepo                   | 3 包隔离：前端/后端/共享层           |
 
 ### 项目架构
 
-这是一个**前后端一体化**的单仓库项目，采用以下架构：
+采用 **前后端分离** 的 pnpm workspace monorepo 架构，拆分为 3 个独立包：
 
-- **前端**：React 19 + Vite 8，运行在端口 5173
-- **后端**：Express 5 + tsx，运行在端口 3001
+- **`apps/`（前端）**：React 19 + Vite 8，运行在端口 5173
+- **`server/`（后端）**：Express 5 + tsx，运行在端口 3001
+- **`shared/`（共享层）**：类型定义、常量、Zod Schema、纯工具函数
+
+**依赖关系**：`apps → shared`、`server → shared`，前端和后端之间无直接依赖。
+
 - **数据库**：SQLite 本地数据库 (`data/study.db`)，使用 Drizzle ORM 进行数据操作
 - **开发模式**：通过 Vite 代理配置将 `/api` 请求转发到 Express 后端
-- **构建部署**：Vite 构建前端，TypeScript 编译检查，统一部署
+- **生产部署**：Vite 构建前端到 `dist/`，Express 在生产模式下 serve 静态文件
 
 ## 功能需求
 
@@ -273,124 +278,86 @@ task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), co
 
 ```
 study.webian.dev/
-├── apps/                         # 核心源码（React前端 + Express后端）
-│   ├── index.tsx                # ★ 前端入口（路由定义）
-│   ├── server.ts                # ★ 后端入口（Express 服务器）
-│   ├── components/              # 通用 UI 组件
-│   │   ├── DataTable.tsx       # 通用数据表格（分页/自定义渲染）
-│   │   ├── Layout.tsx          # 主布局（侧边栏+内容区+随机名言）
-│   │   ├── Loading.tsx         # 加载状态指示器
-│   │   ├── Modal.tsx           # 通用模态框（支持自定义 footer）
-│   │   ├── RulesPage.tsx       # 规则页面包装器
-│   │   ├── Snackbar.tsx        # 全局消息提示（Context Provider）
-│   │   ├── Tabs.tsx            # 标签页组件
-│   │   └── AiChatPanel.tsx     # 可复用的 AI 聊天面板组件
-│   ├── db/                     # 数据库层
-│   │   ├── index.ts            # 数据库连接（libSQL + Drizzle）
-│   │   ├── migrate.ts          # 迁移脚本（初始化表+默认数据）
-│   │   └── schema.ts           # Drizzle ORM Schema（13表：含周报3表+任务对话2表）
-│   ├── lib/                    # 工具库
-│   │   ├── api.ts              # 前端 API 客户端（13模块）
-│   │   ├── default.ts          # 默认配置（规则/名言/AI提示词）
-│   │   ├── types.ts            # TypeScript 类型定义
-│   │   ├── utils.ts            # 工具函数（日期格式化/分页/状态映射）
-│   │   ├── weekly.ts           # 周报 Zod Schema + 序列化工具
-│   │   └── react-md-editor.d.ts # Markdown 编辑器类型声明（含 commands 自定义）
-│   ├── routes/                 # Express API 路由
-│   │   ├── advance-helper.ts   # 积分预支辅助
-│   │   ├── ai-usage.ts         # AI使用记录
-│   │   ├── exchanges.ts        # 积分兑换
-│   │   ├── options.ts          # 系统配置
-│   │   ├── points.ts           # 积分流水（含预支/还款/月度结算）
-│   │   ├── rules-loader.ts     # 规则加载与初始化
-│   │   ├── summary-helper.ts   # 月度汇总计算
-│   │   ├── tasks.ts            # 作业管理（含AI评分/起名/出题/对话/示范作业）
-│   │   ├── videos.ts           # 视频管理（扫描/流播/收藏/进度）
-│   │   ├── weekly.ts           # 周报管理（CRUD + AI分析 + 对话）
-│   │   └── rss.ts              # 科普 RSS 阅读器
-│   ├── services/               # 业务服务层
-│   │   ├── ai.ts               # DeepSeek API封装
-│   │   └── points.ts           # 积分计算引擎
-│   ├── styles/                 # 全局样式文件
-│   │   ├── index.css           # Tailwind 4 + 自定义色板/组件类
-│   │   ├── markdown-editor.css # Markdown 编辑器 toolbar 样式
-│   │   └── markdown-viewer.css # Markdown 查看器排版
-│   ├── test/                   # 测试辅助
-│   └── __tests__/              # 测试文件
-├── pages/                       # 前端页面组件
-│   ├── share.css               # 分享卡片样式
-│   ├── Dashboard.tsx           # 首页看板（统计卡片/待办任务/分享）
-│   ├── Tasks.tsx               # 作业管理（创建/编辑/评分）
-│   ├── Points.tsx              # 积分记录（筛选/手动添加/月度汇总）
-│   ├── Exchanges.tsx           # 兑换记录（创建/撤销/筛选）
-│   ├── Borrow.tsx              # 积分预支（申请/还款追踪）
-│   ├── Options.tsx             # 设置选项（5标签页，仅管理员）
-│   ├── AIUsage.tsx             # AI 使用量统计
-│   ├── VideoPlayer.tsx         # 学迹电台（随机轮播/续播/收藏）
-│   ├── TVFav.tsx               # 视频收藏列表
-│   ├── Weekly.tsx              # 学习周报（编辑/查看/AI分析/截图分享）
-│   ├── RssReader.tsx           # 科普 RSS 阅读器（分类浏览文章）
-│   └── layout/                 # 页面子组件
-│       ├── Share.tsx           # 分享卡片生成（html-to-image）
-│       ├── Help.tsx            # 帮助文档
-│       ├── TaskEdit.tsx        # 作业编辑器（Markdown + Mermaid）
-│       ├── TaskListTable.tsx   # 作业列表表格
-│       ├── TaskModalCreate.tsx # 作业创建弹窗
-│       ├── TaskModalEdit.tsx   # 作业编辑弹窗
-│       ├── TaskModalAIScore.tsx # AI 评分弹窗
-│       ├── TaskModalAIResult.tsx # AI 评分结果弹窗
-│       ├── PointsListTable.tsx # 积分记录表
-│       ├── PointsModalAdd.tsx  # 手动添加积分（多规则）
-│       ├── PointsStatsCards.tsx # 积分统计卡片
-│       ├── ExchangesListTable.tsx # 兑换记录表
-│       ├── ExchangesModalAdd.tsx # 添加兑换
-│       ├── ExchangesStatsCards.tsx # 兑换统计
-│       ├── BorrowListTable.tsx # 预支记录表
-│       ├── BorrowModalAdd.tsx  # 预支申请
-│       ├── BorrowStatsCards.tsx # 预支统计
-│       ├── AIListTable.tsx     # AI记录表
-│       ├── AISummaryCards.tsx  # AI统计卡片
-│       ├── AISummaryTable.tsx  # AI汇总表
-│       ├── OptionsRulesHomework.tsx # 作业规则设置
-│       ├── OptionsRulesExam.tsx # 考试规则设置
-│       ├── OptionsRulesExchange.tsx # 兑换规则设置
-│       ├── OptionsRulesCustom.tsx # 自定义规则设置
-│       ├── OptionsSystem.tsx   # 系统设置
-│       ├── WeeklyModalEditor.tsx   # 周报编辑器（含 AI 分析预览）
-│       ├── WeeklyModalViewer.tsx   # 周报查看器（截图分享）
-│       ├── WeeklyModalDelete.tsx   # 周报删除确认
-│       ├── WeeklyModalSaveSelection.tsx # 周报保存选择
-│       ├── WidgetBalance.tsx   # 首页小部件：余额
-│       ├── WidgetStats.tsx     # 首页小部件：统计
-│       ├── WidgetPendingTasks.tsx # 首页小部件：待办任务
-│       ├── WidgetCustomRules.tsx # 首页小部件：自定义规则
-│       ├── WidgetExamScoreRules.tsx # 首页小部件：考试规则
-│       ├── WidgetExchangeRules.tsx # 首页小部件：兑换规则
-│       ├── WidgetHomeworkGradeRules.tsx # 首页小部件：作业规则
-│       └── WidgetAdvanceStats.tsx # 首页小部件：预支统计
-├── data/                        # SQLite 数据库文件
-│   └── study.db                # 数据库文件
-├── public/                      # 静态资源
-│   ├── favicon.svg             # 网站图标
-│   ├── fonts/                  # 字体文件
-│   │   └── 华康标题宋W9.ttf  # 中文标题字体（3.3MB）
-│   ├── images/                 # 分享背景图（5张，~18MB）
-│   └── docs/                   # 帮助文档
-│       ├── faq.md              # 常见问题
-│       ├── markdown.md         # Markdown 语法参考
-│       └── mermaid.md          # Mermaid 图表语法参考
-├── dist/                        # 构建输出目录
-├── .env                         # 环境变量（不提交到仓库）
-├── .gitignore                   # Git忽略配置
-├── eslint.config.js            # ESLint 配置
-├── index.html                   # SPA HTML 入口
-├── package.json                 # 项目配置与脚本
-├── postcss.config.js           # PostCSS 配置
-├── tailwind.config.js          # Tailwind CSS 主题配置
-├── tsconfig.json               # TypeScript 严格模式配置
-├── vite.config.ts              # Vite 构建配置（代理/编译优化/分包）
-└── vitest.config.ts            # Vitest 测试配置
-```
+├── apps/                         # ★ 前端 (React + Vite)
+│   ├── public/                   # 静态资源（图标/字体/图片/帮助文档）
+│   ├── src/
+│   │   ├── main.tsx             # 前端入口（路由定义 + 渲染挂载）
+│   │   ├── api/                 # HTTP 客户端（14 个 API 模块）
+│   │   ├── utils/               # 前端专用工具（isAdmin/loadConfig/CSS 颜色映射）
+│   │   ├── components/          # 通用 UI 组件
+│   │   │   ├── Layout.tsx      # 主布局（侧边栏 + 内容区 + 随机名言）
+│   │   │   ├── Snackbar.tsx    # 全局消息提示（Context Provider）
+│   │   │   ├── Modal.tsx       # 通用模态框
+│   │   │   ├── DataTable.tsx   # 通用数据表格
+│   │   │   ├── Tabs.tsx        # 标签页组件
+│   │   │   ├── RulesPage.tsx   # 规则页面包装器
+│   │   │   ├── Loading.tsx     # 加载指示器
+│   │   │   └── AiChatPanel.tsx # AI 聊天面板
+│   │   ├── pages/               # 页面组件（12 个页面 + 37 个页面子组件）
+│   │   │   ├── Dashboard.tsx   # 首页看板
+│   │   │   ├── Tasks.tsx       # 作业管理
+│   │   │   ├── Points.tsx      # 积分记录
+│   │   │   ├── Exchanges.tsx   # 兑换记录
+│   │   │   ├── Borrow.tsx      # 积分预支
+│   │   │   ├── Options.tsx     # 设置选项（管理员）
+│   │   │   ├── AIUsage.tsx     # AI 使用量统计
+│   │   │   ├── Weekly.tsx      # 学习周报
+│   │   │   ├── VideoPlayer.tsx # 学迹电台
+│   │   │   ├── TVFav.tsx       # 视频收藏
+│   │   │   ├── RssReader.tsx   # RSS 阅读器
+│   │   │   └── layout/         # 页面子组件（37 个）
+│   │   └── styles/              # 全局样式
+│   │       ├── index.css        # Tailwind 4 + 自定义色板
+│   │       ├── markdown-editor.css
+│   │       └── markdown-viewer.css
+│   ├── index.html               # SPA HTML 入口
+│   ├── vite.config.ts           # Vite 构建配置（代理/编译优化/分包）
+│   ├── tsconfig.json
+│   ├── postcss.config.js
+│   └── eslint.config.js
+├── server/                       # ★ 后端 (Express + SQLite)
+│   ├── src/
+│   │   ├── index.ts             # Express 入口（路由注册 + 静态文件服务）
+│   │   ├── db/                  # 数据库层
+│   │   │   ├── index.ts        # 数据库连接（libSQL + Drizzle）
+│   │   │   ├── schema.ts       # Drizzle ORM Schema（13 表）
+│   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据）
+│   │   ├── routes/             # API 路由（11 个模块）
+│   │   │   ├── tasks.ts        # 作业管理（含 AI 评分/起名/出题/对话）
+│   │   │   ├── points.ts       # 积分流水（含预支/还款/月度结算）
+│   │   │   ├── exchanges.ts    # 积分兑换
+│   │   │   ├── options.ts      # 系统配置
+│   │   │   ├── ai-usage.ts     # AI 使用记录
+│   │   │   ├── videos.ts       # 视频管理（扫描/流播/收藏）
+│   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
+│   │   │   ├── rss.ts          # 科普 RSS 阅读器
+│   │   │   ├── rules-loader.ts # 规则加载与初始化
+│   │   │   ├── summary-helper.ts # 月度汇总计算
+│   │   │   └── advance-helper.ts # 积分预支辅助
+│   │   └── services/           # 业务服务层
+│   │       ├── ai.ts           # DeepSeek API 封装
+│   │       └── points.ts       # 积分计算引擎
+│   ├── package.json
+│   └── tsconfig.json
+├── shared/                       # ★ 共享层（类型/常量/工具函数）
+│   ├── src/
+│   │   ├── types.ts             # 所有 TypeScript 类型定义
+│   │   ├── constants.ts         # 默认配置（规则/名言/AI 提示词）
+│   │   ├── weekly.ts            # 周报 Zod Schema + 序列化工具
+│   │   ├── utils.ts             # 纯工具函数（格式化/状态映射/分页）
+│   │   └── index.ts             # 统一导出
+│   ├── package.json
+│   └── tsconfig.json
+├── __tests__/                    # 统一测试目录（前后端共用）
+├── data/                         # SQLite 数据库文件
+│   └── study.db
+├── dist/                         # 构建输出目录
+├── .env                          # 环境变量（不提交到仓库）
+├── .gitignore                    # Git 忽略配置
+├── package.json                  # 根 workspace 编排脚本
+├── pnpm-workspace.yaml           # Workspace 配置
+├── tsconfig.json                 # 根 tsconfig（仅供 IDE 引用）
+└── README.md
 
 ## 开发计划
 
@@ -465,31 +432,33 @@ study.webian.dev/
 
 ```bash
 # 安装依赖
-npm install
+pnpm install
 
 # 配置环境变量
 cp .env.example .env
 # 如果没有 .env.example，请参考下方「环境变量」手动创建 .env
 
 # 初始化数据库
-npm run db:migrate
+pnpm db:migrate
 
 # 同时启动前后端开发服务器
-npm run dev:all
+pnpm dev
 
 # 或分别启动
-npm run start            # 启动后端（端口3001）
-npm run dev              # 启动前端（端口5173）
+pnpm dev:server          # 仅启动后端（端口3001）
+pnpm dev:apps            # 仅启动前端（端口5173）
+
+# 构建前端
+pnpm build
+
+# 启动生产模式
+pnpm start               # Express 启动，serve 前端构建产物 + API
 
 # 运行测试
-npm test                 # 运行所有测试
-npm run test:watch       # 监听模式
-npm run test:ui          # UI 模式查看测试结果
+pnpm test                # 运行所有测试
 ```
 
-### 环境变量
-
-在项目根目录创建 `.env` 文件：
+### 环境变量（根目录 .env）
 
 ```env
 # DeepSeek API
@@ -513,17 +482,17 @@ AUTOSAVE_INTERVAL=10
 
 ### 可用脚本
 
-| 脚本                  | 说明                                 |
-|-----------------------|--------------------------------------|
-| `npm run dev`         | 启动前端开发服务器（端口 5173）      |
-| `npm run start`       | 启动后端开发服务器（端口 3001）      |
-| `npm run dev:all`     | 同时启动前后端（concurrently）       |
-| `npm run build`       | TypeScript 编译检查 + Vite 构建      |
-| `npm run preview`     | Vite 预览构建产物                    |
-| `npm test`            | 运行所有测试                         |
-| `npm run db:migrate`  | 数据库迁移与初始化                   |
-| `npm run db:push`     | Drizzle Kit 直接推送 Schema 到数据库 |
-| `npm run db:generate` | 生成 Drizzle 迁移文件                |
+| 脚本                           | 说明                                          |
+|--------------------------------|-----------------------------------------------|
+| `pnpm dev`                     | 同时启动前后端开发服务器（concurrently）       |
+| `pnpm dev:apps`                | 启动前端开发服务器（Vite，端口 5173）          |
+| `pnpm dev:server`              | 启动后端开发服务器（tsx watch，端口 3001）     |
+| `pnpm build`                   | 构建前端到 `dist/`                            |
+| `pnpm start`                   | 启动生产模式 Express 服务器                    |
+| `pnpm test`                    | 运行所有测试                                  |
+| `pnpm db:migrate`              | 数据库迁移与初始化                            |
+| `pnpm db:push`                 | Drizzle Kit 直接推送 Schema 到数据库          |
+| `pnpm db:generate`             | 生成 Drizzle 迁移文件                         |
 
 ## 许可证
 
