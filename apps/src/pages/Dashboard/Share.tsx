@@ -7,8 +7,8 @@ import { pointsApi, quotesApi, imagesApi } from '@apps/utils/api'
 import { formatNumber, formatErrorMessage } from '@apps/utils/client'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
-import './share.css'
 import type { ShareStats } from '@shared/types'
+import '@apps/styles/share.css'
 
 let cachedImages: string[] | null = null
 
