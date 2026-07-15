@@ -147,7 +147,7 @@ export const FeynmanCardList: FC<FeynmanCardListProps> = ({
             <DataTable
                 data={cards}
                 columns={columns}
-                emptyText={'还没有费曼心得记录，点击"添加心得"开始吧'}
+                emptyText={'还没有学习心得记录，点击"添加心得"开始吧'}
             />
         </div>
     )

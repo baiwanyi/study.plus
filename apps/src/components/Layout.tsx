@@ -21,7 +21,7 @@ const baseNavItems = [
     { to: '/', label: '首页看板', icon: LayoutGrid },
     { to: '/weekly', label: '学习周报', icon: NotebookPen },
     { to: '/tasks', label: '作业管理', icon: ClipboardList },
-    { to: '/feynman', label: '费曼心得', icon: GraduationCap },
+    { to: '/feynman', label: '学习心得', icon: GraduationCap },
     { to: '/points', label: '积分记录', icon: Database },
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
     { to: '/borrow', label: '积分预支', icon: HandCoins },

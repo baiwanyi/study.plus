@@ -2,11 +2,12 @@ import { and, desc, eq, asc, sql } from 'drizzle-orm'
 import { Router } from 'express'
 import { feynmanSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
-import { feynmanCards, feynmanConversations, feynmanMessages } from '../db/schema'
 import {
-    evaluateFeynmanReflection,
-    feynmanFollowUpChat,
-} from '../services/ai'
+    feynmanCards,
+    feynmanConversations,
+    feynmanMessages,
+} from '../db/schema'
+import { evaluateFeynmanReflection, feynmanFollowUpChat } from '../services/ai'
 import type { SQL } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 
@@ -80,7 +81,7 @@ feynmanRouter.get('/', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error listing feynman cards:', message)
-        res.status(500).json({ error: '获取费曼心得卡列表失败' })
+        res.status(500).json({ error: '获取学习心得卡列表失败' })
     }
 })
 
@@ -100,7 +101,7 @@ feynmanRouter.get('/:id', async (req: Request, res: Response) => {
             .limit(1)
 
         if (!rows[0]) {
-            res.status(404).json({ error: '费曼心得卡未找到' })
+            res.status(404).json({ error: '学习心得卡未找到' })
             return
         }
 
@@ -108,7 +109,7 @@ feynmanRouter.get('/:id', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error getting feynman card:', message)
-        res.status(500).json({ error: '获取费曼心得卡失败' })
+        res.status(500).json({ error: '获取学习心得卡失败' })
     }
 })
 
@@ -154,7 +155,7 @@ feynmanRouter.post('/', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error creating feynman card:', message)
-        res.status(500).json({ error: '创建费曼心得卡失败' })
+        res.status(500).json({ error: '创建学习心得卡失败' })
     }
 })
 
@@ -219,7 +220,7 @@ feynmanRouter.put('/:id', async (req: Request, res: Response) => {
             .returning()
 
         if (!rows[0]) {
-            res.status(404).json({ error: '费曼心得卡未找到' })
+            res.status(404).json({ error: '学习心得卡未找到' })
             return
         }
 
@@ -227,7 +228,7 @@ feynmanRouter.put('/:id', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error updating feynman card:', message)
-        res.status(500).json({ error: '更新费曼心得卡失败' })
+        res.status(500).json({ error: '更新学习心得卡失败' })
     }
 })
 
@@ -246,7 +247,7 @@ feynmanRouter.delete('/:id', async (req: Request, res: Response) => {
             .returning()
 
         if (!rows[0]) {
-            res.status(404).json({ error: '费曼心得卡未找到' })
+            res.status(404).json({ error: '学习心得卡未找到' })
             return
         }
 
@@ -254,7 +255,7 @@ feynmanRouter.delete('/:id', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error deleting feynman card:', message)
-        res.status(500).json({ error: '删除费曼心得卡失败' })
+        res.status(500).json({ error: '删除学习心得卡失败' })
     }
 })
 
@@ -273,7 +274,7 @@ feynmanRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
             .limit(1)
 
         if (!rows[0]) {
-            res.status(404).json({ error: '费曼心得卡未找到' })
+            res.status(404).json({ error: '学习心得卡未找到' })
             return
         }
 
@@ -325,12 +326,13 @@ feynmanRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             .limit(1)
 
         if (!rows[0]) {
-            res.status(404).json({ error: '费曼心得卡未找到' })
+            res.status(404).json({ error: '学习心得卡未找到' })
             return
         }
 
         const card = rows[0]
-        const userMessage = typeof req.body?.message === 'string' ? req.body.message.trim() : ''
+        const userMessage =
+            typeof req.body?.message === 'string' ? req.body.message.trim() : ''
 
         // Find or create conversation (try-catch handles concurrent creation race)
         let conversationId: number

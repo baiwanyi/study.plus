@@ -49,7 +49,7 @@ export const FeynmanModalShare: FC<FeynmanModalShareProps> = ({
                 '_',
             )
             const link = document.createElement('a')
-            link.download = `费曼心得_${safeTitle}.png`
+            link.download = `学习心得_${safeTitle}.png`
             link.href = dataUrl
             link.click()
             link.remove()
@@ -73,7 +73,7 @@ export const FeynmanModalShare: FC<FeynmanModalShareProps> = ({
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
                         <BookOpen className="w-5 h-5 text-primary shrink-0" />
                         <h3 className="text-lg font-bold text-headline">
-                            费曼心得卡
+                            学习心得卡
                         </h3>
                     </div>
                     <div className="space-y-2">

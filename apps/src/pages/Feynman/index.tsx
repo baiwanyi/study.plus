@@ -57,7 +57,7 @@ export const Feynman: FC = () => {
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2>费曼心得</h2>
+                <h2>学习心得</h2>
                 <button
                     onClick={() => setModalCardId(null)}
                     className="btn btn-primary">

@@ -1,6 +1,6 @@
 ---
 name: feynman-modal-refactor
-overview: 将费曼心得的新建/编辑/评估功能从独立路由页面改为 Modal 弹窗，删除按钮移至 FeynmanCardList 且仅管理员可见
+overview: 将学习心得的新建/编辑/评估功能从独立路由页面改为 Modal 弹窗，删除按钮移至 FeynmanCardList 且仅管理员可见
 todos:
   - id: refactor-feynman-editor
     content: 将 FeynmanEditor 改造为 FeynmanEditorModal，使用 Modal 包裹，props 驱动，移除路由依赖，使用 useSnackbar
@@ -26,7 +26,7 @@ todos:
 ---
 
 ## 产品概述
-将费曼心得卡的**新建/编辑**和**查看/评估**功能从独立路由页面重构为 Modal 弹窗，所有操作在列表页通过状态控制弹窗完成，无需额外路由。同时在卡片列表项中添加"删除"按钮，仅管理员可见。
+将学习心得卡的**新建/编辑**和**查看/评估**功能从独立路由页面重构为 Modal 弹窗，所有操作在列表页通过状态控制弹窗完成，无需额外路由。同时在卡片列表项中添加"删除"按钮，仅管理员可见。
 
 ## 核心功能
 1. **新建心得卡**：点击列表页"添加心得"按钮，弹出 Modal 编辑器（size="lg"），包含学科选择、课题、三个费曼问题、记忆钩子（可折叠）、保存和保存并评估按钮
@@ -109,13 +109,13 @@ todos:
 
 ## 涉及文件
 
-| 文件 | 操作 | 说明 |
-|------|------|------|
-| `apps/src/pages/Feynman/index.tsx` | 修改 | 新增 editorCardId/viewerCardId 状态，Modal 控制逻辑，集成 useSnackbar |
-| `apps/src/pages/Feynman/FeynmanEditor.tsx` | 修改 | 改为 FeynmanEditorModal，使用 Modal 包裹，props 驱动，移除路由依赖 |
-| `apps/src/pages/Feynman/FeynmanCardView.tsx` | 修改 | 改为 FeynmanViewerModal，使用 Modal 包裹，props 驱动，移除路由依赖 |
-| `apps/src/pages/Feynman/FeynmanCardList.tsx` | 修改 | 添加删除按钮（管理员权限控制），新增 onDelete prop |
-| `apps/src/main.tsx` | 修改 | 移除费曼的 3 个独立路由和对应 import |
+| 文件                                         | 操作 | 说明                                                                  |
+| -------------------------------------------- | ---- | --------------------------------------------------------------------- |
+| `apps/src/pages/Feynman/index.tsx`           | 修改 | 新增 editorCardId/viewerCardId 状态，Modal 控制逻辑，集成 useSnackbar |
+| `apps/src/pages/Feynman/FeynmanEditor.tsx`   | 修改 | 改为 FeynmanEditorModal，使用 Modal 包裹，props 驱动，移除路由依赖    |
+| `apps/src/pages/Feynman/FeynmanCardView.tsx` | 修改 | 改为 FeynmanViewerModal，使用 Modal 包裹，props 驱动，移除路由依赖    |
+| `apps/src/pages/Feynman/FeynmanCardList.tsx` | 修改 | 添加删除按钮（管理员权限控制），新增 onDelete prop                    |
+| `apps/src/main.tsx`                          | 修改 | 移除费曼的 3 个独立路由和对应 import                                  |
 
 
 # Agent Extensions
