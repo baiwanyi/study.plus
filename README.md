@@ -264,9 +264,9 @@ weekly_conversations-> id, reportId(FK), role(ai/student), createdAt
 weekly_messages     -> id, conversationId(FK), role, content, createdAt
 task_conversations  -> id, taskId(FK, CASCADE), createdAt, updatedAt
 task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
-feynman_cards       -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, createdAt, updatedAt
-feynman_conversations-> id, feynmanCardId(FK, CASCADE), createdAt, updatedAt
-feynman_messages    -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
+studynotes            -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, createdAt, updatedAt
+studynote_conversations-> id, studynoteId(FK, CASCADE), createdAt, updatedAt
+studynote_messages     -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
 ```
 
 ### 积分流转全景
