@@ -629,6 +629,44 @@ async function migrate(): Promise<void> {
     )
   `)
 
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS feynman_cards (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject TEXT NOT NULL,
+      topic TEXT NOT NULL DEFAULT '',
+      summary TEXT NOT NULL,
+      example TEXT NOT NULL,
+      stuck_points TEXT NOT NULL,
+      memory_hook TEXT,
+      evaluation TEXT,
+      evaluated_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created feynman_cards table.')
+
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS feynman_conversations (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      feynman_card_id INTEGER NOT NULL REFERENCES feynman_cards(id) ON DELETE CASCADE,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created feynman_conversations table.')
+
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS feynman_messages (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      conversation_id INTEGER NOT NULL REFERENCES feynman_conversations(id) ON DELETE CASCADE,
+      role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
+      content TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created feynman_messages table.')
+
     console.log('Migration completed successfully!')
 }
 

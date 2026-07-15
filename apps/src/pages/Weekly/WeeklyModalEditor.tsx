@@ -236,8 +236,7 @@ export function WeeklyModalEditor({
                                                     {msg.content}
                                                 </p>
                                             ) : (
-                                                <div
-                                                    data-color-mode="light">
+                                                <div data-color-mode="light">
                                                     <MDEditor.Markdown
                                                         source={msg.content}
                                                     />

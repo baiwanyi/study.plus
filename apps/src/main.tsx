@@ -1,3 +1,4 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
@@ -14,11 +15,14 @@ import { VideoPlayer } from '@apps/pages/VideoPlayer'
 import { TVFav } from '@apps/pages/TVFav'
 import { AIUsage } from '@apps/pages/AIUsage'
 import { RssReader } from '@apps/pages/RssReader'
+import { Feynman } from '@apps/pages/Feynman'
 import { Weekly } from '@apps/pages/Weekly'
 import '@apps/styles/index.css'
 
 // Preload runtime config (DB overrides env defaults)
 loadConfig()
+
+const queryClient = new QueryClient()
 
 const AppRoutes = () => (
     <SnackbarProvider>
@@ -30,6 +34,7 @@ const AppRoutes = () => (
                 <Route path="exchanges" element={<Exchanges />} />
                 <Route path="borrow" element={<Borrow />} />
                 <Route path="rss" element={<RssReader />} />
+                <Route path="feynman" element={<Feynman />} />
                 <Route path="weekly" element={<Weekly />} />
                 <Route path="tv/fav" element={<TVFav />} />
                 <Route path="tv/:md5" element={<VideoPlayer />} />
@@ -46,9 +51,11 @@ const rootElement = document.getElementById('app')
 if (rootElement) {
     createRoot(rootElement).render(
         <StrictMode>
-            <BrowserRouter>
-                <AppRoutes />
-            </BrowserRouter>
+            <QueryClientProvider client={queryClient}>
+                <BrowserRouter>
+                    <AppRoutes />
+                </BrowserRouter>
+            </QueryClientProvider>
         </StrictMode>,
     )
 }

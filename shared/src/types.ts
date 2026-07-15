@@ -2,6 +2,58 @@ import type { WeeklyReportContent } from './weekly'
 
 export type TaskType = 'composition' | 'mindmap' | 'notes'
 
+// ===== Feynman Reflection Types =====
+export type FeynmanSubject =
+    | 'math'
+    | 'chinese'
+    | 'english'
+    | 'science'
+    | 'custom'
+
+export interface FeynmanCard {
+    id: number
+    subject: string
+    topic: string
+    summary: string
+    example: string
+    stuckPoints: string
+    memoryHook: string | null
+    evaluation: string | null
+    evaluatedAt: string | null
+    createdAt: string
+    updatedAt: string
+    followUpCount?: number
+}
+
+export interface FeynmanEvaluation {
+    completenessScore: number
+    completenessComment: string
+    missingPoints: string[]
+    errors: Array<{
+        description: string
+        correction: string
+    }>
+    improvementSuggestions: string[]
+    overallComment: string
+}
+
+export interface FeynmanCreateRequest {
+    subject: string
+    topic: string
+    summary: string
+    example: string
+    stuckPoints: string
+    memoryHook?: string
+}
+
+export interface FeynmanMessage {
+    id: number
+    conversationId: number
+    role: 'user' | 'assistant'
+    content: string
+    createdAt: string
+}
+
 export type TaskStatus = 'pending' | 'completed' | 'expired'
 export type TaskClass =
     | '未定级'
@@ -19,6 +71,8 @@ export type TaskAI =
     | 'task-chat'
     | 'weekly-analyze'
     | 'weekly-chat'
+    | 'feynman-followup'
+    | 'feynman-evaluate'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =

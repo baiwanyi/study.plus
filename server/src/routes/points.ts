@@ -11,7 +11,7 @@ import {
 import { getPointsForGrade, getPointsForExamScore } from '../services/points'
 import { loadRules } from './rules-loader'
 import { recomputeMonthSummary } from './summary-helper'
-import { loadSystemSettings, isFirstDayOfMonth } from './advance-helper'
+import { loadSystemSettings, isFirstDayOfMonth, repayActiveAdvances } from './advance-helper'
 import type {
     PointRecord,
     CreatePointRecordRequest,
@@ -81,26 +81,35 @@ router.post(
         >,
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
-        const {
-            type,
-            amount,
-            reason,
-            ruleName,
-            relatedId,
-            relatedType,
-        }: CreatePointRecordRequest = req.body
-        if (!type || amount === undefined || amount === null || !reason) {
-            res.status(400).json({
-                error: 'type、amount 和 reason 为必填项',
-            })
-            return
+        try {
+            const {
+                type,
+                amount,
+                reason,
+                ruleName,
+                relatedId,
+                relatedType,
+            }: CreatePointRecordRequest = req.body
+            if (!type || amount === undefined || amount === null || !reason) {
+                res.status(400).json({
+                    error: 'type、amount 和 reason 为必填项',
+                })
+                return
+            }
+            if (typeof amount !== 'number' || !Number.isFinite(amount)) {
+                res.status(400).json({ error: 'amount 必须为有效数字' })
+                return
+            }
+            const result = await db
+                .insert(pointRecords)
+                .values({ type, amount, reason, ruleName, relatedId, relatedType })
+                .returning()
+            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            res.json(result[0] as PointRecord)
+        } catch (err) {
+            console.error('Error in POST /points:', err)
+            res.status(500).json({ error: '服务器内部错误' } as ApiErrorResponse)
         }
-        const result = await db
-            .insert(pointRecords)
-            .values({ type, amount, reason, ruleName, relatedId, relatedType })
-            .returning()
-        await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
-        res.json(result[0] as PointRecord)
     },
 )
 
@@ -119,45 +128,59 @@ router.post(
         >,
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
-        const { category, grade, remark, relatedId } = req.body
-        if (!category || !grade) {
-            res.status(400).json({ error: 'category 和 grade 为必填项' })
-            return
+        try {
+            const { category, grade, remark, relatedId } = req.body
+            if (!category || !grade) {
+                res.status(400).json({ error: 'category 和 grade 为必填项' })
+                return
+            }
+            if (
+                relatedId !== undefined &&
+                relatedId !== null &&
+                isNaN(Number(relatedId))
+            ) {
+                res.status(400).json({ error: 'relatedId 必须为有效数字' })
+                return
+            }
+
+            const rules = await loadRules()
+            const points = getPointsForGrade(rules, grade)
+            if (points === 0) {
+                const validGrades =
+                    rules.gradingScale.homework.map((g) => g.grade)
+                res.status(400).json({
+                    error: `无效的等级 "${grade}"，有效值为: ${validGrades.join(', ')}`,
+                })
+                return
+            }
+
+            const categoryLabel =
+                category === 'submission'
+                    ? '作业批改'
+                    : category === 'exam'
+                      ? '单元测评'
+                      : category
+
+            const recordType = points >= 0 ? 'earn' : 'deduct'
+            const reason = `${categoryLabel} - ${grade}${remark ? `（${remark}）` : ''}`
+
+            const result = await db
+                .insert(pointRecords)
+                .values({
+                    type: recordType,
+                    amount: Math.abs(points),
+                    reason,
+                    ruleName: `${categoryLabel}-${grade}`,
+                    relatedType: category as RelatedType,
+                    relatedId: relatedId ? Number(relatedId) : null,
+                })
+                .returning()
+            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            res.json(result[0] as PointRecord)
+        } catch (err) {
+            console.error('Error in POST /points/by-grade:', err)
+            res.status(500).json({ error: '服务器内部错误' } as ApiErrorResponse)
         }
-
-        const rules = await loadRules()
-        const points = getPointsForGrade(rules, grade)
-        if (points === 0) {
-            const validGrades = rules.gradingScale.homework.map((g) => g.grade)
-            res.status(400).json({
-                error: `无效的等级 "${grade}"，有效值为: ${validGrades.join(', ')}`,
-            })
-            return
-        }
-
-        const categoryLabel =
-            category === 'submission'
-                ? '作业批改'
-                : category === 'exam'
-                  ? '单元测评'
-                  : category
-
-        const recordType = points >= 0 ? 'earn' : 'deduct'
-        const reason = `${categoryLabel} - ${grade}${remark ? `（${remark}）` : ''}`
-
-        const result = await db
-            .insert(pointRecords)
-            .values({
-                type: recordType,
-                amount: Math.abs(points),
-                reason,
-                ruleName: `${categoryLabel}-${grade}`,
-                relatedType: category as RelatedType,
-                relatedId: relatedId ? Number(relatedId) : null,
-            })
-            .returning()
-        await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
-        res.json(result[0] as PointRecord)
     },
 )
 
@@ -171,51 +194,64 @@ router.post(
         >,
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
-        const { score, remark, relatedId } = req.body
-        if (score === undefined || score === null) {
-            res.status(400).json({ error: 'score 为必填项' })
-            return
+        try {
+            const { score, remark, relatedId } = req.body
+            if (score === undefined || score === null) {
+                res.status(400).json({ error: 'score 为必填项' })
+                return
+            }
+            if (
+                relatedId !== undefined &&
+                relatedId !== null &&
+                isNaN(Number(relatedId))
+            ) {
+                res.status(400).json({ error: 'relatedId 必须为有效数字' })
+                return
+            }
+
+            const numScore = Number(score)
+            if (isNaN(numScore)) {
+                res.status(400).json({ error: 'score 必须为数字' })
+                return
+            }
+
+            if (numScore < 0 || numScore > 100) {
+                res.status(400).json({ error: 'score 必须在 0-100 之间' })
+                return
+            }
+
+            const rules = await loadRules()
+
+            const matched = getPointsForExamScore(rules, numScore)
+            if (!matched) {
+                res.status(400).json({
+                    error: `未找到分数 ${numScore} 对应的积分规则`,
+                })
+                return
+            }
+
+            const points = matched.points
+            const recordType = points >= 0 ? 'earn' : 'deduct'
+            const reason = `单元测评 - ${numScore}分${remark ? `（${remark}）` : ''}`
+            const ruleName = `${matched.min}-${matched.max}分`
+
+            const result = await db
+                .insert(pointRecords)
+                .values({
+                    type: recordType,
+                    amount: Math.abs(points),
+                    reason,
+                    ruleName,
+                    relatedType: 'exam' as RelatedType,
+                    relatedId: relatedId ? Number(relatedId) : null,
+                })
+                .returning()
+            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            res.json(result[0] as PointRecord)
+        } catch (err) {
+            console.error('Error in POST /points/by-exam-score:', err)
+            res.status(500).json({ error: '服务器内部错误' } as ApiErrorResponse)
         }
-
-        const numScore = Number(score)
-        if (isNaN(numScore)) {
-            res.status(400).json({ error: 'score 必须为数字' })
-            return
-        }
-
-        if (numScore < 0 || numScore > 100) {
-            res.status(400).json({ error: 'score 必须在 0-100 之间' })
-            return
-        }
-
-        const rules = await loadRules()
-
-        const matched = getPointsForExamScore(rules, numScore)
-        if (!matched) {
-            res.status(400).json({
-                error: `未找到分数 ${numScore} 对应的积分规则`,
-            })
-            return
-        }
-
-        const points = matched.points
-        const recordType = points >= 0 ? 'earn' : 'deduct'
-        const reason = `单元测评 - ${numScore}分${remark ? `（${remark}）` : ''}`
-        const ruleName = `${matched.min}-${matched.max}分`
-
-        const result = await db
-            .insert(pointRecords)
-            .values({
-                type: recordType,
-                amount: Math.abs(points),
-                reason,
-                ruleName,
-                relatedType: 'exam' as RelatedType,
-                relatedId: relatedId ? Number(relatedId) : null,
-            })
-            .returning()
-        await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
-        res.json(result[0] as PointRecord)
     },
 )
 
@@ -243,28 +279,28 @@ router.post(
             return
         }
 
-        const rules = await loadRules()
-        let customRule = rules.customRules.find((r) => r.id === ruleId)
-        if (!customRule) {
-            customRule = rules.customRules.find((r) => r.name === ruleId)
-        }
-        if (!customRule) {
-            const availableRules = rules.customRules
-                .map((r) => r.name)
-                .join(', ')
-            res.status(404).json({
-                error: `自定义规则不存在，可用的规则有: ${availableRules || '无'}`,
-            })
-            return
-        }
-
-        const recordType: PointRecordType =
-            customRule.type === 'earn' ? 'earn' : 'deduct'
-        const reason = customRule.description
-            ? `${customRule.name} - ${customRule.description}${remark ? `（${remark}）` : ''}`
-            : `${customRule.name}${remark ? `（${remark}）` : ''}`
-
         try {
+            const rules = await loadRules()
+            let customRule = rules.customRules.find((r) => r.id === ruleId)
+            if (!customRule) {
+                customRule = rules.customRules.find((r) => r.name === ruleId)
+            }
+            if (!customRule) {
+                const availableRules = rules.customRules
+                    .map((r) => r.name)
+                    .join(', ')
+                res.status(404).json({
+                    error: `自定义规则不存在，可用的规则有: ${availableRules || '无'}`,
+                })
+                return
+            }
+
+            const recordType: PointRecordType =
+                customRule.type === 'earn' ? 'earn' : 'deduct'
+            const reason = customRule.description
+                ? `${customRule.name} - ${customRule.description}${remark ? `（${remark}）` : ''}`
+                : `${customRule.name}${remark ? `（${remark}）` : ''}`
+
             const result = await db
                 .insert(pointRecords)
                 .values({
@@ -288,10 +324,15 @@ router.post(
 )
 
 router.get('/summary', async (req: Request, res: Response) => {
-    const { month } = req.query as { month?: string }
-    const targetMonth: string = month || new Date().toISOString().slice(0, 7)
-    const summary = await recomputeMonthSummary(targetMonth)
-    res.json(summary)
+    try {
+        const { month } = req.query as { month?: string }
+        const targetMonth: string = month || new Date().toISOString().slice(0, 7)
+        const summary = await recomputeMonthSummary(targetMonth)
+        res.json(summary)
+    } catch (err) {
+        console.error('Error in GET /points/summary:', err)
+        res.status(500).json({ error: '服务器内部错误' })
+    }
 })
 
 router.get(
@@ -359,7 +400,7 @@ router.get(
                 totalEarn,
                 totalDeduct,
                 totalExchanges,
-                net: totalEarn - totalDeduct + totalExchanges,
+                net: totalEarn - totalDeduct,
             })
         } catch (err) {
             console.error('Error in GET /points/stats:', err)
@@ -712,49 +753,11 @@ router.post(
                 return
             }
 
-            const activeAdvances = (await db
-                .select()
-                .from(pointAdvances)
-                .where(eq(pointAdvances.status, 'active'))) as PointAdvance[]
-
-            let totalRepaid = 0
-
-            for (const adv of activeAdvances) {
-                if (adv.paidInstallments >= adv.installments) continue
-
-                const reason = `积分预支还款 - 第 ${adv.paidInstallments + 1}/${adv.installments} 期`
-
-                await db.insert(pointRecords).values({
-                    type: 'deduct',
-                    amount: adv.installmentAmount,
-                    reason,
-                    relatedId: adv.id,
-                })
-
-                const newPaid = adv.paidInstallments + 1
-                const newStatus =
-                    newPaid >= adv.installments ? 'completed' : 'active'
-
-                await db
-                    .update(pointAdvances)
-                    .set({
-                        paidInstallments: newPaid,
-                        status: newStatus,
-                    })
-                    .where(eq(pointAdvances.id, adv.id))
-
-                totalRepaid += adv.installmentAmount
-            }
-
-            if (totalRepaid > 0) {
-                await recomputeMonthSummary(
-                    new Date().toISOString().slice(0, 7),
-                )
-            }
+            const repaid = await repayActiveAdvances()
 
             res.json({
                 success: true,
-                repaid: totalRepaid,
+                repaid,
             })
         } catch (err) {
             console.error('Error in POST /points/advances/repay:', err)

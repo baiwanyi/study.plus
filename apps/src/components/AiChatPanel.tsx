@@ -14,6 +14,7 @@ export interface AiChatPanelProps {
     aiHelperName?: string
     emptyText?: string
     inputPlaceholder?: string
+    children?: React.ReactNode
 }
 
 export default function AiChatPanel({
@@ -25,6 +26,7 @@ export default function AiChatPanel({
     aiHelperName = '',
     emptyText = '你可以让 AI 生成示范作业，或在下方输入问题向我提问',
     inputPlaceholder = '输入你的问题...',
+    children,
 }: AiChatPanelProps) {
     const [input, setInput] = useState('')
     const chatEndRef = useRef<HTMLDivElement>(null)
@@ -51,11 +53,14 @@ export default function AiChatPanel({
     return (
         <div className="flex flex-col h-full border-l border-gray-200">
             {/* Header */}
-            <div className="flex items-center gap-2 px-4 py-3 border-b border-gray-200 shrink-0">
-                <Bot className="w-5 h-5 text-primary" />
-                <span className="text-sm font-medium text-gray-800">
-                    {aiHelperName} AI 辅导
-                </span>
+            <div className="flex items-center justify-between px-4 py-3 border-b border-gray-200 shrink-0">
+                <div className="flex items-center gap-2">
+                    <Bot className="size-5 text-primary" />
+                    <span className="text-sm font-medium text-gray-800">
+                        {aiHelperName} AI 辅导
+                    </span>
+                </div>
+                {children}
             </div>
 
             {/* Messages */}

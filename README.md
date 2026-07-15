@@ -16,7 +16,8 @@
 - **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
 - **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
-- **学习分享**：一键生成分享卡片（积分/作业/周报），记录成长瞬间
+- **费曼学习法**：创建心得卡（概括/举例/卡壳/记忆钩子），AI 评估完整度 + 追问对话，支持分享
+- **学习分享**：一键生成分享卡片（积分/作业/周报/心得卡），记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 - **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
 
@@ -263,6 +264,9 @@ weekly_conversations-> id, reportId(FK), role(ai/student), createdAt
 weekly_messages     -> id, conversationId(FK), role, content, createdAt
 task_conversations  -> id, taskId(FK, CASCADE), createdAt, updatedAt
 task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
+feynman_cards       -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, createdAt, updatedAt
+feynman_conversations-> id, feynmanCardId(FK, CASCADE), createdAt, updatedAt
+feynman_messages    -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
 ```
 
 ### 积分流转全景
@@ -299,7 +303,7 @@ study.webian.dev/
 │   │   │   ├── RulesPage.tsx   # 规则页面包装器
 │   │   │   ├── Loading.tsx     # 加载指示器
 │   │   │   └── AiChatPanel.tsx # AI 聊天面板
-│   │   ├── pages/               # 页面组件（12 个页面 + 37 个页面子组件）
+│   │   ├── pages/               # 页面组件（12 个页面 + 38 个页面子组件）
 │   │   │   ├── Dashboard.tsx   # 首页看板
 │   │   │   ├── Tasks.tsx       # 作业管理
 │   │   │   ├── Points.tsx      # 积分记录
@@ -311,6 +315,13 @@ study.webian.dev/
 │   │   │   ├── VideoPlayer.tsx # 学迹电台
 │   │   │   ├── TVFav.tsx       # 视频收藏
 │   │   │   ├── RssReader.tsx   # RSS 阅读器
+│   │   │   ├── Feynman/        # 费曼学习法模块
+│   │   │   │   ├── index.tsx             # 心得卡列表页
+│   │   │   │   ├── FeynmanEditor.tsx     # 心得卡编辑模态框
+│   │   │   │   ├── FeynmanModalShare.tsx # 心得卡分享卡片
+│   │   │   │   ├── EvaluationReport.tsx  # AI 评估报告组件
+│   │   │   │   ├── FeynmanCardView.tsx   # 心得卡卡片视图
+│   │   │   │   └── FeynmanListTable.tsx  # 心得卡表格视图
 │   │   │   └── layout/         # 页面子组件（37 个）
 │   │   └── styles/              # 全局样式
 │   │       ├── index.css        # Tailwind 4 + 自定义色板
@@ -328,7 +339,7 @@ study.webian.dev/
 │   │   │   ├── index.ts        # 数据库连接（libSQL + Drizzle）
 │   │   │   ├── schema.ts       # Drizzle ORM Schema（13 表）
 │   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据）
-│   │   ├── routes/             # API 路由（11 个模块）
+│   │   ├── routes/             # API 路由（12 个模块）
 │   │   │   ├── tasks.ts        # 作业管理（含 AI 评分/起名/出题/对话）
 │   │   │   ├── points.ts       # 积分流水（含预支/还款/月度结算）
 │   │   │   ├── exchanges.ts    # 积分兑换
@@ -336,6 +347,7 @@ study.webian.dev/
 │   │   │   ├── ai-usage.ts     # AI 使用记录
 │   │   │   ├── videos.ts       # 视频管理（扫描/流播/收藏）
 │   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
+│   │   │   ├── feynman.ts      # 费曼学习法（CRUD + AI 评估 + 追问对话）
 │   │   │   ├── rss.ts          # 科普 RSS 阅读器
 │   │   │   ├── rules-loader.ts # 规则加载与初始化
 │   │   │   ├── summary-helper.ts # 月度汇总计算
@@ -433,6 +445,14 @@ study.webian.dev/
 - [x] 对话持久化（task_conversations + task_messages 表）
 - [x] 作业删除时级联清理对话记录
 - [x] AI 使用统计区分「AI作业对话」项目
+
+### Phase 8 - 费曼学习法
+
+- [x] 心得卡 CRUD（subject/topic/summary/example/stuckPoints/memoryHook）
+- [x] AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议 + 总体评价）
+- [x] AI 追问对话（支持历史消息 + 自动追问无卡壳心得）
+- [x] 心得卡分享卡片（html-to-image 截图导出）
+- [x] 可复用评估报告组件（EvaluationReport）
 
 ## 本地开发
 

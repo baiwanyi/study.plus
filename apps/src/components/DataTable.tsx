@@ -67,7 +67,7 @@ export function DataTable<T extends Record<string, any>>({
                         data.map((record, idx) => (
                             <tr
                                 key={getRowKey(record, idx)}
-                                className="border-b border-gray-200 hover:bg-gray-50">
+                                className={`${idx === data.length - 1 ? '' : 'border-b border-gray-200'} hover:bg-gray-50`}>
                                 {columns.map((col, ci) => (
                                     <td
                                         key={col.key}
