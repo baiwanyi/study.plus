@@ -1,27 +1,26 @@
 'use client'
 
 import type { FC } from 'react'
-import { feynmanSubjectLabels, feynmanSubjectValues } from '@shared/utils'
+import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import { Tabs } from '@components/Tabs'
 import type { TabItem } from '@components/Tabs'
 
-interface FeynmanSubjectFilterProps {
+interface StudynotesSubjectFilterProps {
     subject: string
     onSubjectChange: (value: string) => void
 }
 
 const filterTabs: TabItem[] = [
     { key: '', label: '全部' },
-    ...feynmanSubjectValues.map((s) => ({
+    ...studynotesSubjectValues.map((s) => ({
         key: s,
-        label: feynmanSubjectLabels[s],
+        label: studynotesSubjectLabels[s],
     })),
 ]
 
-export const FeynmanSubjectFilter: FC<FeynmanSubjectFilterProps> = ({
-    subject,
-    onSubjectChange,
-}) => (
+export const StudynotesSubjectFilter: FC<
+    StudynotesSubjectFilterProps
+> = ({ subject, onSubjectChange }) => (
     <Tabs
         tabs={filterTabs}
         active={subject}

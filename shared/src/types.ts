@@ -2,15 +2,15 @@ import type { WeeklyReportContent } from './weekly'
 
 export type TaskType = 'composition' | 'mindmap' | 'notes'
 
-// ===== Feynman Reflection Types =====
-export type FeynmanSubject =
+// ===== Studynotes Reflection Types =====
+export type StudynotesSubject =
     | 'math'
     | 'chinese'
     | 'english'
     | 'science'
     | 'custom'
 
-export interface FeynmanCard {
+export interface StudynotesCard {
     id: number
     subject: string
     topic: string
@@ -25,7 +25,7 @@ export interface FeynmanCard {
     followUpCount?: number
 }
 
-export interface FeynmanEvaluation {
+export interface StudynotesEvaluation {
     completenessScore: number
     completenessComment: string
     missingPoints: string[]
@@ -37,7 +37,7 @@ export interface FeynmanEvaluation {
     overallComment: string
 }
 
-export interface FeynmanCreateRequest {
+export interface StudynotesCreateRequest {
     subject: string
     topic: string
     summary: string
@@ -46,7 +46,7 @@ export interface FeynmanCreateRequest {
     memoryHook?: string
 }
 
-export interface FeynmanMessage {
+export interface StudynotesMessage {
     id: number
     conversationId: number
     role: 'user' | 'assistant'
@@ -71,8 +71,8 @@ export type TaskAI =
     | 'task-chat'
     | 'weekly-analyze'
     | 'weekly-chat'
-    | 'feynman-followup'
-    | 'feynman-evaluate'
+    | 'studynotes-followup'
+    | 'studynotes-evaluate'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =

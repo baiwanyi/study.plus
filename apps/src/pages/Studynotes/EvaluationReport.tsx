@@ -1,10 +1,10 @@
 'use client'
 
 import { type FC } from 'react'
-import type { FeynmanEvaluation } from '@shared/types'
+import type { StudynotesEvaluation } from '@shared/types'
 
 interface EvaluationReportProps {
-    evaluation: FeynmanEvaluation | null
+    evaluation: StudynotesEvaluation | null
 }
 
 export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
@@ -22,14 +22,7 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
             <div className="flex items-center gap-4">
                 <div className="relative w-16 h-16 shrink-0">
                     <svg className="w-16 h-16 -rotate-90" viewBox="0 0 72 72">
-                        <circle
-                            cx="36"
-                            cy="36"
-                            r="30"
-                            fill="none"
-                            stroke="#e5e7eb"
-                            strokeWidth="6"
-                        />
+                        <circle cx="36" cy="36" r="30" fill="none" stroke="#e5e7eb" strokeWidth="6" />
                         <circle
                             cx="36"
                             cy="36"
@@ -53,27 +46,17 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
                     </span>
                 </div>
                 <div>
-                    <p className="text-xs font-medium text-gray-700">
-                        完整度评分
-                    </p>
-                    <p className="text-xs text-gray-500">
-                        {evaluation.completenessComment}
-                    </p>
+                    <p className="text-xs font-medium text-gray-700">完整度评分</p>
+                    <p className="text-xs text-gray-500">{evaluation.completenessComment}</p>
                 </div>
             </div>
 
             {evaluation.missingPoints.length > 0 && (
                 <div>
-                    <p className="text-xs font-bold text-amber-700 mb-1">
-                        📋 可能遗漏的知识点
-                    </p>
+                    <p className="text-xs font-bold text-amber-700 mb-1">📋 可能遗漏的知识点</p>
                     <div className="space-y-1">
                         {evaluation.missingPoints.map((point, i) => (
-                            <div
-                                key={i}
-                                className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
-                                💡 {point}
-                            </div>
+                            <div key={i} className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">💡 {point}</div>
                         ))}
                     </div>
                 </div>
@@ -81,20 +64,12 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
 
             {evaluation.errors.length > 0 && (
                 <div>
-                    <p className="text-xs font-bold text-red-700 mb-1">
-                        ⚠️ 需要再想想的地方
-                    </p>
+                    <p className="text-xs font-bold text-red-700 mb-1">⚠️ 需要再想想的地方</p>
                     <div className="space-y-1">
                         {evaluation.errors.map((err, i) => (
-                            <div
-                                key={i}
-                                className="bg-red-50 rounded-lg px-3 py-1.5">
-                                <p className="text-xs text-red-700">
-                                    {err.description}
-                                </p>
-                                <p className="text-xs text-red-500 mt-0.5">
-                                    ✅ {err.correction}
-                                </p>
+                            <div key={i} className="bg-red-50 rounded-lg px-3 py-1.5">
+                                <p className="text-xs text-red-700">{err.description}</p>
+                                <p className="text-xs text-red-500 mt-0.5">✅ {err.correction}</p>
                             </div>
                         ))}
                     </div>
@@ -103,16 +78,10 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
 
             {evaluation.improvementSuggestions.length > 0 && (
                 <div>
-                    <p className="text-xs font-bold text-blue-700 mb-1">
-                        💪 改进建议
-                    </p>
+                    <p className="text-xs font-bold text-blue-700 mb-1">💪 改进建议</p>
                     <div className="space-y-1">
                         {evaluation.improvementSuggestions.map((s, i) => (
-                            <div
-                                key={i}
-                                className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
-                                {s}
-                            </div>
+                            <div key={i} className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">{s}</div>
                         ))}
                     </div>
                 </div>
@@ -120,9 +89,7 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
 
             {evaluation.overallComment && (
                 <div className="bg-green-50 rounded-xl p-3">
-                    <p className="text-xs text-green-700 leading-relaxed">
-                        💬 {evaluation.overallComment}
-                    </p>
+                    <p className="text-xs text-green-700 leading-relaxed">💬 {evaluation.overallComment}</p>
                 </div>
             )}
         </div>

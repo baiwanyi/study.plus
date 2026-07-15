@@ -16,8 +16,8 @@
 - **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
 - **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
-- **费曼学习法**：创建心得卡（概括/举例/卡壳/记忆钩子），AI 评估完整度 + 追问对话，支持分享
-- **学习分享**：一键生成分享卡片（积分/作业/周报/心得卡），记录成长瞬间
+- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度 + 追问对话，支持分享
+- **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 - **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
 
@@ -315,13 +315,14 @@ study.webian.dev/
 │   │   │   ├── VideoPlayer.tsx # 学迹电台
 │   │   │   ├── TVFav.tsx       # 视频收藏
 │   │   │   ├── RssReader.tsx   # RSS 阅读器
-│   │   │   ├── Feynman/        # 费曼学习法模块
-│   │   │   │   ├── index.tsx             # 心得卡列表页
-│   │   │   │   ├── FeynmanEditor.tsx     # 心得卡编辑模态框
-│   │   │   │   ├── FeynmanModalShare.tsx # 心得卡分享卡片
-│   │   │   │   ├── EvaluationReport.tsx  # AI 评估报告组件
-│   │   │   │   ├── FeynmanCardView.tsx   # 心得卡卡片视图
-│   │   │   │   └── FeynmanListTable.tsx  # 心得卡表格视图
+│   │   │   ├── Studynotes/     # 学习心得模块
+│   │   │   │   ├── index.tsx               # 学习心得列表页
+│   │   │   │   ├── StudynotesModalEditor.tsx  # 学习心得编辑模态框
+│   │   │   │   ├── StudynotesModalShare.tsx   # 学习心得分享卡片
+│   │   │   │   ├── StudynotesListTable.tsx    # 学习心得表格视图
+│   │   │   │   ├── StudynotesSubjectFilter.tsx # 学科筛选组件
+│   │   │   │   ├── EvaluationReport.tsx       # AI 评估报告组件
+│   │   │   │   └── hooks/                   # 自定义 Hooks
 │   │   │   └── layout/         # 页面子组件（37 个）
 │   │   └── styles/              # 全局样式
 │   │       ├── index.css        # Tailwind 4 + 自定义色板
@@ -448,10 +449,10 @@ study.webian.dev/
 
 ### Phase 8 - 费曼学习法
 
-- [x] 心得卡 CRUD（subject/topic/summary/example/stuckPoints/memoryHook）
+- [x] 学习心得 CRUD（subject/topic/summary/example/stuckPoints/memoryHook）
 - [x] AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议 + 总体评价）
 - [x] AI 追问对话（支持历史消息 + 自动追问无卡壳心得）
-- [x] 心得卡分享卡片（html-to-image 截图导出）
+- [x] 学习心得分享卡片（html-to-image 截图导出）
 - [x] 可复用评估报告组件（EvaluationReport）
 
 ## 本地开发

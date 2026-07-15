@@ -86,13 +86,13 @@ export const relatedTypeLabels: Record<RelatedType, string> = {
     advance: '积分预支',
 }
 
-export const feynmanSubjectLabels: Record<string, string> = {
+export const studynotesSubjectLabels: Record<string, string> = {
     math: '数学',
     chinese: '语文',
     english: '英语',
 }
 
-export const feynmanSubjectValues = ['math', 'chinese', 'english'] as const
+export const studynotesSubjectValues = ['math', 'chinese', 'english'] as const
 
 export const taskTypeValues = ['composition', 'mindmap', 'notes'] as const
 export const taskTypeLabels: Record<TaskType, string> = {
@@ -124,8 +124,8 @@ export const taskAILabels: Record<TaskAI, string> = {
     'task-chat': 'AI作业对话',
     'weekly-analyze': 'AI周报分析',
     'weekly-chat': 'AI周报对话',
-    'feynman-followup': 'AI费曼跟进',
-    'feynman-evaluate': 'AI费曼评估',
+    'studynotes-followup': 'AI费曼跟进',
+    'studynotes-evaluate': 'AI费曼评估',
 }
 
 export function getCurrentMonth(): string {

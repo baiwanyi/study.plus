@@ -2,17 +2,17 @@
 
 import { useState, type FC } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { feynmanApi } from '@apps/utils/api'
+import { studynotesApi } from '@apps/utils/api'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
-import { FeynmanEditorModal } from './FeynmanEditor'
-import { FeynmanCardList } from './FeynmanListTable'
-import { FeynmanModalShare } from './FeynmanModalShare'
-import { FeynmanSubjectFilter } from './FeynmanSubjectFilter'
-import { useFeynmanCards } from './hooks/useFeynmanCards'
-import type { FeynmanCard } from '@shared/types'
+import { StudynotesModalEditor } from './StudynotesModalEditor'
+import { StudynotesCardList } from './StudynotesListTable'
+import { StudynotesModalShare } from './StudynotesModalShare'
+import { StudynotesSubjectFilter } from './StudynotesSubjectFilter'
+import { useStudynotesCards } from './hooks/useStudynotesCards'
+import type { StudynotesCard } from '@shared/types'
 
-export const Feynman: FC = () => {
+export const Studynotes: FC = () => {
     const { showSnackbar } = useSnackbar()
     const [searchParams, setSearchParams] = useSearchParams()
     const subject = searchParams.get('subject') || ''
@@ -21,15 +21,14 @@ export const Feynman: FC = () => {
         isLoading: loading,
         isError: hasError,
         refetch,
-    } = useFeynmanCards(subject)
+    } = useStudynotesCards(subject)
 
-    // Modal state: undefined=closed, null=new(新建), number=编辑/查看
     const [modalCardId, setModalCardId] = useState<number | null | undefined>(
         undefined,
     )
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
     const [deleting, setDeleting] = useState(false)
-    const [shareCard, setShareCard] = useState<FeynmanCard | null>(null)
+    const [shareCard, setShareCard] = useState<StudynotesCard | null>(null)
 
     const handleSubjectChange = (value: string) => {
         if (value) {
@@ -43,7 +42,7 @@ export const Feynman: FC = () => {
         if (deleteTargetId == null) return
         setDeleting(true)
         try {
-            await feynmanApi.delete(deleteTargetId)
+            await studynotesApi.delete(deleteTargetId)
             showSnackbar('删除成功')
             setDeleteTargetId(null)
             refetch()
@@ -65,14 +64,12 @@ export const Feynman: FC = () => {
                 </button>
             </div>
 
-            {/* Subject filter */}
-            <FeynmanSubjectFilter
+            <StudynotesSubjectFilter
                 subject={subject}
                 onSubjectChange={handleSubjectChange}
             />
 
-            {/* Card list */}
-            <FeynmanCardList
+            <StudynotesCardList
                 loading={loading}
                 hasError={hasError}
                 cards={cards}
@@ -81,8 +78,7 @@ export const Feynman: FC = () => {
                 onDelete={(id) => setDeleteTargetId(id)}
             />
 
-            {/* Editor Modal (新建/编辑/评估/AI对话) */}
-            <FeynmanEditorModal
+            <StudynotesModalEditor
                 open={modalCardId !== undefined}
                 cardId={modalCardId ?? null}
                 onClose={() => {
@@ -92,14 +88,12 @@ export const Feynman: FC = () => {
                 onSaved={() => refetch()}
             />
 
-            {/* Share Modal */}
-            <FeynmanModalShare
+            <StudynotesModalShare
                 open={shareCard != null}
                 card={shareCard}
                 onCancel={() => setShareCard(null)}
             />
 
-            {/* Delete Confirm Modal */}
             <Modal
                 open={deleteTargetId != null}
                 onCancel={() => setDeleteTargetId(null)}
@@ -110,7 +104,7 @@ export const Feynman: FC = () => {
                 onConfirm={handleDelete}
                 isLoading={deleting}>
                 <p className="text-sm text-gray-600">
-                    确定要删除这张心得卡吗？此操作不可恢复。
+                    确定要删除这张学习心得吗？此操作不可恢复。
                 </p>
             </Modal>
         </div>

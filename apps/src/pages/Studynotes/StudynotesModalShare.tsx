@@ -4,13 +4,13 @@ import { toPng } from 'html-to-image'
 import { BookOpen, Sparkles } from 'lucide-react'
 import { useRef, useCallback, type FC } from 'react'
 import { Modal } from '@components/Modal'
-import { feynmanSubjectLabels, formatDate } from '@shared/utils'
-import type { FeynmanCard, FeynmanEvaluation } from '@shared/types'
+import { studynotesSubjectLabels, formatDate } from '@shared/utils'
+import type { StudynotesCard, StudynotesEvaluation } from '@shared/types'
 import { EvaluationReport } from './EvaluationReport'
 
-interface FeynmanModalShareProps {
+interface StudynotesModalShareProps {
     open: boolean
-    card: FeynmanCard | null
+    card: StudynotesCard | null
     onCancel: () => void
 }
 
@@ -20,16 +20,16 @@ const SUBJECT_COLORS: Record<string, string> = {
     english: 'bg-yellow-100 text-yellow-800',
 }
 
-function parseEvaluation(raw: string | null): FeynmanEvaluation | null {
+function parseEvaluation(raw: string | null): StudynotesEvaluation | null {
     if (!raw) return null
     try {
-        return JSON.parse(raw) as FeynmanEvaluation
+        return JSON.parse(raw) as StudynotesEvaluation
     } catch {
         return null
     }
 }
 
-export const FeynmanModalShare: FC<FeynmanModalShareProps> = ({
+export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
     open,
     card,
     onCancel,
@@ -73,7 +73,7 @@ export const FeynmanModalShare: FC<FeynmanModalShareProps> = ({
                     <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-200">
                         <BookOpen className="w-5 h-5 text-primary shrink-0" />
                         <h3 className="text-lg font-bold text-headline">
-                            学习心得卡
+                            学习心得
                         </h3>
                     </div>
                     <div className="space-y-2">
@@ -81,7 +81,7 @@ export const FeynmanModalShare: FC<FeynmanModalShareProps> = ({
                             {card && (
                                 <span
                                     className={`badge ${SUBJECT_COLORS[card.subject] || 'bg-gray-100 text-gray-800'}`}>
-                                    {feynmanSubjectLabels[card.subject] ||
+                                    {studynotesSubjectLabels[card.subject] ||
                                         card.subject}
                                 </span>
                             )}

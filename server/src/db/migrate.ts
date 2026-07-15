@@ -630,7 +630,7 @@ async function migrate(): Promise<void> {
   `)
 
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS feynman_cards (
+    CREATE TABLE IF NOT EXISTS studynotes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       subject TEXT NOT NULL,
       topic TEXT NOT NULL DEFAULT '',
@@ -644,28 +644,28 @@ async function migrate(): Promise<void> {
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-    console.log('Created feynman_cards table.')
+    console.log('Created studynotes table.')
 
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS feynman_conversations (
+    CREATE TABLE IF NOT EXISTS studynote_conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      feynman_card_id INTEGER NOT NULL REFERENCES feynman_cards(id) ON DELETE CASCADE,
+      studynote_id INTEGER NOT NULL REFERENCES studynotes(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-    console.log('Created feynman_conversations table.')
+    console.log('Created studynote_conversations table.')
 
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS feynman_messages (
+    CREATE TABLE IF NOT EXISTS studynote_messages (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      conversation_id INTEGER NOT NULL REFERENCES feynman_conversations(id) ON DELETE CASCADE,
+      conversation_id INTEGER NOT NULL REFERENCES studynote_conversations(id) ON DELETE CASCADE,
       role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
       content TEXT NOT NULL,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-    console.log('Created feynman_messages table.')
+    console.log('Created studynote_messages table.')
 
     console.log('Migration completed successfully!')
 }

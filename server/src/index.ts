@@ -13,7 +13,7 @@ import { exchangesRouter } from './routes/exchanges'
 import { rulesRouter } from './routes/options'
 import { pointsRouter } from './routes/points'
 import { rssRouter } from './routes/rss'
-import { feynmanRouter } from './routes/feynman'
+import { studynotesRouter } from './routes/studynotes'
 import { tasksRouter } from './routes/tasks'
 import { videosRouter } from './routes/videos'
 import { weeklyRouter } from './routes/weekly'
@@ -92,8 +92,8 @@ const aiLimiter = rateLimit({
         res.status(429).json({ error: 'AI 调用过于频繁，请稍后再试' })
     },
 })
-app.use('/api/feynman/evaluate', aiLimiter)
-app.use('/api/feynman/follow-up', aiLimiter)
+app.use('/api/studynotes/evaluate', aiLimiter)
+app.use('/api/studynotes/follow-up', aiLimiter)
 
 // API routes
 app.use('/api/tasks', tasksRouter)
@@ -104,7 +104,7 @@ app.use('/api/options', rulesRouter)
 app.use('/api/videos', videosRouter)
 app.use('/api/rss', rssRouter)
 app.use('/api/weekly', weeklyRouter)
-app.use('/api/feynman', feynmanRouter)
+app.use('/api/studynotes', studynotesRouter)
 
 // List images in public/images/ directory for share background picker
 app.get('/api/images', async (_req: Request, res: Response) => {

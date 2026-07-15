@@ -1,8 +1,8 @@
 import {
-    defaultPromptEvaluateFeynman,
-    defaultPromptFeynmanFollowUp,
+    defaultPromptEvaluateStudynotes,
+    defaultPromptStudynotesFollowUp,
 } from '@shared/constants'
-import { feynmanSubjectLabels } from '@shared/utils'
+import { studynotesSubjectLabels } from '@shared/utils'
 
 import {
     callDeepSeek,
@@ -11,7 +11,7 @@ import {
     safeJsonParse,
 } from './core'
 
-export async function evaluateFeynmanReflection(
+export async function evaluateStudynotesReflection(
     subject: string,
     topic: string,
     summary: string,
@@ -29,8 +29,14 @@ export async function evaluateFeynmanReflection(
         })
     }
 
-    const prompt = defaultPromptEvaluateFeynman
-        .replace('{subject}', () => feynmanSubjectLabels[subject] || subject || '未填写学科')
+    const prompt = defaultPromptEvaluateStudynotes
+        .replace(
+            '{subject}',
+            () =>
+                studynotesSubjectLabels[subject] ||
+                subject ||
+                '未填写学科',
+        )
         .replace('{topic}', () => topic || '未填写课题')
         .replace('{summary}', () => summary || '未填写')
         .replace('{example}', () => example || '未填写')
@@ -45,23 +51,27 @@ export async function evaluateFeynmanReflection(
         })
 
         await logAiUsage(
-            'feynman-evaluate',
+            'studynotes-evaluate',
             usage,
-            `费曼评估：${topic || subject}`,
+            `学习心得评估：${topic || subject}`,
         )
 
-        // Validate that the response is a plain JSON object (not array or primitive)
         const parsed = safeJsonParse<Record<string, unknown> | null>(
             reply,
             null,
         )
-        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+        if (
+            !parsed ||
+            typeof parsed !== 'object' ||
+            Array.isArray(parsed)
+        ) {
             throw new Error('Invalid evaluation response format')
         }
 
         return reply
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message =
+            error instanceof Error ? error.message : String(error)
         console.error('AI evaluation error:', message)
         return JSON.stringify({
             completenessScore: 0,
@@ -74,7 +84,7 @@ export async function evaluateFeynmanReflection(
     }
 }
 
-export async function feynmanFollowUpChat(
+export async function studynotesFollowUpChat(
     subject: string,
     topic: string,
     summary: string,
@@ -86,8 +96,14 @@ export async function feynmanFollowUpChat(
         return 'AI 对话未配置，请设置 DEEPSEEK_API_KEY'
     }
 
-    let prompt = defaultPromptFeynmanFollowUp
-        .replace('{subject}', () => feynmanSubjectLabels[subject] || subject || '未填写学科')
+    let prompt = defaultPromptStudynotesFollowUp
+        .replace(
+            '{subject}',
+            () =>
+                studynotesSubjectLabels[subject] ||
+                subject ||
+                '未填写学科',
+        )
         .replace('{topic}', () => topic || '未填写课题')
         .replace('{summary}', () => summary || '未填写')
         .replace('{example}', () => example || '未填写')
@@ -105,14 +121,15 @@ export async function feynmanFollowUpChat(
         })
 
         await logAiUsage(
-            'feynman-followup',
+            'studynotes-followup',
             usage,
-            `费曼追问：${topic || subject}`,
+            `学习心得追问：${topic || subject}`,
         )
 
         return reply
     } catch (error: unknown) {
-        const message = error instanceof Error ? error.message : String(error)
+        const message =
+            error instanceof Error ? error.message : String(error)
         console.error('AI follow-up error:', message)
         return `追问出错：${message}，请稍后重试`
     }

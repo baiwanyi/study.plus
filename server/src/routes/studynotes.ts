@@ -1,17 +1,20 @@
 import { and, desc, eq, asc, sql } from 'drizzle-orm'
 import { Router } from 'express'
-import { feynmanSubjectValues } from '@shared/utils'
+import { studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
 import {
-    feynmanCards,
-    feynmanConversations,
-    feynmanMessages,
+    studynotes,
+    studynoteConversations,
+    studynoteMessages,
 } from '../db/schema'
-import { evaluateFeynmanReflection, feynmanFollowUpChat } from '../services/ai'
+import {
+    evaluateStudynotesReflection,
+    studynotesFollowUpChat,
+} from '../services/ai'
 import type { SQL } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 
-export const feynmanRouter = Router()
+export const studynotesRouter = Router()
 
 /** Validate `:id` param is a positive integer; returns -1 if invalid */
 function parseCardId(raw: unknown): number {
@@ -19,10 +22,10 @@ function parseCardId(raw: unknown): number {
     return Number.isInteger(id) && id > 0 ? id : -1
 }
 
-const VALID_SUBJECTS = new Set<string>(feynmanSubjectValues)
+const VALID_SUBJECTS = new Set<string>(studynotesSubjectValues)
 
-// List feynman cards with optional subject filter and search
-feynmanRouter.get('/', async (req: Request, res: Response) => {
+// List studynotes cards with optional subject filter and search
+studynotesRouter.get('/', async (req: Request, res: Response) => {
     try {
         const { subject, search } = req.query
 
@@ -33,28 +36,30 @@ feynmanRouter.get('/', async (req: Request, res: Response) => {
             typeof subject === 'string' &&
             VALID_SUBJECTS.has(subject)
         ) {
-            filters.push(eq(feynmanCards.subject, subject))
+            filters.push(eq(studynotes.subject, subject))
         }
 
         // Fetch cards
         const cards = await db
             .select()
-            .from(feynmanCards)
+            .from(studynotes)
             .where(filters.length > 0 ? and(...filters) : undefined)
-            .orderBy(desc(feynmanCards.createdAt))
+            .orderBy(desc(studynotes.createdAt))
 
-        // Fetch follow-up message counts per card (GROUP BY avoids N+1 with JS counting)
+        // Fetch follow-up message counts per card (GROUP BY avoids N+1 with JS counting).
+        // Only count assistant replies to reflect actual AI follow-up turns.
         const countRows = await db
             .select({
-                cardId: feynmanConversations.feynmanCardId,
+                cardId: studynoteConversations.studynoteId,
                 count: sql<number>`COUNT(*)`,
             })
-            .from(feynmanConversations)
+            .from(studynoteConversations)
             .innerJoin(
-                feynmanMessages,
-                eq(feynmanMessages.conversationId, feynmanConversations.id),
+                studynoteMessages,
+                eq(studynoteMessages.conversationId, studynoteConversations.id),
             )
-            .groupBy(feynmanConversations.feynmanCardId)
+            .where(eq(studynoteMessages.role, 'assistant'))
+            .groupBy(studynoteConversations.studynoteId)
 
         const countMap = new Map(countRows.map((r) => [r.cardId, r.count]))
 
@@ -80,13 +85,13 @@ feynmanRouter.get('/', async (req: Request, res: Response) => {
         res.json(result)
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error listing feynman cards:', message)
-        res.status(500).json({ error: '获取学习心得卡列表失败' })
+        console.error('Error listing studynotes cards:', message)
+        res.status(500).json({ error: '获取学习心得列表失败' })
     }
 })
 
-// Get single feynman card
-feynmanRouter.get('/:id', async (req: Request, res: Response) => {
+// Get single studynotes card
+studynotesRouter.get('/:id', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
@@ -96,25 +101,25 @@ feynmanRouter.get('/:id', async (req: Request, res: Response) => {
 
         const rows = await db
             .select()
-            .from(feynmanCards)
-            .where(eq(feynmanCards.id, id))
+            .from(studynotes)
+            .where(eq(studynotes.id, id))
             .limit(1)
 
         if (!rows[0]) {
-            res.status(404).json({ error: '学习心得卡未找到' })
+            res.status(404).json({ error: '学习心得未找到' })
             return
         }
 
         res.json(rows[0])
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error getting feynman card:', message)
-        res.status(500).json({ error: '获取学习心得卡失败' })
+        console.error('Error getting studynotes card:', message)
+        res.status(500).json({ error: '获取学习心得失败' })
     }
 })
 
-// Create feynman card
-feynmanRouter.post('/', async (req: Request, res: Response) => {
+// Create studynotes card
+studynotesRouter.post('/', async (req: Request, res: Response) => {
     try {
         const { subject, topic, summary, example, stuckPoints, memoryHook } =
             req.body
@@ -140,7 +145,7 @@ feynmanRouter.post('/', async (req: Request, res: Response) => {
         }
 
         const rows = await db
-            .insert(feynmanCards)
+            .insert(studynotes)
             .values({
                 subject,
                 topic: typeof topic === 'string' ? topic : '',
@@ -154,13 +159,13 @@ feynmanRouter.post('/', async (req: Request, res: Response) => {
         res.json(rows[0])
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error creating feynman card:', message)
-        res.status(500).json({ error: '创建学习心得卡失败' })
+        console.error('Error creating studynotes card:', message)
+        res.status(500).json({ error: '创建学习心得失败' })
     }
 })
 
-// Update feynman card
-feynmanRouter.put('/:id', async (req: Request, res: Response) => {
+// Update studynotes card
+studynotesRouter.put('/:id', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
@@ -184,8 +189,6 @@ feynmanRouter.put('/:id', async (req: Request, res: Response) => {
             return
         }
 
-        // Validate string fields are actually strings when provided.
-        // memoryHook is nullable, so null is allowed (used to clear it).
         if (
             (subject !== undefined && typeof subject !== 'string') ||
             (summary !== undefined && typeof summary !== 'string') ||
@@ -206,7 +209,7 @@ feynmanRouter.put('/:id', async (req: Request, res: Response) => {
         }
 
         const rows = await db
-            .update(feynmanCards)
+            .update(studynotes)
             .set({
                 ...(subject !== undefined && { subject }),
                 ...(topic !== undefined && { topic }),
@@ -216,24 +219,24 @@ feynmanRouter.put('/:id', async (req: Request, res: Response) => {
                 ...(memoryHook !== undefined && { memoryHook }),
                 updatedAt: new Date().toISOString(),
             })
-            .where(eq(feynmanCards.id, id))
+            .where(eq(studynotes.id, id))
             .returning()
 
         if (!rows[0]) {
-            res.status(404).json({ error: '学习心得卡未找到' })
+            res.status(404).json({ error: '学习心得未找到' })
             return
         }
 
         res.json(rows[0])
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error updating feynman card:', message)
-        res.status(500).json({ error: '更新学习心得卡失败' })
+        console.error('Error updating studynotes card:', message)
+        res.status(500).json({ error: '更新学习心得失败' })
     }
 })
 
-// Delete feynman card
-feynmanRouter.delete('/:id', async (req: Request, res: Response) => {
+// Delete studynotes card
+studynotesRouter.delete('/:id', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
@@ -242,44 +245,45 @@ feynmanRouter.delete('/:id', async (req: Request, res: Response) => {
         }
 
         const rows = await db
-            .delete(feynmanCards)
-            .where(eq(feynmanCards.id, id))
+            .delete(studynotes)
+            .where(eq(studynotes.id, id))
             .returning()
 
         if (!rows[0]) {
-            res.status(404).json({ error: '学习心得卡未找到' })
+            res.status(404).json({ error: '学习心得未找到' })
             return
         }
 
         res.json({ success: true })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error deleting feynman card:', message)
-        res.status(500).json({ error: '删除学习心得卡失败' })
+        console.error('Error deleting studynotes card:', message)
+        res.status(500).json({ error: '删除学习心得失败' })
     }
 })
 
-// AI evaluate feynman card
-feynmanRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
+// AI evaluate studynotes card
+studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
             res.status(400).json({ error: '无效的卡片 ID' })
             return
         }
+
         const rows = await db
             .select()
-            .from(feynmanCards)
-            .where(eq(feynmanCards.id, id))
+            .from(studynotes)
+            .where(eq(studynotes.id, id))
             .limit(1)
 
         if (!rows[0]) {
-            res.status(404).json({ error: '学习心得卡未找到' })
+            res.status(404).json({ error: '学习心得未找到' })
             return
         }
 
         const card = rows[0]
-        const evaluationRaw = await evaluateFeynmanReflection(
+        const evaluationRaw = await evaluateStudynotesReflection(
             card.subject,
             card.topic,
             card.summary,
@@ -287,18 +291,17 @@ feynmanRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
             card.stuckPoints,
         )
 
-        // Parse before save — fail early if AI returns invalid JSON
         const evaluation = JSON.parse(evaluationRaw)
 
         const now = new Date().toISOString()
         await db
-            .update(feynmanCards)
+            .update(studynotes)
             .set({
                 evaluation: evaluationRaw,
                 evaluatedAt: now,
                 updatedAt: now,
             })
-            .where(eq(feynmanCards.id, id))
+            .where(eq(studynotes.id, id))
 
         res.json({
             evaluation,
@@ -306,27 +309,28 @@ feynmanRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
         })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error evaluating feynman card:', message)
+        console.error('Error evaluating studynotes card:', message)
         res.status(500).json({ error: 'AI 评估失败' })
     }
 })
 
-// AI follow-up chat (when stuckPoints is empty or "没有")
-feynmanRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
+// AI follow-up chat
+studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
             res.status(400).json({ error: '无效的卡片 ID' })
             return
         }
+
         const rows = await db
             .select()
-            .from(feynmanCards)
-            .where(eq(feynmanCards.id, id))
+            .from(studynotes)
+            .where(eq(studynotes.id, id))
             .limit(1)
 
         if (!rows[0]) {
-            res.status(404).json({ error: '学习心得卡未找到' })
+            res.status(404).json({ error: '学习心得未找到' })
             return
         }
 
@@ -334,12 +338,11 @@ feynmanRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
         const userMessage =
             typeof req.body?.message === 'string' ? req.body.message.trim() : ''
 
-        // Find or create conversation (try-catch handles concurrent creation race)
         let conversationId: number
         const existingConv = await db
             .select()
-            .from(feynmanConversations)
-            .where(eq(feynmanConversations.feynmanCardId, id))
+            .from(studynoteConversations)
+            .where(eq(studynoteConversations.studynoteId, id))
             .limit(1)
 
         if (existingConv[0]) {
@@ -347,33 +350,30 @@ feynmanRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
         } else {
             try {
                 const newConv = await db
-                    .insert(feynmanConversations)
-                    .values({ feynmanCardId: id })
+                    .insert(studynoteConversations)
+                    .values({ studynoteId: id })
                     .returning()
                 conversationId = newConv[0].id
             } catch {
-                // Race: another request created the conversation first — re-fetch
                 const retry = await db
                     .select()
-                    .from(feynmanConversations)
-                    .where(eq(feynmanConversations.feynmanCardId, id))
+                    .from(studynoteConversations)
+                    .where(eq(studynoteConversations.studynoteId, id))
                     .limit(1)
                 if (!retry[0]) throw new Error('创建对话失败')
                 conversationId = retry[0].id
             }
         }
 
-        // Store user message if provided
         if (userMessage) {
-            await db.insert(feynmanMessages).values({
+            await db.insert(studynoteMessages).values({
                 conversationId,
                 role: 'user',
                 content: userMessage,
             })
         }
 
-        // Call AI with card content + optional user message
-        const aiReply = await feynmanFollowUpChat(
+        const aiReply = await studynotesFollowUpChat(
             card.subject,
             card.topic,
             card.summary,
@@ -382,36 +382,33 @@ feynmanRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             userMessage || undefined,
         )
 
-        // Store assistant reply
-        await db.insert(feynmanMessages).values({
+        await db.insert(studynoteMessages).values({
             conversationId,
             role: 'assistant',
             content: aiReply,
         })
 
-        // Update conversation timestamp
         await db
-            .update(feynmanConversations)
+            .update(studynoteConversations)
             .set({ updatedAt: new Date().toISOString() })
-            .where(eq(feynmanConversations.id, conversationId))
+            .where(eq(studynoteConversations.id, conversationId))
 
-        // Return all messages
         const allMessages = await db
             .select()
-            .from(feynmanMessages)
-            .where(eq(feynmanMessages.conversationId, conversationId))
-            .orderBy(asc(feynmanMessages.createdAt))
+            .from(studynoteMessages)
+            .where(eq(studynoteMessages.conversationId, conversationId))
+            .orderBy(asc(studynoteMessages.createdAt))
 
         res.json({ messages: allMessages })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error in feynman follow-up:', message)
+        console.error('Error in studynotes follow-up:', message)
         res.status(500).json({ error: 'AI 追问失败' })
     }
 })
 
-// GET conversation messages for a feynman card
-feynmanRouter.get('/:id/messages', async (req: Request, res: Response) => {
+// GET conversation messages for a studynotes card
+studynotesRouter.get('/:id/messages', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
@@ -421,8 +418,8 @@ feynmanRouter.get('/:id/messages', async (req: Request, res: Response) => {
 
         const conv = await db
             .select()
-            .from(feynmanConversations)
-            .where(eq(feynmanConversations.feynmanCardId, id))
+            .from(studynoteConversations)
+            .where(eq(studynoteConversations.studynoteId, id))
             .limit(1)
 
         if (!conv[0]) {
@@ -432,14 +429,14 @@ feynmanRouter.get('/:id/messages', async (req: Request, res: Response) => {
 
         const messages = await db
             .select()
-            .from(feynmanMessages)
-            .where(eq(feynmanMessages.conversationId, conv[0].id))
-            .orderBy(asc(feynmanMessages.createdAt))
+            .from(studynoteMessages)
+            .where(eq(studynoteMessages.conversationId, conv[0].id))
+            .orderBy(asc(studynoteMessages.createdAt))
 
         res.json(messages)
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error getting feynman messages:', message)
+        console.error('Error getting studynotes messages:', message)
         res.status(500).json({ error: '获取对话消息失败' })
     }
 })

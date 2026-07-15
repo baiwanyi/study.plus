@@ -6,5 +6,5 @@ export {
     scoreComposition,
 } from './task'
 export { analyzeWeeklyReport, chatAboutWeeklyReport } from './weekly'
-export { evaluateFeynmanReflection, feynmanFollowUpChat } from './feynman'
+export { evaluateStudynotesReflection, studynotesFollowUpChat } from './studynotes'
 export type { AIScoreResult } from './core'

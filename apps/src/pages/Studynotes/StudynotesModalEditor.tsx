@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { Loader2, MessageSquareText, Sparkles } from 'lucide-react'
-import { feynmanApi } from '@apps/utils/api'
-import { feynmanSubjectLabels, feynmanSubjectValues } from '@shared/utils'
+import { studynotesApi } from '@apps/utils/api'
+import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import type {
-    FeynmanCard,
-    FeynmanEvaluation,
-    FeynmanMessage,
+    StudynotesCard,
+    StudynotesEvaluation,
+    StudynotesMessage,
     ChatMessage,
 } from '@shared/types'
 import AiChatPanel from '@components/AiChatPanel'
@@ -16,14 +16,14 @@ import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { EvaluationReport } from './EvaluationReport'
 
-interface FeynmanEditorModalProps {
+interface StudynotesModalEditorProps {
     open: boolean
-    cardId: number | null // null = 新建, number = 编辑
+    cardId: number | null
     onClose: () => void
     onSaved: () => void
 }
 
-export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
+export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     open,
     cardId,
     onClose,
@@ -32,7 +32,6 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
     const { showSnackbar } = useSnackbar()
     const isEditing = cardId != null
 
-    // Form state
     const [subject, setSubject] = useState('math')
     const [topic, setTopic] = useState('')
     const [summary, setSummary] = useState('')
@@ -44,17 +43,16 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
     const [evaluating, setEvaluating] = useState(false)
     const [loadingCard, setLoadingCard] = useState(false)
 
-    // Evaluation & current card
-    const [evaluation, setEvaluation] = useState<FeynmanEvaluation | null>(null)
-    const [currentCard, setCurrentCard] = useState<FeynmanCard | null>(null)
+    const [evaluation, setEvaluation] = useState<StudynotesEvaluation | null>(
+        null,
+    )
+    const [currentCard, setCurrentCard] = useState<StudynotesCard | null>(null)
 
-    // Chat (AiChatPanel 对话)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatSending, setChatSending] = useState(false)
     const [hasTriggeredConversation, setHasTriggeredConversation] =
         useState(false)
 
-    // Reset form / load card when opening
     useEffect(() => {
         if (!open) return
         setChatMessages([])
@@ -64,7 +62,7 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
 
         if (cardId != null) {
             setLoadingCard(true)
-            feynmanApi
+            studynotesApi
                 .get(cardId)
                 .then(async (card) => {
                     setCurrentCard(card)
@@ -81,22 +79,21 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
                             /* empty */
                         }
                     }
-                    // Load historical messages
                     try {
-                        const msgs = await feynmanApi.getMessages(card.id)
+                        const msgs = await studynotesApi.getMessages(card.id)
                         if (msgs.length > 0) {
                             setChatMessages(
-                                msgs.map((m: FeynmanMessage) => ({
+                                msgs.map((m: StudynotesMessage) => ({
                                     role: m.role,
                                     content: m.content,
                                 })),
                             )
                         }
                     } catch {
-                        // No messages yet — ignore
+                        // No messages yet
                     }
                 })
-                .catch(() => showSnackbar('加载心得卡失败', 'error'))
+                .catch(() => showSnackbar('加载学习心得失败', 'error'))
                 .finally(() => setLoadingCard(false))
         } else {
             setSubject('math')
@@ -120,17 +117,15 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
                 ...(memoryHook ? { memoryHook } : {}),
             }
 
-            let card: FeynmanCard
+            let card: StudynotesCard
             if (isEditing && cardId != null) {
-                card = await feynmanApi.update(cardId, data)
+                card = await studynotesApi.update(cardId, data)
             } else {
-                card = await feynmanApi.create(data)
+                card = await studynotesApi.create(data)
             }
 
-            // 服务端 PUT 不再清空 evaluation
             setCurrentCard(card)
 
-            // 无卡壳时自动触发追问
             const isStuckEmpty =
                 !stuckPoints.trim() ||
                 stuckPoints.trim() === '没有' ||
@@ -141,7 +136,7 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
                 setChatSending(true)
                 setHasTriggeredConversation(true)
                 try {
-                    const result = await feynmanApi.followUp(card.id)
+                    const result = await studynotesApi.followUp(card.id)
                     setChatMessages(
                         result.messages.map((m) => ({
                             role: m.role,
@@ -176,7 +171,7 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
         }
         setEvaluating(true)
         try {
-            const result = await feynmanApi.evaluate(currentCard.id)
+            const result = await studynotesApi.evaluate(currentCard.id)
             setEvaluation(result.evaluation)
             setCurrentCard((prev) =>
                 prev
@@ -203,7 +198,7 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
         setChatSending(true)
         setHasTriggeredConversation(true)
         try {
-            const result = await feynmanApi.followUp(currentCard.id)
+            const result = await studynotesApi.followUp(currentCard.id)
             setChatMessages(
                 result.messages.map((m) => ({
                     role: m.role,
@@ -219,12 +214,15 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
 
     const handleChatSend = async (message: string) => {
         if (!currentCard) return
-        const userMsg: ChatMessage = { role: 'user', content: message }
+        const userMsg: ChatMessage = {
+            role: 'user',
+            content: message,
+        }
         setChatMessages((prev) => [...prev, userMsg])
         setHasTriggeredConversation(true)
         setChatSending(true)
         try {
-            const result = await feynmanApi.followUp(currentCard.id, message)
+            const result = await studynotesApi.followUp(currentCard.id, message)
             setChatMessages(
                 result.messages.map((m) => ({
                     role: m.role,
@@ -246,7 +244,7 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
             confirmLabel={saving ? '保存中...' : '保存'}
             isDisabled={saving || !summary || !example}
             isLoading={saving}
-            title={isEditing ? '编辑心得卡' : '新建心得卡'}
+            title={isEditing ? '编辑学习心得' : '新建学习心得'}
             size="full">
             {loadingCard ? (
                 <Loading />
@@ -264,9 +262,9 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
                                     value={subject}
                                     onChange={(e) => setSubject(e.target.value)}
                                     className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                                    {feynmanSubjectValues.map((s) => (
+                                    {studynotesSubjectValues.map((s) => (
                                         <option key={s} value={s}>
-                                            {feynmanSubjectLabels[s]}
+                                            {studynotesSubjectLabels[s]}
                                         </option>
                                     ))}
                                 </select>
@@ -286,7 +284,7 @@ export const FeynmanEditorModal: React.FC<FeynmanEditorModalProps> = ({
                         </div>
 
                         {/* AI 评估报告 */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-5 ">
+                        <div className="bg-white rounded-xl border border-gray-200 p-5">
                             <EvaluationReport evaluation={evaluation} />
                         </div>
 

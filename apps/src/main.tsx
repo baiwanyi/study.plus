@@ -15,7 +15,7 @@ import { VideoPlayer } from '@apps/pages/VideoPlayer'
 import { TVFav } from '@apps/pages/TVFav'
 import { AIUsage } from '@apps/pages/AIUsage'
 import { RssReader } from '@apps/pages/RssReader'
-import { Feynman } from '@apps/pages/Feynman'
+import { Studynotes } from '@apps/pages/Studynotes'
 import { Weekly } from '@apps/pages/Weekly'
 import '@apps/styles/index.css'
 
@@ -34,7 +34,7 @@ const AppRoutes = () => (
                 <Route path="exchanges" element={<Exchanges />} />
                 <Route path="borrow" element={<Borrow />} />
                 <Route path="rss" element={<RssReader />} />
-                <Route path="feynman" element={<Feynman />} />
+                <Route path="studynotes" element={<Studynotes />} />
                 <Route path="weekly" element={<Weekly />} />
                 <Route path="tv/fav" element={<TVFav />} />
                 <Route path="tv/:md5" element={<VideoPlayer />} />

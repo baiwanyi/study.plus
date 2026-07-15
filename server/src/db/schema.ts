@@ -186,7 +186,7 @@ export const taskMessages = sqliteTable('task_messages', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const feynmanCards = sqliteTable('feynman_cards', {
+export const studynotes = sqliteTable('studynotes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     subject: text('subject').notNull(),
     topic: text('topic').notNull().default(''),
@@ -204,11 +204,11 @@ export const feynmanCards = sqliteTable('feynman_cards', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const feynmanConversations = sqliteTable('feynman_conversations', {
+export const studynoteConversations = sqliteTable('studynote_conversations', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    feynmanCardId: integer('feynman_card_id')
+    studynoteId: integer('studynote_id')
         .notNull()
-        .references(() => feynmanCards.id, { onDelete: 'cascade' }),
+        .references(() => studynotes.id, { onDelete: 'cascade' }),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
@@ -217,11 +217,11 @@ export const feynmanConversations = sqliteTable('feynman_conversations', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const feynmanMessages = sqliteTable('feynman_messages', {
+export const studynoteMessages = sqliteTable('studynote_messages', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     conversationId: integer('conversation_id')
         .notNull()
-        .references(() => feynmanConversations.id, { onDelete: 'cascade' }),
+        .references(() => studynoteConversations.id, { onDelete: 'cascade' }),
     role: text('role', { enum: ['user', 'assistant'] }).notNull(),
     content: text('content').notNull(),
     createdAt: text('created_at')

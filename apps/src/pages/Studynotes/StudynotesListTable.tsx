@@ -3,17 +3,17 @@
 import { isAdmin } from '@apps/utils/client'
 import { DataTable } from '@components/DataTable'
 import { Loading } from '@components/Loading'
-import { feynmanSubjectLabels, formatDate } from '@shared/utils'
+import { studynotesSubjectLabels, formatDate } from '@shared/utils'
 import type { Column } from '@components/DataTable'
-import type { FeynmanCard } from '@shared/types'
+import type { StudynotesCard } from '@shared/types'
 import type { FC } from 'react'
 
-interface FeynmanCardListProps {
+interface StudynotesCardListProps {
     loading: boolean
     hasError: boolean
-    cards: FeynmanCard[]
+    cards: StudynotesCard[]
     onCardClick: (id: number) => void
-    onShare: (card: FeynmanCard) => void
+    onShare: (card: StudynotesCard) => void
     onDelete: (id: number) => void
 }
 
@@ -23,7 +23,7 @@ const SUBJECT_COLORS: Record<string, string> = {
     english: 'bg-yellow-100 text-yellow-800',
 }
 
-export const FeynmanCardList: FC<FeynmanCardListProps> = ({
+export const StudynotesCardList: FC<StudynotesCardListProps> = ({
     loading,
     hasError,
     cards,
@@ -33,7 +33,7 @@ export const FeynmanCardList: FC<FeynmanCardListProps> = ({
 }) => {
     const showAdminActions = isAdmin()
 
-    const columns: Column<FeynmanCard>[] = [
+    const columns: Column<StudynotesCard>[] = [
         {
             key: 'subject',
             header: '学科',
@@ -43,7 +43,7 @@ export const FeynmanCardList: FC<FeynmanCardListProps> = ({
                         SUBJECT_COLORS[record.subject] ||
                         'bg-gray-100 text-gray-800'
                     }`}>
-                    {feynmanSubjectLabels[record.subject] || record.subject}
+                    {studynotesSubjectLabels[record.subject] || record.subject}
                 </span>
             ),
         },
@@ -137,7 +137,7 @@ export const FeynmanCardList: FC<FeynmanCardListProps> = ({
     if (hasError) {
         return (
             <div className="text-center text-red-500 py-12">
-                加载心得卡失败，请稍后重试
+                加载学习心得失败，请稍后重试
             </div>
         )
     }
