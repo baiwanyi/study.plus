@@ -1,0 +1,499 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+    <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>学迹Plus - 智能学习管理，让成长有迹可循</title>
+        <meta name="description" content="学迹Plus 是一款面向3-15岁孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯的智能学习管理工具。">
+        <meta name="keywords" content="学迹Plus, 学习管理, 积分制, AI评分, 学习习惯, DeepSeek, 家庭教育">
+        <link rel="icon"
+              href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📚</text></svg>">
+
+        <!-- Tailwind CSS CDN -->
+        <script src="https://cdn.tailwindcss.com">
+        </script>
+        <!-- Lucide Icons CDN -->
+        <script src="https://unpkg.com/lucide@latest">
+        </script>
+        <!-- 自定义字体 -->
+        <link rel="preconnect" href="https://fonts.googleapis.com">
+        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&family=Noto+Sans+SC:wght@300;400;500;600;700;900&display=swap"
+              rel="stylesheet">
+        <!-- 自定义样式与脚本 -->
+        <link rel="stylesheet" href="style.css">
+        <script src="main.js">
+        </script>
+    </head>
+
+    <body class="bg-slate-50 font-sans text-slate-700 antialiased">
+
+        <!-- 导航栏 -->
+        <nav
+             class="fixed top-0 left-0 right-0 bg-white/80 backdrop-blur-md border-b border-slate-200/70 z-50 transition-shadow">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <div
+                         class="w-9 h-9 rounded-xl bg-linear-to-br from-primary-500 to-accent-500 flex items-center justify-center shadow-md">
+                        <span class="text-white font-bold text-base">学</span>
+                    </div>
+                    <span class="font-bold text-lg text-slate-800 tracking-tight">学迹<span
+                              class="text-primary-600">Plus</span></span>
+                </div>
+                <div class="hidden md:flex items-center gap-6 text-sm font-medium text-slate-600">
+                    <a href="#features" class="hover:text-primary-600 transition-colors">功能</a>
+                    <a href="#tech" class="hover:text-primary-600 transition-colors">技术栈</a>
+                    <a href="#roadmap" class="hover:text-primary-600 transition-colors">路线图</a>
+                    <a href="#quickstart" class="hover:text-primary-600 transition-colors">快速开始</a>
+                    <a href="https://github.com" target="_blank"
+                       class="inline-flex items-center gap-2 px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all text-sm shadow-sm">
+                        <i data-lucide="github" class="w-4 h-4"></i> GitHub
+                    </a>
+                </div>
+                <!-- 移动端菜单按钮（占位，简化设计） -->
+                <button class="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                    <i data-lucide="menu" class="w-6 h-6 text-slate-600"></i>
+                </button>
+            </div>
+        </nav>
+
+        <!-- 主内容区，添加顶部内边距避免被导航栏遮挡 -->
+        <main class="pt-16">
+            <!-- Hero 区域 -->
+            <section class="hero-bg relative overflow-hidden">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-16 sm:py-24 lg:py-32">
+                    <div class="grid lg:grid-cols-2 gap-12 items-center">
+                        <div class="animate-fade-in-up" style="animation-delay: 0.1s;">
+                            <div
+                                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary-50 border border-primary-100 text-primary-700 text-xs font-medium mb-6">
+                                <span class="relative flex h-2 w-2">
+                                    <span
+                                          class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary-400 opacity-75"></span>
+                                    <span class="relative inline-flex rounded-full h-2 w-2 bg-primary-500"></span>
+                                </span>
+                                适用于 3-15 岁孩子的家庭
+                            </div>
+                            <h1
+                                class="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-slate-900 leading-tight tracking-tight">
+                                智能学习管理<br>
+                                <span class="gradient-text">让成长有迹可循</span>
+                            </h1>
+                            <p class="mt-6 text-lg text-slate-500 max-w-xl leading-relaxed">
+                                以积分制为核心，融合 AI 评分、作业管理、周报分析与费曼学习法，帮助家长轻松培养孩子的学习习惯与自律性。
+                            </p>
+                            <div class="mt-8 flex flex-wrap gap-4">
+                                <a href="#quickstart"
+                                   class="inline-flex items-center gap-2 px-6 py-3 bg-primary-600 text-white rounded-xl hover:bg-primary-700 transition-all shadow-lg shadow-primary-200 font-semibold text-base">
+                                    <i data-lucide="rocket" class="w-5 h-5"></i> 快速开始
+                                </a>
+                                <a href="https://github.com" target="_blank"
+                                   class="inline-flex items-center gap-2 px-6 py-3 bg-white border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-all shadow-sm font-semibold text-base">
+                                    <i data-lucide="github" class="w-5 h-5"></i> 查看源码
+                                </a>
+                            </div>
+                            <!-- 统计徽章 -->
+                            <div class="mt-10 flex flex-wrap gap-4">
+                                <div
+                                     class="flex items-center gap-2 bg-white rounded-xl px-4 py-2 shadow-sm border border-slate-100">
+                                    <i data-lucide="sparkles" class="w-4 h-4 text-accent-500"></i>
+                                    <span class="text-sm font-medium text-slate-600">DeepSeek AI 驱动</span>
+                                </div>
+                                <div
+                                     class="flex items-center gap-2 bg-white rounded-xl px-4 py-2 shadow-sm border border-slate-100">
+                                    <i data-lucide="database" class="w-4 h-4 text-primary-500"></i>
+                                    <span class="text-sm font-medium text-slate-600">SQLite 本地存储</span>
+                                </div>
+                                <div
+                                     class="flex items-center gap-2 bg-white rounded-xl px-4 py-2 shadow-sm border border-slate-100">
+                                    <i data-lucide="layers" class="w-4 h-4 text-warm-500"></i>
+                                    <span class="text-sm font-medium text-slate-600">Monorepo 架构</span>
+                                </div>
+                            </div>
+                        </div>
+                        <!-- 右侧插图区域（抽象图形） -->
+                        <div class="hidden lg:flex justify-center animate-fade-in-up" style="animation-delay: 0.3s;">
+                            <div class="relative w-80 h-80 lg:w-96 lg:h-96">
+                                <div
+                                     class="absolute inset-0 bg-linear-to-br from-primary-500/10 to-accent-500/10 rounded-3xl rotate-6 transform-gpu">
+                                </div>
+                                <div
+                                     class="absolute inset-4 bg-white rounded-2xl shadow-2xl p-6 flex flex-col gap-4 rotate-3 transform-gpu">
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-green-100 flex items-center justify-center">
+                                            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700">作文评分 A+</span>
+                                        <span class="ml-auto text-sm font-bold text-green-600">+50分</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-blue-100 flex items-center justify-center">
+                                            <i data-lucide="brain" class="w-5 h-5 text-blue-600"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700">AI 周报分析</span>
+                                        <span class="ml-auto text-xs text-slate-400">已完成</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-amber-100 flex items-center justify-center">
+                                            <i data-lucide="credit-card" class="w-5 h-5 text-amber-600"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold text-slate-700">积分预支</span>
+                                        <span
+                                              class="ml-auto text-xs bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full">3期剩余</span>
+                                    </div>
+                                    <div
+                                         class="mt-2 pt-3 border-t border-dashed border-slate-200 flex justify-between text-xs text-slate-400">
+                                        <span>本月可用积分</span>
+                                        <span class="font-bold text-primary-600">815</span>
+                                    </div>
+                                </div>
+                                <!-- 浮动元素装饰 -->
+                                <div
+                                     class="absolute -top-4 -right-4 w-16 h-16 bg-linear-to-br from-warm-400 to-warm-500 rounded-2xl rotate-12 shadow-lg flex items-center justify-center animate-float">
+                                    <i data-lucide="star" class="w-8 h-8 text-white"></i>
+                                </div>
+                                <div class="absolute -bottom-6 -left-6 w-14 h-14 bg-linear-to-br from-accent-400 to-accent-600 rounded-2xl -rotate-12 shadow-lg flex items-center justify-center animate-float"
+                                     style="animation-delay: 2s;">
+                                    <i data-lucide="cpu" class="w-7 h-7 text-white"></i>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <!-- 底部波浪分隔 -->
+                    <div class="absolute bottom-0 left-0 right-0">
+                        <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg"
+                             preserveAspectRatio="none" class="w-full h-auto">
+                            <path d="M0 50C240 100 480 0 720 50C960 100 1200 0 1440 50V100H0V50Z" fill="#f8fafc" />
+                        </svg>
+                    </div>
+            </section>
+
+            <!-- 功能特性区域 -->
+            <section id="features" class="py-16 sm:py-24 bg-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center max-w-2xl mx-auto mb-12">
+                        <span class="badge bg-primary-50 text-primary-700 border border-primary-100 mb-4">
+                            <i data-lucide="zap" class="w-3.5 h-3.5"></i> 核心功能
+                        </span>
+                        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">打造全方位学习管理体验</h2>
+                        <p class="mt-4 text-slate-500 text-lg">从作业提交到积分兑换，AI 赋能每一个学习环节</p>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+                        <!-- 功能卡片 1 -->
+                        <div class="card-hover bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                            <div class="feature-icon bg-blue-50">
+                                <i data-lucide="file-text" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">作业提交与 AI 评分</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">支持 Markdown 编辑器与思维导图，DeepSeek
+                                自动评分（A+~E），返回评语与改进建议。</p>
+                        </div>
+                        <!-- 功能卡片 2 -->
+                        <div class="card-hover bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                            <div class="feature-icon bg-purple-50">
+                                <i data-lucide="coins" class="w-6 h-6 text-purple-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">积分奖惩与兑换</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">完成作业赚积分，兑换娱乐时间或现金，支持积分预支与分期还款，规则完全可配置。</p>
+                        </div>
+                        <!-- 功能卡片 3 -->
+                        <div class="card-hover bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                            <div class="feature-icon bg-amber-50">
+                                <i data-lucide="calendar-check" class="w-6 h-6 text-amber-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">学习周报与 AI 分析</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">每周学习总结 + SMART 目标，AI
+                                自动分析并生成鼓励、困难方案与目标建议，支持追问对话。</p>
+                        </div>
+                        <!-- 功能卡片 4 -->
+                        <div class="card-hover bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                            <div class="feature-icon bg-green-50">
+                                <i data-lucide="brain" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">费曼学习法</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度并追问，深度掌握知识点。
+                            </p>
+                        </div>
+                        <!-- 功能卡片 5 -->
+                        <div class="card-hover bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                            <div class="feature-icon bg-teal-50">
+                                <i data-lucide="share-2" class="w-6 h-6 text-teal-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">学习分享卡片</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">一键生成积分、作业、周报的分享卡片，支持多种背景，记录成长瞬间。</p>
+                        </div>
+                        <!-- 功能卡片 6 -->
+                        <div class="card-hover bg-slate-50 rounded-2xl p-6 border border-slate-100">
+                            <div class="feature-icon bg-rose-50">
+                                <i data-lucide="play-circle" class="w-6 h-6 text-rose-600"></i>
+                            </div>
+                            <h3 class="text-lg font-semibold text-slate-800 mb-2">学迹电台 & RSS 阅读</h3>
+                            <p class="text-sm text-slate-500 leading-relaxed">本地视频轮播与收藏，键盘控制；订阅环球科学 RSS，浏览科普文章。</p>
+                        </div>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 技术栈区域 -->
+            <section id="tech" class="py-16 sm:py-24 bg-slate-50">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center max-w-2xl mx-auto mb-12">
+                        <span class="badge bg-slate-800 text-white border border-slate-700 mb-4">
+                            <i data-lucide="code" class="w-3.5 h-3.5"></i> 技术栈
+                        </span>
+                        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">现代化全栈架构</h2>
+                        <p class="mt-4 text-slate-500 text-lg">前后端分离，Monorepo 管理，类型安全，高性能</p>
+                    </div>
+
+                    <div class="grid lg:grid-cols-3 gap-8">
+                        <!-- 前端 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center">
+                                    <i data-lucide="monitor" class="w-5 h-5 text-blue-600"></i>
+                                </div>
+                                <h3 class="font-semibold text-slate-800">前端 (apps/)</h3>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="tech-item"><i data-lucide="react" class="w-4 h-4 text-cyan-500"></i> React
+                                    19</span>
+                                <span class="tech-item"><i data-lucide="route" class="w-4 h-4 text-purple-500"></i>
+                                    React Router 7</span>
+                                <span class="tech-item"><i data-lucide="file-type" class="w-4 h-4 text-blue-500"></i>
+                                    TypeScript</span>
+                                <span class="tech-item"><i data-lucide="paintbrush" class="w-4 h-4 text-sky-500"></i>
+                                    Tailwind CSS 4</span>
+                                <span class="tech-item"><i data-lucide="component" class="w-4 h-4 text-indigo-500"></i>
+                                    Lucide React</span>
+                                <span class="tech-item"><i data-lucide="markdown" class="w-4 h-4 text-gray-600"></i>
+                                    @uiw/react-md-editor</span>
+                                <span class="tech-item"><i data-lucide="git-branch"
+                                       class="w-4 h-4 text-emerald-500"></i> Mermaid.js</span>
+                            </div>
+                        </div>
+                        <!-- 后端 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 rounded-xl bg-green-100 flex items-center justify-center">
+                                    <i data-lucide="server" class="w-5 h-5 text-green-600"></i>
+                                </div>
+                                <h3 class="font-semibold text-slate-800">后端 (server/)</h3>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="tech-item"><i data-lucide="terminal" class="w-4 h-4 text-gray-700"></i>
+                                    Express 5</span>
+                                <span class="tech-item"><i data-lucide="database" class="w-4 h-4 text-teal-600"></i>
+                                    SQLite + Drizzle ORM</span>
+                                <span class="tech-item"><i data-lucide="cpu" class="w-4 h-4 text-purple-500"></i>
+                                    DeepSeek API</span>
+                                <span class="tech-item"><i data-lucide="shield-check" class="w-4 h-4 text-blue-500"></i>
+                                    Zod 验证</span>
+                            </div>
+                        </div>
+                        <!-- 工具与架构 -->
+                        <div class="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+                            <div class="flex items-center gap-3 mb-4">
+                                <div class="w-10 h-10 rounded-xl bg-amber-100 flex items-center justify-center">
+                                    <i data-lucide="wrench" class="w-5 h-5 text-amber-600"></i>
+                                </div>
+                                <h3 class="font-semibold text-slate-800">开发工具</h3>
+                            </div>
+                            <div class="flex flex-wrap gap-2">
+                                <span class="tech-item"><i data-lucide="box" class="w-4 h-4 text-orange-500"></i> pnpm
+                                    workspace</span>
+                                <span class="tech-item"><i data-lucide="test-tube" class="w-4 h-4 text-green-500"></i>
+                                    Vitest</span>
+                                <span class="tech-item"><i data-lucide="image" class="w-4 h-4 text-pink-500"></i>
+                                    html-to-image</span>
+                                <span class="tech-item"><i data-lucide="film" class="w-4 h-4 text-red-500"></i>
+                                    react-player</span>
+                                <span class="tech-item"><i data-lucide="rss" class="w-4 h-4 text-orange-600"></i> RSS
+                                    解析</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 架构图抽象展示 -->
+                    <div class="mt-12 bg-white rounded-2xl p-6 sm:p-8 shadow-sm border border-slate-100">
+                        <h4 class="text-lg font-semibold text-slate-800 mb-4 flex items-center gap-2">
+                            <i data-lucide="workflow" class="w-5 h-5 text-primary-500"></i> 项目架构
+                        </h4>
+                        <div class="flex flex-col md:flex-row items-center justify-center gap-4 text-sm">
+                            <div class="bg-blue-50 text-blue-700 px-4 py-2 rounded-xl font-medium">React 前端 (端口 5173)
+                            </div>
+                            <span class="text-slate-400">←→</span>
+                            <div class="bg-purple-50 text-purple-700 px-4 py-2 rounded-xl font-medium">Shared 共享层
+                                (类型/工具)</div>
+                            <span class="text-slate-400">←→</span>
+                            <div class="bg-green-50 text-green-700 px-4 py-2 rounded-xl font-medium">Express API (端口
+                                3001)</div>
+                            <span class="text-slate-400">→</span>
+                            <div class="bg-amber-50 text-amber-700 px-4 py-2 rounded-xl font-medium">SQLite 数据库</div>
+                        </div>
+                        <p class="text-center text-xs text-slate-400 mt-3">Vite 代理 /api → Express，生产模式 Express 托管静态文件
+                        </p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 开发路线图 -->
+            <section id="roadmap" class="py-16 sm:py-24 bg-white">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center max-w-2xl mx-auto mb-12">
+                        <span class="badge bg-warm-100 text-warm-700 border border-warm-200 mb-4">
+                            <i data-lucide="map" class="w-3.5 h-3.5"></i> 开发计划
+                        </span>
+                        <h2 class="text-3xl sm:text-4xl font-bold text-slate-900 tracking-tight">阶段化迭代路线</h2>
+                        <p class="mt-4 text-slate-500 text-lg">从 MVP 到完整功能，稳步推进</p>
+                    </div>
+
+                    <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <div class="relative pl-8 border-l-2 border-primary-200">
+                            <div class="timeline-dot absolute left-0 top-0 -translate-x-1/2"></div>
+                            <span class="text-xs font-semibold text-primary-600 uppercase tracking-wide">Phase
+                                1-2</span>
+                            <h4 class="font-semibold text-slate-800 mt-1">基础框架 & 核心功能</h4>
+                            <ul class="mt-2 text-xs text-slate-500 space-y-1 list-disc pl-4">
+                                <li>项目初始化 + SQLite 配置</li>
+                                <li>作业创建与 AI 评分</li>
+                                <li>Markdown 编辑器集成</li>
+                                <li>思维导图支持</li>
+                            </ul>
+                        </div>
+                        <div class="relative pl-8 border-l-2 border-green-200">
+                            <div
+                                 class="timeline-dot absolute left-0 top-0 -translate-x-1/2 bg-green-500 shadow-green-200">
+                            </div>
+                            <span class="text-xs font-semibold text-green-600 uppercase tracking-wide">Phase 3</span>
+                            <h4 class="font-semibold text-slate-800 mt-1">积分系统</h4>
+                            <ul class="mt-2 text-xs text-slate-500 space-y-1 list-disc pl-4">
+                                <li>自动计算与月度结算</li>
+                                <li>积分兑换（娱乐/现金）</li>
+                                <li>积分预支与分期还款</li>
+                                <li>规则自定义配置</li>
+                            </ul>
+                        </div>
+                        <div class="relative pl-8 border-l-2 border-amber-200">
+                            <div
+                                 class="timeline-dot absolute left-0 top-0 -translate-x-1/2 bg-amber-500 shadow-amber-200">
+                            </div>
+                            <span class="text-xs font-semibold text-amber-600 uppercase tracking-wide">Phase 4-5</span>
+                            <h4 class="font-semibold text-slate-800 mt-1">视频播放 & 文档</h4>
+                            <ul class="mt-2 text-xs text-slate-500 space-y-1 list-disc pl-4">
+                                <li>本地视频扫描与播放</li>
+                                <li>学习分享卡片生成</li>
+                                <li>帮助文档与 FAQ</li>
+                                <li>测试框架搭建</li>
+                            </ul>
+                        </div>
+                        <div class="relative pl-8 border-l-2 border-purple-200">
+                            <div
+                                 class="timeline-dot absolute left-0 top-0 -translate-x-1/2 bg-purple-500 shadow-purple-200">
+                            </div>
+                            <span class="text-xs font-semibold text-purple-600 uppercase tracking-wide">Phase 6-8</span>
+                            <h4 class="font-semibold text-slate-800 mt-1">周报 & 费曼学习法</h4>
+                            <ul class="mt-2 text-xs text-slate-500 space-y-1 list-disc pl-4">
+                                <li>周报系统 + AI 分析</li>
+                                <li>作业 AI 对话</li>
+                                <li>费曼学习法全流程</li>
+                                <li>RSS 科普阅读器</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="text-center mt-8 text-sm text-slate-400">
+                        ✅ 所有阶段已完成，持续优化中
+                    </div>
+                </div>
+            </section>
+
+            <!-- 快速开始 -->
+            <section id="quickstart" class="py-16 sm:py-24 bg-slate-900 text-white">
+                <div class="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="text-center mb-10">
+                        <span class="badge bg-white/10 text-white border border-white/20 mb-4">
+                            <i data-lucide="terminal" class="w-3.5 h-3.5"></i> 本地开发
+                        </span>
+                        <h2 class="text-3xl sm:text-4xl font-bold tracking-tight">三步启动项目</h2>
+                        <p class="mt-4 text-slate-300 text-lg">在本地运行学迹Plus，只需简单几步</p>
+                    </div>
+
+                    <div class="bg-slate-800 rounded-2xl p-6 sm:p-8 shadow-2xl border border-slate-700">
+                        <div class="space-y-6 font-mono text-sm">
+                            <div class="flex items-start gap-4">
+                                <span class="text-primary-400 font-bold text-lg">1.</span>
+                                <div class="flex-1">
+                                    <p class="text-slate-300 mb-2">安装依赖并配置环境变量</p>
+                                    <div class="bg-slate-950 rounded-lg p-3 text-slate-300 overflow-x-auto">
+                                        <code>pnpm install</code><br>
+                                        <code>cp .env.example .env</code> <span class="text-slate-500"># 编辑 .env 填入
+                                            DeepSeek API Key</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <span class="text-primary-400 font-bold text-lg">2.</span>
+                                <div class="flex-1">
+                                    <p class="text-slate-300 mb-2">初始化数据库并启动开发服务器</p>
+                                    <div class="bg-slate-950 rounded-lg p-3 text-slate-300 overflow-x-auto">
+                                        <code>pnpm db:migrate</code><br>
+                                        <code>pnpm dev</code> <span class="text-slate-500">#
+                                            同时启动前端(5173)和后端(3001)</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="flex items-start gap-4">
+                                <span class="text-primary-400 font-bold text-lg">3.</span>
+                                <div class="flex-1">
+                                    <p class="text-slate-300 mb-2">打开浏览器访问</p>
+                                    <div class="bg-slate-950 rounded-lg p-3 text-slate-300">
+                                        <code>http://localhost:5173</code>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="mt-6 pt-6 border-t border-slate-700 text-xs text-slate-400">
+                            <p>更多脚本请查看 <code class="text-primary-300">package.json</code>，生产构建使用 <code
+                                      class="text-primary-300">pnpm build && pnpm start</code></p>
+                            <p class="mt-2">需要 Node.js ≥ 18，推荐使用 pnpm 管理依赖</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-8 text-center">
+                        <a href="https://github.com" target="_blank"
+                           class="inline-flex items-center gap-2 px-6 py-3 bg-white text-slate-900 rounded-xl hover:bg-slate-100 transition-all font-semibold shadow-lg">
+                            <i data-lucide="github" class="w-5 h-5"></i> 在 GitHub 上查看完整文档
+                        </a>
+                    </div>
+                </div>
+            </section>
+
+            <!-- 页脚 -->
+            <footer class="bg-slate-950 text-slate-400 py-12 border-t border-slate-800">
+                <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                    <div class="flex flex-col md:flex-row items-center justify-between gap-4">
+                        <div class="flex items-center gap-2">
+                            <div
+                                 class="w-8 h-8 rounded-lg bg-linear-to-br from-primary-500 to-accent-500 flex items-center justify-center">
+                                <span class="text-white font-bold text-sm">学</span>
+                            </div>
+                            <span class="font-bold text-lg text-white tracking-tight">学迹Plus</span>
+                        </div>
+                        <p class="text-sm">© 2026 学迹Plus. MIT License. 智能学习管理，让成长有迹可循。</p>
+                        <div class="flex gap-4">
+                            <a href="#" class="hover:text-white transition-colors"><i data-lucide="github"
+                                   class="w-5 h-5"></i></a>
+                            <a href="#" class="hover:text-white transition-colors"><i data-lucide="book-open"
+                                   class="w-5 h-5"></i></a>
+                            <a href="#" class="hover:text-white transition-colors"><i data-lucide="mail"
+                                   class="w-5 h-5"></i></a>
+                        </div>
+                    </div>
+                </div>
+            </footer>
+        </main>
+
+
+    </body>
+
+</html>
