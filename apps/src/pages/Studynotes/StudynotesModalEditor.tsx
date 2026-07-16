@@ -113,7 +113,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                 topic,
                 summary,
                 example,
-                stuckPoints,
+                stuckPoints: stuckPoints.trim() || '无',
                 ...(memoryHook ? { memoryHook } : {}),
             }
 
@@ -212,7 +212,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             onCancel={onClose}
             onConfirm={handleSave}
             confirmLabel={saving ? '保存中...' : '保存'}
-            isDisabled={saving || !summary || !example}
+            isDisabled={saving || !summary || !example || !stuckPoints}
             isLoading={saving}
             title={isEditing ? '编辑学习心得' : '新建学习心得'}
             size="full">
@@ -297,10 +297,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         {/* Q3: Stuck Points */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
                             <label className="text-sm font-bold text-gray-800 mb-2 block">
-                                问题三：刚才哪里卡住了？（选填）
+                                问题三：刚才哪里卡住了？
                             </label>
                             <p className="text-xs text-gray-600 mb-3">
-                                认真想一想，上面写概括或举例子时，哪一个点让你犹豫或者说不出了？
+                                认真想一想，上面写概括或举例子时，哪一个点让你犹豫或者说不出了？如果没有卡壳的地方，则留空。
                             </p>
                             <textarea
                                 value={stuckPoints}
