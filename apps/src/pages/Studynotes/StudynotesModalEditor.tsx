@@ -125,38 +125,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             }
 
             setCurrentCard(card)
-
-            const isStuckEmpty =
-                !stuckPoints.trim() ||
-                stuckPoints.trim() === '没有' ||
-                stuckPoints.trim() === '都懂了' ||
-                stuckPoints.trim() === '没有卡壳'
-
-            if (isStuckEmpty) {
-                setChatSending(true)
-                setHasTriggeredConversation(true)
-                try {
-                    const result = await studynotesApi.followUp(card.id)
-                    setChatMessages(
-                        result.messages.map((m) => ({
-                            role: m.role,
-                            content: m.content,
-                        })),
-                    )
-                } catch {
-                    setChatMessages([
-                        {
-                            role: 'assistant' as const,
-                            content: '追问出错，请稍后重试',
-                        },
-                    ])
-                } finally {
-                    setChatSending(false)
-                }
-            } else {
-                showSnackbar('保存成功')
-                onSaved()
-            }
+            showSnackbar('保存成功')
+            onSaved()
         } catch {
             showSnackbar('保存失败，请重试', 'error')
         } finally {
@@ -284,33 +254,25 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         </div>
 
                         {/* AI 评估报告 */}
-                        <div className="bg-white rounded-xl border border-gray-200 p-5">
-                            <EvaluationReport evaluation={evaluation} />
-                        </div>
+                        {evaluation && (
+                            <div className="bg-white rounded-xl border border-gray-200 p-5">
+                                <EvaluationReport evaluation={evaluation} />
+                            </div>
+                        )}
 
                         {/* Q1: Summary */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
-                            <div className="flex items-start justify-between mb-2">
-                                <label className="text-sm font-bold text-gray-800">
-                                    问题一：用一句话概括今天学到的核心知识
-                                </label>
-                                <span
-                                    className={`text-xs ${
-                                        summary.length > 30
-                                            ? 'text-red-500'
-                                            : 'text-gray-600'
-                                    }`}>
-                                    {summary.length}/30
-                                </span>
-                            </div>
+                            <label className="text-sm font-bold text-gray-800 mb-2 block">
+                                问题一：用一句话概括今天学到的核心知识
+                            </label>
                             <p className="text-xs text-gray-600 mb-3">
-                                请用一句完整的话（不超过30个字）概括这节课最核心的概念、公式或规则
+                                请用一句完整的话概括这节课最核心的概念、公式或规则
                             </p>
                             <textarea
                                 value={summary}
                                 onChange={(e) => setSummary(e.target.value)}
                                 placeholder="如：分数加减要先通分，然后分子相加减"
-                                rows={2}
+                                rows={3}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                             />
                         </div>
@@ -327,7 +289,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 value={example}
                                 onChange={(e) => setExample(e.target.value)}
                                 placeholder="如：就像分披萨，一个披萨切成4份，另一个切成6份，两个人吃的份数不一样，要先把它们切成同样大小才能比"
-                                rows={4}
+                                rows={3}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                             />
                         </div>
@@ -335,10 +297,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         {/* Q3: Stuck Points */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
                             <label className="text-sm font-bold text-gray-800 mb-2 block">
-                                问题三：刚才哪里卡住了？
+                                问题三：刚才哪里卡住了？（选填）
                             </label>
                             <p className="text-xs text-gray-600 mb-3">
-                                认真想一想，上面写概括或举例子时，哪一个点让你犹豫了、说不出了？请至少写一条
+                                认真想一想，上面写概括或举例子时，哪一个点让你犹豫或者说不出了？
                             </p>
                             <textarea
                                 value={stuckPoints}
@@ -352,7 +314,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         {/* Memory Hook */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
                             <label className="text-sm font-bold text-gray-800 mb-2 block">
-                                选做：记忆钩子（复习锚点）
+                                复习锚点：记忆钩子（选填）
                             </label>
                             <p className="text-xs text-gray-600 mb-3">
                                 如果明天我要复习，我只看自己写的哪句话就够了？
@@ -361,7 +323,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 value={memoryHook}
                                 onChange={(e) => setMemoryHook(e.target.value)}
                                 placeholder="把三个问题里最精练的那句话抄下来"
-                                rows={2}
+                                rows={3}
                                 className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
                             />
                         </div>
