@@ -125,6 +125,11 @@ export interface Submission {
 export interface AIScoreResult {
     grade: TaskGrade
     score: number
+    detailScores?: {
+        appreciation?: number
+        reflection?: number
+        words?: number
+    }
     comment: string
     suggestions: string[]
 }

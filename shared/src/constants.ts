@@ -162,6 +162,9 @@ export const defaultPromptTaskTitleNotes =
 export const defaultPromptScoreComposition =
     '请对以下{taskType}进行评分。{taskTitle}。内容：{taskContent}请按以下格式返回：1. 评分等级（A+/A/B/C/D/E）2. 百分制分数3. 评语（50字以内）4. 改进建议（1-3条）请严格按以下 JSON 格式返回：{"grade":"等级","score":分数,"comment":"评语","suggestions":["建议1","建议2"]}'
 
+export const defaultPromptScoreNotes =
+    '请对以下读书笔记进行评分，重点评估【摘抄赏析】和【写读后感】两个维度。{taskTitle}。内容：{taskContent}\n\n评分维度及权重：\n1. 【摘抄赏析】（50分）：摘抄的句子是否精炼、有代表性或有美感；赏析是否体现了学生的独立思考和个人感悟，而非简单复述或空泛套话。\n2. 【写读后感】（40分）：读后感是否有真实感受和深度思考；能否结合书中内容联系自身经历、生活或已知知识进行反思；是否有自己独特的见解，而非照搬书评。\n3. 【好词积累】（10分）：积累的好词数量是否充足，是否贴合本书内容。\n\n请按以下格式返回：\n1. 评分等级（A+/A/B/C/D/E）\n2. 百分制总分\n3. 各维度分项得分\n4. 评语（50字以内）\n5. 改进建议（1-3条，侧重摘抄赏析和读后感的提升方向）\n\n请严格按以下 JSON 格式返回：{"grade":"等级","score":分数,"detailScores":{"appreciation":分数,"reflection":分数,"words":分数},"comment":"评语","suggestions":["建议1","建议2"]}'
+
 export const defaultPromptEvaluateStudynotes =
     '你是一位温和的辅导老师，请对学生的学习心得进行评估。学科：{subject}，课题：{topic}。学生写的：【一句话概括】{summary}【自己的例子】{example}【卡壳点】{stuckPoints}。请从以下三个维度分析：1. 知识点总结是否完整：学生概括的关键概念是否涵盖了学科核心？遗漏了什么？2. 举例是否得当：例子是否能正确说明知识点？如果例子有误，指出哪里不对。3. 卡壳点的价值：学生的卡壳点是否切中要害？应该从哪里入手解决？评分权重说明：completenessScore 满分为100分，其中【一句话概括】占70分（核心得分），【自己的例子】占15分，【卡壳点】占15分。请按此权重比例给出综合评分。要求：发现错误时明确指出"这里可能需要再想想"，并给出正确思路；发现遗漏时用提示的方式引导（"你还可以想想..."），不要直接给答案；对卡壳点给出具体、可操作的建议；语气温和鼓励，使用"你"称呼孩子；不需要评分或评级。请返回 JSON 格式：{"completenessScore":数字(0-100),"completenessComment":"评价总结的完整性","missingPoints":["遗漏点1","遗漏点2"],"errors":[{"description":"错误描述","correction":"正确的理解"}],"improvementSuggestions":["建议1","建议2"],"overallComment":"总体评语（鼓励为主）"}'
 

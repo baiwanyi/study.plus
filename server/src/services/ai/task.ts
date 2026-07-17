@@ -1,6 +1,7 @@
 import {
     defaultPromptGenerateTitle,
     defaultPromptScoreComposition,
+    defaultPromptScoreNotes,
     defaultPromptTaskTitleComposition,
     defaultPromptTaskTitleMindmap,
     defaultPromptTaskTitleNotes,
@@ -161,7 +162,8 @@ export async function scoreComposition(
     }
 
     const taskTitle = title ? `题目：${title}` : '无指定题目，请根据内容评判'
-    const prompt = defaultPromptScoreComposition
+    const scorePrompt = type === 'notes' ? defaultPromptScoreNotes : defaultPromptScoreComposition
+    const prompt = scorePrompt
         .replace('{taskType}', () => taskTypeLabels[type])
         .replace('{taskTitle}', () => taskTitle)
         .replace('{taskContent}', () => processedContent.slice(0, 4000))
