@@ -76,7 +76,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             snap.topic !== topic ||
             snap.summary !== summary ||
             snap.example !== example ||
-            snap.stuckPoints !== (stuckPoints.trim() || '无') ||
+            snap.stuckPoints !== stuckPoints.trim() ||
             snap.memoryHook !== (memoryHook || null)
         )
     }
@@ -170,7 +170,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                 topic,
                 summary,
                 example,
-                stuckPoints: stuckPoints.trim() || '无',
+                stuckPoints: stuckPoints.trim(),
             }
 
             const card: StudynotesCard =
@@ -194,11 +194,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                 stuckPoints: card.stuckPoints,
                 memoryHook: card.memoryHook,
             }
-            // Align form state with saved state for next change detection
-            if (stuckPoints.trim() === '') {
-                setStuckPoints('无')
-            }
-
             // Auto-evaluate after save
             setEvaluating(true)
             try {

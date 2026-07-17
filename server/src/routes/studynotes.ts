@@ -132,10 +132,9 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
             typeof stuckPoints !== 'string' ||
             !subject.trim() ||
             !summary.trim() ||
-            !example.trim() ||
-            !stuckPoints.trim()
+            !example.trim()
         ) {
-            res.status(400).json({ error: '学科、概括、例子、卡壳点为必填项' })
+            res.status(400).json({ error: '学科、概括、例子为必填项' })
             return
         }
 
