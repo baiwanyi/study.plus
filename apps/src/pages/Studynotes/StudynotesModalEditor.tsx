@@ -1,9 +1,14 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { MessageSquareText } from 'lucide-react'
 import { studynotesApi } from '@apps/utils/api'
 import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
+import AiChatPanel from '@components/AiChatPanel'
+import { Loading } from '@components/Loading'
+import { Modal } from '@components/Modal'
+import { useSnackbar } from '@components/Snackbar'
+import { EvaluationReport } from './EvaluationReport'
 import type {
     StudynotesCard,
     StudynotesEvaluation,
@@ -14,11 +19,6 @@ import type {
 function mapMessages(msgs: StudynotesMessage[]): ChatMessage[] {
     return msgs.map(({ role, content }) => ({ role, content }))
 }
-import AiChatPanel from '@components/AiChatPanel'
-import { Loading } from '@components/Loading'
-import { Modal } from '@components/Modal'
-import { useSnackbar } from '@components/Snackbar'
-import { EvaluationReport } from './EvaluationReport'
 
 interface StudynotesModalEditorProps {
     open: boolean
@@ -46,6 +46,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
 
     const [saving, setSaving] = useState(false)
     const [evaluating, setEvaluating] = useState(false)
+    const [evaluationError, setEvaluationError] = useState(false)
     const [loadingCard, setLoadingCard] = useState(false)
 
     const [evaluation, setEvaluation] = useState<StudynotesEvaluation | null>(
@@ -53,12 +54,15 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     )
     const [currentCard, setCurrentCard] = useState<StudynotesCard | null>(null)
 
+    const canFollowUp = evaluation != null && evaluation.completenessScore >= 80
+
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatSending, setChatSending] = useState(false)
     const [hasTriggeredConversation, setHasTriggeredConversation] =
         useState(false)
 
     const mountedRef = useRef(false)
+    const formContainerRef = useRef<HTMLDivElement>(null)
     const formSnapshotRef = useRef<{
         subject: string
         topic: string
@@ -67,6 +71,22 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         stuckPoints: string
         memoryHook: string | null
     } | null>(null)
+
+    // Resize all form textareas to fit content immediately after DOM mounts or values change.
+    // Depends on `open`/`loadingCard` too: re-opening a card keeps the same field values,
+    // so the fields remount at default rows unless we re-measure when the form becomes visible.
+    useLayoutEffect(() => {
+        if (!open || loadingCard) return
+        const container = formContainerRef.current
+        if (!container) return
+        const textareas =
+            container.querySelectorAll<HTMLTextAreaElement>('.form-textarea')
+        textareas.forEach((el) => {
+            el.style.height = '1px'
+            // scrollHeight excludes borders; border-box sizing needs border height added
+            el.style.height = `${el.scrollHeight + 2}px`
+        })
+    }, [open, loadingCard, summary, example, stuckPoints, memoryHook])
 
     function hasContentChanged(): boolean {
         const snap = formSnapshotRef.current
@@ -77,7 +97,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             snap.summary !== summary ||
             snap.example !== example ||
             snap.stuckPoints !== stuckPoints.trim() ||
-            snap.memoryHook !== (memoryHook || null)
+            (snap.memoryHook ?? null) !== (memoryHook || null)
         )
     }
 
@@ -87,6 +107,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         setChatMessages([])
         setHasTriggeredConversation(false)
         setEvaluation(null)
+        setEvaluationError(false)
         setCurrentCard(null)
         setHasSaved(false)
         formSnapshotRef.current = null
@@ -109,8 +130,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         topic: card.topic,
                         summary: card.summary,
                         example: card.example,
-                        stuckPoints: card.stuckPoints,
-                        memoryHook: card.memoryHook,
+                        stuckPoints: card.stuckPoints.trim(),
+                        memoryHook: card.memoryHook ?? null,
                     }
                     if (card.evaluation) {
                         try {
@@ -157,44 +178,61 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     const handleSave = async () => {
         const targetId = cardId ?? currentCard?.id ?? null
 
-        // No content changes → show hint and stay
-        if (targetId != null && !hasContentChanged()) {
+        // 评分失败后点击「保存并评分」属于二次评分：内容未变也允许执行，且仅重评不重复保存
+        const isRetry =
+            evaluationError && targetId != null && !hasContentChanged()
+
+        // 非重试且内容无变化 → 提示并停留
+        if (!isRetry && targetId != null && !hasContentChanged()) {
             showSnackbar('内容没有变化')
             return
         }
 
         setSaving(true)
         try {
-            const baseData = {
-                subject,
-                topic,
-                summary,
-                example,
-                stuckPoints: stuckPoints.trim(),
+            let card: StudynotesCard
+            if (isRetry) {
+                // 二次评分：卡片已保存，仅重新评估，跳过内容保存
+                if (!currentCard) {
+                    showSnackbar('未找到已保存的卡片，请重试', 'error')
+                    return
+                }
+                card = currentCard
+            } else {
+                const baseData = {
+                    subject,
+                    topic,
+                    summary,
+                    example,
+                    stuckPoints: stuckPoints.trim(),
+                }
+
+                card =
+                    targetId != null
+                        ? await studynotesApi.update(targetId, {
+                              ...baseData,
+                              memoryHook: memoryHook || null,
+                          })
+                        : await studynotesApi.create({
+                              ...baseData,
+                              ...(memoryHook ? { memoryHook } : {}),
+                          })
+
+                setCurrentCard(card)
+                setHasSaved(true)
+                formSnapshotRef.current = {
+                    subject: card.subject,
+                    topic: card.topic,
+                    summary: card.summary,
+                    example: card.example,
+                    stuckPoints: card.stuckPoints.trim(),
+                    memoryHook: card.memoryHook ?? null,
+                }
             }
 
-            const card: StudynotesCard =
-                targetId != null
-                    ? await studynotesApi.update(targetId, {
-                          ...baseData,
-                          memoryHook: memoryHook || null,
-                      })
-                    : await studynotesApi.create({
-                          ...baseData,
-                          ...(memoryHook ? { memoryHook } : {}),
-                      })
-
-            setCurrentCard(card)
-            setHasSaved(true)
-            formSnapshotRef.current = {
-                subject: card.subject,
-                topic: card.topic,
-                summary: card.summary,
-                example: card.example,
-                stuckPoints: card.stuckPoints,
-                memoryHook: card.memoryHook,
-            }
-            // Auto-evaluate after save
+            // 清空旧评分内容，等待新评分生成后再写入
+            setEvaluation(null)
+            setEvaluationError(false)
             setEvaluating(true)
             try {
                 const evalResult = await studynotesApi.evaluate(card.id)
@@ -209,13 +247,14 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         : prev,
                 )
                 setEvaluating(false)
+                setEvaluationError(false)
                 showSnackbar('保存并评估成功')
                 onSaved()
             } catch {
-                // Evaluation failure: preserve snapshot so user can retry
-                formSnapshotRef.current = null
+                // 评分失败：保留已保存内容，标记错误，允许二次评分
                 setEvaluating(false)
-                showSnackbar('内容已保存，但 AI 评估失败', 'error')
+                setEvaluationError(true)
+                showSnackbar('内容已保存，但 AI 评估失败，可点击"保存并评分"重试', 'error')
             }
         } catch {
             showSnackbar('保存失败，请重试', 'error')
@@ -224,26 +263,16 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         }
     }
 
-    const handleFollowUp = async () => {
+    const runFollowUp = async (message?: string) => {
         if (!currentCard) {
-            showSnackbar('请先保存卡片', 'error')
+            showSnackbar(
+                message ? '请先保存卡片后再发送消息' : '请先保存卡片',
+                'error',
+            )
             return
         }
-        setChatSending(true)
-        setHasTriggeredConversation(true)
-        try {
-            const result = await studynotesApi.followUp(currentCard.id)
-            setChatMessages(mapMessages(result.messages))
-        } catch {
-            showSnackbar('追问出错，请稍后重试', 'error')
-        } finally {
-            setChatSending(false)
-        }
-    }
-
-    const handleChatSend = async (message: string) => {
-        if (!currentCard) {
-            showSnackbar('请先保存卡片后再发送消息', 'error')
+        if (!canFollowUp) {
+            showSnackbar('评分未达到80分，暂无法进行追问', 'error')
             return
         }
         setHasTriggeredConversation(true)
@@ -252,19 +281,30 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             const result = await studynotesApi.followUp(currentCard.id, message)
             setChatMessages(mapMessages(result.messages))
         } catch {
-            showSnackbar('发送失败，请稍后重试', 'error')
+            showSnackbar(
+                message ? '发送失败，请稍后重试' : '追问出错，请稍后重试',
+                'error',
+            )
         } finally {
             setChatSending(false)
         }
     }
+
+    const handleFollowUp = () => runFollowUp()
+
+    const handleChatSend = (message: string) => runFollowUp(message)
 
     return (
         <Modal
             open={open}
             onCancel={onClose}
             onConfirm={handleSave}
-            confirmLabel={evaluating ? '评估中...' : saving ? '保存中...' : '保存并评估'}
-            isDisabled={saving || evaluating || loadingCard || !summary || !example}
+            confirmLabel={
+                evaluating ? '评估中...' : saving ? '保存中...' : '保存并评估'
+            }
+            isDisabled={
+                saving || evaluating || loadingCard || !summary || !example
+            }
             isLoading={saving || evaluating}
             title={isEditing ? '编辑学习心得' : '新建学习心得'}
             size="full">
@@ -273,7 +313,9 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             ) : (
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden">
                     {/* ===== Left: 编辑表单 ===== */}
-                    <div className="space-y-4 overflow-y-auto max-h-[calc(90vh-9rem)] p-3">
+                    <div
+                        ref={formContainerRef}
+                        className="space-y-4 overflow-y-auto max-h-[calc(90vh-9rem)] p-3">
                         {/* Subject + Topic */}
                         <div className="grid grid-cols-2 gap-4">
                             <div>
@@ -306,9 +348,15 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         </div>
 
                         {/* AI 评估报告 */}
-                        {evaluation && (
+                        {(evaluation || evaluating) && (
                             <div className="bg-white rounded-xl border border-gray-200 p-5">
-                                <EvaluationReport evaluation={evaluation} />
+                                {evaluation ? (
+                                    <EvaluationReport evaluation={evaluation} />
+                                ) : (
+                                    <p className="text-sm text-gray-500">
+                                        AI 评分生成中...
+                                    </p>
+                                )}
                             </div>
                         )}
 
@@ -324,8 +372,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 value={summary}
                                 onChange={(e) => setSummary(e.target.value)}
                                 placeholder="如：分数加减要先通分，然后分子相加减"
-                                rows={3}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                rows={1}
+                                className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
                             />
                         </div>
 
@@ -341,8 +389,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 value={example}
                                 onChange={(e) => setExample(e.target.value)}
                                 placeholder="如：就像分披萨，一个披萨切成4份，另一个切成6份，两个人吃的份数不一样，要先把它们切成同样大小才能比"
-                                rows={3}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                rows={1}
+                                className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
                             />
                         </div>
 
@@ -358,8 +406,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 value={stuckPoints}
                                 onChange={(e) => setStuckPoints(e.target.value)}
                                 placeholder="如：通分的时候不知道找最小公倍数还是直接乘分母"
-                                rows={3}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                rows={1}
+                                className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
                             />
                         </div>
 
@@ -375,8 +423,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 value={memoryHook}
                                 onChange={(e) => setMemoryHook(e.target.value)}
                                 placeholder="把三个问题里最精练的那句话抄下来"
-                                rows={3}
-                                className="w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none"
+                                rows={1}
+                                className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
                             />
                         </div>
                     </div>
@@ -392,15 +440,21 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 aiHelperName=""
                                 emptyText={
                                     currentCard
-                                        ? hasTriggeredConversation
-                                            ? ''
-                                            : '点击"追问"或输入问题与 AI 对话'
+                                        ? !canFollowUp
+                                            ? '评分未达80分，暂无法追问'
+                                            : hasTriggeredConversation
+                                              ? ''
+                                              : '点击"追问"或输入问题与 AI 对话'
                                         : '请先保存卡片后再使用 AI 功能'
                                 }
                                 inputPlaceholder="输入你的问题...">
                                 <button
                                     onClick={handleFollowUp}
-                                    disabled={chatSending || !currentCard}
+                                    disabled={
+                                        chatSending ||
+                                        !currentCard ||
+                                        !canFollowUp
+                                    }
                                     className="btn btn-outline btn-sm">
                                     <MessageSquareText className="size-4" />
                                     <span className="ml-1">追问</span>

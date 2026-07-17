@@ -16,7 +16,7 @@
 - **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
 - **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
-- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度 + 追问对话，支持分享
+- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可追问，追问最多3轮（最后一轮打分并结束），支持分享
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 - **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
@@ -82,10 +82,12 @@
 | 周报分析 | 自动分析周报内容，生成表扬鼓励、困难方案、目标建议与评价 |
 | 周报对话 | 针对周报内容与 AI 进行追问对话                           |
 | 作业对话 | 在作业编辑器中与 AI 对话，支持生成示范作业与答疑         |
+| 学习心得评估 | AI 评估学习心得完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议） |
+| 学习心得追问 | 基于心得内容进行最多3轮的苏格拉底式追问对话，最后一轮打分并结束 |
 
 - 集成 DeepSeek API（deepseek-v4-flash 模型），评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
-- 支持 AI 使用记录查询与 Token 用量统计（按 AI评分/AI起名/AI出题/**AI作业对话**/周报分析/周报对话 分类）
+- 支持 AI 使用记录查询与 Token 用量统计（按 AI评分/AI起名/AI出题/**AI作业对话**/周报分析/周报对话/学习心得评估/学习心得追问 分类）
 
 #### 1.3 评分标准（统一作业评分）
 
@@ -264,7 +266,7 @@ weekly_conversations-> id, reportId(FK), role(ai/student), createdAt
 weekly_messages     -> id, conversationId(FK), role, content, createdAt
 task_conversations  -> id, taskId(FK, CASCADE), createdAt, updatedAt
 task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
-studynotes            -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, createdAt, updatedAt
+studynotes               -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, createdAt, updatedAt
 studynote_conversations-> id, studynoteId(FK, CASCADE), createdAt, updatedAt
 studynote_messages     -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
 ```
@@ -319,7 +321,7 @@ study.webian.dev/
 │   │   │   │   ├── index.tsx               # 学习心得列表页
 │   │   │   │   ├── StudynotesModalEditor.tsx  # 学习心得编辑模态框
 │   │   │   │   ├── StudynotesModalShare.tsx   # 学习心得分享卡片
-│   │   │   │   ├── StudynotesListTable.tsx    # 学习心得表格视图
+│   │   │   │   ├── StudynotesListTable.tsx    # 学习心得表格视图（评分颜色编码）
 │   │   │   │   ├── StudynotesSubjectFilter.tsx # 学科筛选组件
 │   │   │   │   ├── EvaluationReport.tsx       # AI 评估报告组件
 │   │   │   │   └── hooks/                   # 自定义 Hooks
@@ -348,13 +350,18 @@ study.webian.dev/
 │   │   │   ├── ai-usage.ts     # AI 使用记录
 │   │   │   ├── videos.ts       # 视频管理（扫描/流播/收藏）
 │   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
-│   │   │   ├── feynman.ts      # 费曼学习法（CRUD + AI 评估 + 追问对话）
+│   │   │   ├── studynotes.ts      # 学习心得（CRUD + AI 评估 + 追问对话）
 │   │   │   ├── rss.ts          # 科普 RSS 阅读器
 │   │   │   ├── rules-loader.ts # 规则加载与初始化
 │   │   │   ├── summary-helper.ts # 月度汇总计算
 │   │   │   └── advance-helper.ts # 积分预支辅助
 │   │   └── services/           # 业务服务层
-│   │       ├── ai.ts           # DeepSeek API 封装
+│   │       ├── ai/             # AI 服务（DeepSeek API 调用 + 各模块 AI 逻辑）
+│   │       │   ├── index.ts   # 统一导出
+│   │       │   ├── core.ts    # DeepSeek API 封装（callDeepSeek/safeJsonParse）
+│   │       │   ├── task.ts    # 作业评分/起名/出题 AI
+│   │       │   ├── weekly.ts  # 周报分析 AI
+│   │       │   └── studynotes.ts # 学习心得评估 AI + 追问对话 AI
 │   │       └── points.ts       # 积分计算引擎
 │   ├── package.json
 │   └── tsconfig.json
@@ -451,9 +458,14 @@ study.webian.dev/
 
 - [x] 学习心得 CRUD（subject/topic/summary/example/stuckPoints/memoryHook）
 - [x] AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议 + 总体评价）
-- [x] AI 追问对话（支持历史消息 + 自动追问无卡壳心得）
+- [x] AI 评估报告组件（EvaluationReport，lucide 图标替代 emoji）
+- [x] AI 追问对话（支持历史消息 + 无卡壳心得自动出变式题）
+- [x] 追问评分门槛：评估分达80分后方可使用追问
+- [x] 追问轮次限制：最多3轮，最后一轮对回答打分并结束
+- [x] 保存时自动评估（内容无变更跳过）
+- [x] 编辑表单 textarea 自适应高度
+- [x] 问题三可留空
 - [x] 学习心得分享卡片（html-to-image 截图导出）
-- [x] 可复用评估报告组件（EvaluationReport）
 
 ## 本地开发
 

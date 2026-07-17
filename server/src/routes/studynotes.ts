@@ -372,12 +372,19 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             })
         }
 
+        const prevMessages = await db
+            .select()
+            .from(studynoteMessages)
+            .where(eq(studynoteMessages.conversationId, conversationId))
+            .orderBy(asc(studynoteMessages.createdAt))
+
         const aiReply = await studynotesFollowUpChat(
             card.subject,
             card.topic,
             card.summary,
             card.example,
             card.stuckPoints,
+            prevMessages,
             userMessage || undefined,
         )
 

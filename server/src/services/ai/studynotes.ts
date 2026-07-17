@@ -90,11 +90,26 @@ export async function studynotesFollowUpChat(
     summary: string,
     example: string,
     stuckPoints: string,
+    prevMessages: { role: string; content: string }[],
     userMessage?: string,
 ): Promise<string> {
     if (!DEEPSEEK_API_KEY) {
         return 'AI 对话未配置，请设置 DEEPSEEK_API_KEY'
     }
+
+    const roundNumber = prevMessages.filter((m) => m.role === 'user').length + 1
+    const historyText =
+        prevMessages.length > 0
+            ? '已有对话历史：\n' +
+              prevMessages
+                  .map((m) => `${m.role === 'assistant' ? '老师' : '学生'}：${m.content}`)
+                  .join('\n') +
+              '\n\n'
+            : ''
+    const scoringText =
+        roundNumber >= 5
+            ? '这是最后一轮对话。请先回答学生的提问，然后对学生的回答进行简要打分（满分100分），并给出简短评语。格式：\n【回答】...\n【评分】XX分\n【评语】...'
+            : ''
 
     let prompt = defaultPromptStudynotesFollowUp
         .replace(
@@ -108,6 +123,9 @@ export async function studynotesFollowUpChat(
         .replace('{summary}', () => summary || '未填写')
         .replace('{example}', () => example || '未填写')
         .replace('{stuckPoints}', () => stuckPoints || '未填写')
+        .replace('{history}', () => historyText)
+        .replace('{roundNumber}', () => String(roundNumber))
+        .replace('{scoring}', () => scoringText)
 
     if (userMessage) {
         prompt += `\n\n---\n学生提问：\n"""\n${userMessage}\n"""\n---\n请直接回答学生上面提出的问题，用简单易懂的语言讲解。不要反问学生。`
