@@ -5,7 +5,7 @@ import { DataTable } from '@components/DataTable'
 import { Loading } from '@components/Loading'
 import { studynotesSubjectLabels, formatDate } from '@shared/utils'
 import type { Column } from '@components/DataTable'
-import type { StudynotesCard } from '@shared/types'
+import type { StudynotesCard, StudynotesEvaluation } from '@shared/types'
 import type { FC } from 'react'
 
 interface StudynotesCardListProps {
@@ -21,6 +21,29 @@ const SUBJECT_COLORS: Record<string, string> = {
     math: 'bg-blue-100 text-blue-800',
     chinese: 'bg-red-100 text-red-800',
     english: 'bg-yellow-100 text-yellow-800',
+}
+
+function colorForScore(score: number): string {
+    if (score < 80) return 'text-red-600'
+    if (score < 90) return 'text-green-600'
+    return 'text-amber-500'
+}
+
+function renderEvaluation(evaluation: string | null) {
+    if (!evaluation) {
+        return <span className="text-xs text-gray-600">-</span>
+    }
+    try {
+        const evalData = JSON.parse(evaluation) as StudynotesEvaluation
+        const score = evalData.completenessScore
+        return (
+            <span className={`font-semibold text-base ${colorForScore(score)}`}>
+                {score}
+            </span>
+        )
+    } catch {
+        return <span className="text-xs text-gray-600">-</span>
+    }
 }
 
 export const StudynotesCardList: FC<StudynotesCardListProps> = ({
@@ -67,15 +90,8 @@ export const StudynotesCardList: FC<StudynotesCardListProps> = ({
         },
         {
             key: 'evaluation',
-            header: '评估',
-            render: (record) =>
-                record.evaluation ? (
-                    <span className="badge text-green-600 bg-green-50">
-                        已评估
-                    </span>
-                ) : (
-                    <span className="text-xs text-gray-600">-</span>
-                ),
+            header: '评分',
+            render: (record) => renderEvaluation(record.evaluation),
         },
         {
             key: 'followUpCount',

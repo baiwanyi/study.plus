@@ -30,6 +30,7 @@ export default function AiChatPanel({
 }: AiChatPanelProps) {
     const [input, setInput] = useState('')
     const chatEndRef = useRef<HTMLDivElement>(null)
+    const textareaRef = useRef<HTMLTextAreaElement>(null)
 
     useEffect(() => {
         chatEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -42,10 +43,21 @@ export default function AiChatPanel({
         }
     }, [messages.length])
 
+    const autoResize = () => {
+        const el = textareaRef.current
+        if (!el) return
+        el.style.height = 'auto'
+        el.style.height = `${el.scrollHeight}px`
+    }
+
     const handleSend = () => {
         if (!input.trim() || sending) return
         onSend(input.trim())
         setInput('')
+        // Reset textarea height after send
+        if (textareaRef.current) {
+            textareaRef.current.style.height = 'auto'
+        }
     }
 
     const hasDemo = typeof onGenerateDemo === 'function'
@@ -154,23 +166,46 @@ export default function AiChatPanel({
                         </button>
                     </div>
                 )}
-                <div className="p-3 flex gap-2">
-                    <input
-                        type="text"
-                        value={input}
-                        onChange={(e) => setInput(e.target.value)}
-                        onKeyDown={(e) =>
-                            e.key === 'Enter' && !sending && handleSend()
-                        }
-                        placeholder={inputPlaceholder}
-                        className="flex-1 px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/20"
-                    />
-                    <button
-                        onClick={handleSend}
-                        disabled={sending || !input.trim()}
-                        className="btn btn-primary btn-sm">
-                        <Send className="size-4" />
-                    </button>
+                <div className="flex pt-3 pl-3 gap-2 flex-col">
+                    <div className="flex-1 w-full px-3 py-2 border border-gray-200 rounded-lg">
+                        <textarea
+                            ref={textareaRef}
+                            value={input}
+                            onChange={(e) => {
+                                setInput(e.target.value)
+                                autoResize()
+                            }}
+                            onKeyDown={(e) => {
+                                if (
+                                    e.key === 'Enter' &&
+                                    !e.shiftKey &&
+                                    !sending
+                                ) {
+                                    e.preventDefault()
+                                    handleSend()
+                                }
+                            }}
+                            placeholder={inputPlaceholder}
+                            rows={1}
+                            className="flex-1 w-full py-1 outline-none resize-none overflow-y-auto"
+                        />
+                        <div className="flex justify-between items-center border-t border-gray-200 pt-2">
+                            <span className="text-xs text-gray-700">
+                                字数：{input.length}
+                            </span>
+                            <div className="flex items-center gap-3">
+                                <span className="text-xs text-gray-700">
+                                    Enter 发送，Shift + Enter 换行
+                                </span>
+                                <button
+                                    onClick={handleSend}
+                                    disabled={sending || !input.trim()}
+                                    className="btn btn-primary">
+                                    <Send className="size-4" />
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>

@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { Loader2, MessageSquareText, Sparkles } from 'lucide-react'
+import { useEffect, useRef, useState } from 'react'
+import { MessageSquareText } from 'lucide-react'
 import { studynotesApi } from '@apps/utils/api'
 import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import type {
@@ -10,6 +10,10 @@ import type {
     StudynotesMessage,
     ChatMessage,
 } from '@shared/types'
+
+function mapMessages(msgs: StudynotesMessage[]): ChatMessage[] {
+    return msgs.map(({ role, content }) => ({ role, content }))
+}
 import AiChatPanel from '@components/AiChatPanel'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
@@ -30,7 +34,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     onSaved,
 }) => {
     const { showSnackbar } = useSnackbar()
-    const isEditing = cardId != null
+    const [hasSaved, setHasSaved] = useState(false)
+    const isEditing = cardId != null || hasSaved
 
     const [subject, setSubject] = useState('math')
     const [topic, setTopic] = useState('')
@@ -53,18 +58,45 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     const [hasTriggeredConversation, setHasTriggeredConversation] =
         useState(false)
 
+    const mountedRef = useRef(false)
+    const formSnapshotRef = useRef<{
+        subject: string
+        topic: string
+        summary: string
+        example: string
+        stuckPoints: string
+        memoryHook: string | null
+    } | null>(null)
+
+    function hasContentChanged(): boolean {
+        const snap = formSnapshotRef.current
+        if (!snap) return true
+        return (
+            snap.subject !== subject ||
+            snap.topic !== topic ||
+            snap.summary !== summary ||
+            snap.example !== example ||
+            snap.stuckPoints !== (stuckPoints.trim() || '无') ||
+            snap.memoryHook !== (memoryHook || null)
+        )
+    }
+
     useEffect(() => {
         if (!open) return
+        mountedRef.current = true
         setChatMessages([])
         setHasTriggeredConversation(false)
         setEvaluation(null)
         setCurrentCard(null)
+        setHasSaved(false)
+        formSnapshotRef.current = null
 
         if (cardId != null) {
             setLoadingCard(true)
             studynotesApi
                 .get(cardId)
                 .then(async (card) => {
+                    if (!mountedRef.current) return
                     setCurrentCard(card)
                     setSubject(card.subject)
                     setTopic(card.topic)
@@ -72,6 +104,14 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                     setExample(card.example)
                     setStuckPoints(card.stuckPoints)
                     setMemoryHook(card.memoryHook || '')
+                    formSnapshotRef.current = {
+                        subject: card.subject,
+                        topic: card.topic,
+                        summary: card.summary,
+                        example: card.example,
+                        stuckPoints: card.stuckPoints,
+                        memoryHook: card.memoryHook,
+                    }
                     if (card.evaluation) {
                         try {
                             setEvaluation(JSON.parse(card.evaluation))
@@ -81,21 +121,27 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                     }
                     try {
                         const msgs = await studynotesApi.getMessages(card.id)
+                        if (!mountedRef.current) return
                         if (msgs.length > 0) {
-                            setChatMessages(
-                                msgs.map((m: StudynotesMessage) => ({
-                                    role: m.role,
-                                    content: m.content,
-                                })),
-                            )
+                            setChatMessages(mapMessages(msgs))
                         }
                     } catch {
                         // No messages yet
                     }
                 })
                 .catch(() => showSnackbar('加载学习心得失败', 'error'))
-                .finally(() => setLoadingCard(false))
+                .finally(() => {
+                    if (mountedRef.current) setLoadingCard(false)
+                })
         } else {
+            formSnapshotRef.current = {
+                subject: 'math',
+                topic: '',
+                summary: '',
+                example: '',
+                stuckPoints: '',
+                memoryHook: null,
+            }
             setSubject('math')
             setTopic('')
             setSummary('')
@@ -103,60 +149,83 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             setStuckPoints('')
             setMemoryHook('')
         }
+        return () => {
+            mountedRef.current = false
+        }
     }, [open, cardId, showSnackbar])
 
     const handleSave = async () => {
+        const targetId = cardId ?? currentCard?.id ?? null
+
+        // No content changes → show hint and stay
+        if (targetId != null && !hasContentChanged()) {
+            showSnackbar('内容没有变化')
+            return
+        }
+
         setSaving(true)
         try {
-            const data = {
+            const baseData = {
                 subject,
                 topic,
                 summary,
                 example,
                 stuckPoints: stuckPoints.trim() || '无',
-                ...(memoryHook ? { memoryHook } : {}),
             }
 
-            let card: StudynotesCard
-            if (isEditing && cardId != null) {
-                card = await studynotesApi.update(cardId, data)
-            } else {
-                card = await studynotesApi.create(data)
-            }
+            const card: StudynotesCard =
+                targetId != null
+                    ? await studynotesApi.update(targetId, {
+                          ...baseData,
+                          memoryHook: memoryHook || null,
+                      })
+                    : await studynotesApi.create({
+                          ...baseData,
+                          ...(memoryHook ? { memoryHook } : {}),
+                      })
 
             setCurrentCard(card)
-            showSnackbar('保存成功')
-            onSaved()
+            setHasSaved(true)
+            formSnapshotRef.current = {
+                subject: card.subject,
+                topic: card.topic,
+                summary: card.summary,
+                example: card.example,
+                stuckPoints: card.stuckPoints,
+                memoryHook: card.memoryHook,
+            }
+            // Align form state with saved state for next change detection
+            if (stuckPoints.trim() === '') {
+                setStuckPoints('无')
+            }
+
+            // Auto-evaluate after save
+            setEvaluating(true)
+            try {
+                const evalResult = await studynotesApi.evaluate(card.id)
+                setEvaluation(evalResult.evaluation)
+                setCurrentCard((prev) =>
+                    prev
+                        ? {
+                              ...prev,
+                              evaluation: JSON.stringify(evalResult.evaluation),
+                              evaluatedAt: evalResult.evaluatedAt,
+                          }
+                        : prev,
+                )
+                setEvaluating(false)
+                showSnackbar('保存并评估成功')
+                onSaved()
+            } catch {
+                // Evaluation failure: preserve snapshot so user can retry
+                formSnapshotRef.current = null
+                setEvaluating(false)
+                showSnackbar('内容已保存，但 AI 评估失败', 'error')
+            }
         } catch {
             showSnackbar('保存失败，请重试', 'error')
         } finally {
             setSaving(false)
-        }
-    }
-
-    const handleEvaluate = async () => {
-        if (!currentCard) {
-            showSnackbar('请先保存卡片', 'error')
-            return
-        }
-        setEvaluating(true)
-        try {
-            const result = await studynotesApi.evaluate(currentCard.id)
-            setEvaluation(result.evaluation)
-            setCurrentCard((prev) =>
-                prev
-                    ? {
-                          ...prev,
-                          evaluation: JSON.stringify(result.evaluation),
-                          evaluatedAt: result.evaluatedAt,
-                      }
-                    : prev,
-            )
-            showSnackbar('评估完成')
-        } catch {
-            showSnackbar('AI 评估失败，请稍后重试', 'error')
-        } finally {
-            setEvaluating(false)
         }
     }
 
@@ -169,12 +238,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         setHasTriggeredConversation(true)
         try {
             const result = await studynotesApi.followUp(currentCard.id)
-            setChatMessages(
-                result.messages.map((m) => ({
-                    role: m.role,
-                    content: m.content,
-                })),
-            )
+            setChatMessages(mapMessages(result.messages))
         } catch {
             showSnackbar('追问出错，请稍后重试', 'error')
         } finally {
@@ -183,22 +247,15 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     }
 
     const handleChatSend = async (message: string) => {
-        if (!currentCard) return
-        const userMsg: ChatMessage = {
-            role: 'user',
-            content: message,
+        if (!currentCard) {
+            showSnackbar('请先保存卡片后再发送消息', 'error')
+            return
         }
-        setChatMessages((prev) => [...prev, userMsg])
         setHasTriggeredConversation(true)
         setChatSending(true)
         try {
             const result = await studynotesApi.followUp(currentCard.id, message)
-            setChatMessages(
-                result.messages.map((m) => ({
-                    role: m.role,
-                    content: m.content,
-                })),
-            )
+            setChatMessages(mapMessages(result.messages))
         } catch {
             showSnackbar('发送失败，请稍后重试', 'error')
         } finally {
@@ -211,9 +268,9 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             open={open}
             onCancel={onClose}
             onConfirm={handleSave}
-            confirmLabel={saving ? '保存中...' : '保存'}
-            isDisabled={saving || !summary || !example}
-            isLoading={saving}
+            confirmLabel={evaluating ? '评估中...' : saving ? '保存中...' : '保存并评估'}
+            isDisabled={saving || evaluating || loadingCard || !summary || !example}
+            isLoading={saving || evaluating}
             title={isEditing ? '编辑学习心得' : '新建学习心得'}
             size="full">
             {loadingCard ? (
@@ -346,26 +403,13 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                         : '请先保存卡片后再使用 AI 功能'
                                 }
                                 inputPlaceholder="输入你的问题...">
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={handleEvaluate}
-                                        disabled={evaluating || !currentCard}
-                                        className="btn btn-outline btn-sm">
-                                        {evaluating ? (
-                                            <Loader2 className="size-4 animate-spin" />
-                                        ) : (
-                                            <Sparkles className="size-4" />
-                                        )}
-                                        <span className="ml-1">评估</span>
-                                    </button>
-                                    <button
-                                        onClick={handleFollowUp}
-                                        disabled={chatSending || !currentCard}
-                                        className="btn btn-outline btn-sm">
-                                        <MessageSquareText className="size-4" />
-                                        <span className="ml-1">追问</span>
-                                    </button>
-                                </div>
+                                <button
+                                    onClick={handleFollowUp}
+                                    disabled={chatSending || !currentCard}
+                                    className="btn btn-outline btn-sm">
+                                    <MessageSquareText className="size-4" />
+                                    <span className="ml-1">追问</span>
+                                </button>
                             </AiChatPanel>
                         </div>
                     </div>

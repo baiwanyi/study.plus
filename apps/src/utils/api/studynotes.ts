@@ -33,7 +33,7 @@ export const studynotesApi = {
         }),
     update: (
         id: number,
-        data: Partial<StudynotesCreateRequest> & {
+        data: Omit<Partial<StudynotesCreateRequest>, 'memoryHook'> & {
             memoryHook?: string | null
         },
     ) => {
