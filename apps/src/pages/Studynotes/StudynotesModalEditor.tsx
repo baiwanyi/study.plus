@@ -254,7 +254,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                 // 评分失败：保留已保存内容，标记错误，允许二次评分
                 setEvaluating(false)
                 setEvaluationError(true)
-                showSnackbar('内容已保存，但 AI 评估失败，可点击"保存并评分"重试', 'error')
+                showSnackbar(
+                    '内容已保存，但 AI 评估失败，可点击"保存并评分"重试',
+                    'error',
+                )
             }
         } catch {
             showSnackbar('保存失败，请重试', 'error')
@@ -311,7 +314,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             {loadingCard ? (
                 <Loading />
             ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden">
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden -m-6">
                     {/* ===== Left: 编辑表单 ===== */}
                     <div
                         ref={formContainerRef}

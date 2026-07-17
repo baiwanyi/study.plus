@@ -66,7 +66,7 @@ export const Modal: FC<ModalProps> = ({
             />
             <div
                 className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} mx-4 max-h-[90vh] flex flex-col`}>
-                <header className="flex items-center justify-between px-6 pt-6 pb-0 shrink-0">
+                <header className="flex items-center justify-between p-6 pb-3 shrink-0 border-b border-gray-200">
                     <h3>{title}</h3>
                     <button
                         onClick={onCancel}

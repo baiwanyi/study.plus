@@ -76,7 +76,7 @@ export default function AiChatPanel({
             </div>
 
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0">
+            <div className="flex-1 overflow-y-auto p-3 space-y-3 min-h-0 scrollbar-hide">
                 {messages.length === 0 && !generatingDemo && (
                     <div className="flex flex-col items-center justify-center h-full text-center px-4">
                         <Sparkles className="w-8 h-8 text-gray-300 mb-3" />
@@ -136,7 +136,7 @@ export default function AiChatPanel({
                 {sending && (
                     <div className="flex justify-start">
                         <div className="bg-gray-100 rounded-lg px-3 py-2">
-                            <Loader2 className="w-4 h-4 animate-spin text-gray-400" />
+                            <Loader2 className="size-4 animate-spin text-gray-400" />
                         </div>
                     </div>
                 )}
@@ -166,7 +166,7 @@ export default function AiChatPanel({
                         </button>
                     </div>
                 )}
-                <div className="flex pt-3 pl-3 gap-2 flex-col">
+                <div className="flex p-3 gap-2 flex-col">
                     <div className="flex-1 w-full px-3 py-2 border border-gray-200 rounded-lg">
                         <textarea
                             ref={textareaRef}

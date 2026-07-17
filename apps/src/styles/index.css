@@ -126,6 +126,16 @@
         @apply text-sm text-gray-400 py-8 text-center;
     }
 
+    /* 隐藏滚动条但保留滚动能力（Chrome/Safari/Edge/Firefox） */
+    .scrollbar-hide {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+
+        &::-webkit-scrollbar {
+            display: none;
+        }
+    }
+
     /* Snackbar */
     .snackbar {
         @apply fixed left-6 bottom-6 z-100 flex items-center gap-2 px-4 py-3 rounded-lg shadow-lg text-sm font-medium text-white
