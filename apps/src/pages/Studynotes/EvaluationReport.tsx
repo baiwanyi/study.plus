@@ -1,5 +1,13 @@
 'use client'
 
+import {
+    AlertTriangle,
+    CheckCircle2,
+    ClipboardList,
+    Lightbulb,
+    MessageSquare,
+    Sparkles,
+} from 'lucide-react'
 import { type FC } from 'react'
 import type { StudynotesEvaluation } from '@shared/types'
 
@@ -54,7 +62,7 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
                 </div>
                 <div className="space-y-1">
                     <p className="font-semibold">完整度评分</p>
-                    <p className="text-xs text-gray-700">
+                    <p className="text-gray-700">
                         {evaluation.completenessComment}
                     </p>
                 </div>
@@ -62,14 +70,16 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
 
             {evaluation.missingPoints.length > 0 && (
                 <div className="space-y-1">
-                    <p className="font-semibold text-amber-700 mb-1">
-                        📋 可能遗漏的知识点
+                    <p className="font-semibold text-amber-700 mb-1 flex items-center gap-1.5">
+                        <ClipboardList className="size-4" />
+                        可能遗漏的知识点
                     </p>
                     {evaluation.missingPoints.map((point, i) => (
                         <div
                             key={i}
-                            className="text-xs text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5">
-                            💡 {point}
+                            className="text-amber-700 bg-amber-50 rounded-lg px-3 py-1.5 flex items-start gap-1.5">
+                            <Lightbulb className="size-4 mt-0.5 shrink-0" />
+                            <span>{point}</span>
                         </div>
                     ))}
                 </div>
@@ -77,18 +87,18 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
 
             {evaluation.errors.length > 0 && (
                 <div className="space-y-1">
-                    <p className="font-semibold text-red-700 mb-1">
-                        ⚠️ 需要再想想的地方
+                    <p className="font-semibold text-red-700 mb-1 flex items-center gap-1.5">
+                        <AlertTriangle className="size-4" />
+                        需要再想想的地方
                     </p>
                     {evaluation.errors.map((err, i) => (
                         <div
                             key={i}
                             className="bg-red-50 rounded-lg px-3 py-1.5">
-                            <p className="text-xs text-red-700">
-                                {err.description}
-                            </p>
-                            <p className="text-xs text-red-500 mt-0.5">
-                                ✅ {err.correction}
+                            <p className="text-red-700">{err.description}</p>
+                            <p className="text-red-500 mt-0.5 flex items-start gap-1.5">
+                                <CheckCircle2 className="size-4 mt-0.5 shrink-0" />
+                                <span>{err.correction}</span>
                             </p>
                         </div>
                     ))}
@@ -97,13 +107,14 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
 
             {evaluation.improvementSuggestions.length > 0 && (
                 <div className="space-y-1">
-                    <p className="font-semibold text-blue-700 mb-1">
-                        💪 改进建议
+                    <p className="font-semibold text-blue-700 mb-1 flex items-center gap-1.5">
+                        <Sparkles className="size-4" />
+                        改进建议
                     </p>
                     {evaluation.improvementSuggestions.map((s, i) => (
                         <div
                             key={i}
-                            className="text-xs text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
+                            className="text-blue-700 bg-blue-50 rounded-lg px-3 py-1.5">
                             {s}
                         </div>
                     ))}
@@ -111,9 +122,10 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
             )}
 
             {evaluation.overallComment && (
-                <div className="bg-green-50 rounded-xl p-3">
-                    <p className="text-xs text-green-700 leading-relaxed">
-                        💬 {evaluation.overallComment}
+                <div className="bg-green-50 rounded-xl p-3 flex items-start gap-2">
+                    <MessageSquare className="size-4 mt-0.5 shrink-0 text-green-600" />
+                    <p className="text-green-700 leading-relaxed">
+                        {evaluation.overallComment}
                     </p>
                 </div>
             )}
