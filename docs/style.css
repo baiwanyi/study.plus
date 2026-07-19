@@ -175,6 +175,43 @@ body {
     opacity: .15
 }
 
+/* 科技感装饰元素 */
+.tech-ring {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px solid;
+    opacity: .12;
+    pointer-events: none
+}
+.tech-ring-dashed {
+    position: absolute;
+    border-radius: 50%;
+    border: 1px dashed;
+    opacity: .08;
+    pointer-events: none
+}
+.tech-dot {
+    position: absolute;
+    border-radius: 50%;
+    pointer-events: none
+}
+.tech-grid {
+    position: absolute;
+    inset: 0;
+    background-image:
+        linear-gradient(rgba(216, 73, 239, .03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(216, 73, 239, .03) 1px, transparent 1px);
+    background-size: 48px 48px;
+    pointer-events: none;
+    z-index: 0
+}
+.tech-orb {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(60px);
+    pointer-events: none
+}
+
 .footer-link { transition: all .2s }
 .footer-link:hover { color: var(--accent) }
 

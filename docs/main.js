@@ -31,6 +31,11 @@ tailwind.config = {
             },
             animation: {
                 'float': 'float 6s ease-in-out infinite',
+                'float-reverse': 'float-reverse 7s ease-in-out infinite',
+                'spin-slow': 'spin-slow 20s linear infinite',
+                'spin-slower': 'spin-slower 35s linear infinite',
+                'drift': 'drift 12s ease-in-out infinite',
+                'pulse-glow': 'pulse-glow 4s ease-in-out infinite',
                 'fade-in-up': 'fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
                 'fade-in': 'fadeIn 0.6s ease forwards',
             },
@@ -38,6 +43,28 @@ tailwind.config = {
                 float: {
                     '0%, 100%': { transform: 'translateY(0px)' },
                     '50%': { transform: 'translateY(-12px)' },
+                },
+                'float-reverse': {
+                    '0%, 100%': { transform: 'translateY(0px)' },
+                    '50%': { transform: 'translateY(10px)' },
+                },
+                'spin-slow': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(360deg)' },
+                },
+                'spin-slower': {
+                    '0%': { transform: 'rotate(0deg)' },
+                    '100%': { transform: 'rotate(-360deg)' },
+                },
+                drift: {
+                    '0%, 100%': { transform: 'translateX(0px) translateY(0px)' },
+                    '25%': { transform: 'translateX(8px) translateY(-6px)' },
+                    '50%': { transform: 'translateX(0px) translateY(-10px)' },
+                    '75%': { transform: 'translateX(-8px) translateY(-4px)' },
+                },
+                'pulse-glow': {
+                    '0%, 100%': { opacity: '.08', transform: 'scale(1)' },
+                    '50%': { opacity: '.18', transform: 'scale(1.08)' },
                 },
                 fadeInUp: {
                     '0%': { opacity: '0', transform: 'translateY(24px)' },

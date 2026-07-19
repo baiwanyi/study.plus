@@ -7,17 +7,48 @@
         <title>学迹Plus - 智能学习管理，让成长有迹可循</title>
         <meta name="description" content="学迹Plus 是一款面向3-15岁孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯的智能学习管理工具。">
         <meta name="keywords" content="学迹Plus, 学习管理, 积分制, AI评分, 学习习惯, DeepSeek, 家庭教育">
-        <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+        <meta name="geo.region" content="CN">
+        <meta name="geo.placename" content="China">
+        <meta name="robots" content="index, follow, max-snippet:-1, max-image-preview:large, max-video-preview:-1">
+        <meta name="googlebot" content="index, follow, max-snippet:-1, max-image-preview:large">
+        <!-- Open Graph -->
+        <meta property="og:title" content="学迹Plus - 智能学习管理，让成长有迹可循">
+        <meta property="og:description" content="学迹Plus 是一款面向3-15岁孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯的智能学习管理工具。">
+        <meta property="og:type" content="website">
+        <meta property="og:url" content="https://baiwanyi.github.io/study.plus/">
+        <meta property="og:image" content="https://baiwanyi.github.io/study.plus/logo.svg">
+        <meta property="og:locale" content="zh_CN">
+        <meta property="og:site_name" content="学迹Plus">
+        <!-- Twitter Card -->
+        <meta name="twitter:card" content="summary_large_image">
+        <meta name="twitter:title" content="学迹Plus - 智能学习管理，让成长有迹可循">
+        <meta name="twitter:description" content="学迹Plus 是一款面向3-15岁孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯的智能学习管理工具。">
 
-        <script src="https://cdn.tailwindcss.com">
+        <!-- 结构化数据 (JSON-LD) -->
+        <script type="application/ld+json">
+            {
+                "@context": "https://schema.org",
+                "@type": "SoftwareApplication",
+                "name": "学迹Plus",
+                "applicationCategory": "EducationalApplication",
+                "operatingSystem": "Web",
+                "description": "面向3-15岁孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯的智能学习管理工具。融合作业管理、周报分析与费曼学习法，DeepSeek AI 全程赋能。",
+                "url": "https://study.plus",
+                "author": {
+                    "@type": "Person",
+                    "name": "baiwanyi"
+                },
+                "offers": {
+                    "@type": "Offer",
+                    "price": "0",
+                    "priceCurrency": "CNY"
+                }
+            }
         </script>
-        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
-        <link rel="preconnect" href="https://fonts.googleapis.com">
-        <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-        <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Noto+Sans+SC:wght@300;400;500;600;700;900&display=swap"
-              rel="stylesheet">
 
-        <link rel="stylesheet" href="style.css">
+        <link rel="icon" type="image/svg+xml" href="./favicon.svg">
+        <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3/dist/tabler-icons.min.css">
+        <link rel="stylesheet" href="./style.css">
     </head>
 
     <body class="font-body antialiased">
@@ -45,7 +76,7 @@
                         <i class="ti ti-brand-github text-base"></i>GitHub
                     </a>
                 </div>
-                <button class="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors">
+                <button type="button" class="md:hidden p-2 rounded-lg hover:bg-slate-100 transition-colors">
                     <i class="ti ti-menu-2 text-2xl"></i>
                 </button>
             </div>
@@ -56,8 +87,30 @@
 
             <!-- ==================== Hero 区域 ==================== -->
             <section class="relative overflow-hidden grain bg-[--bg]">
-                <div class="hero-shape w-96 h-96 bg-accent rounded-full top-[-20%] right-[-10%]"></div>
-                <div class="hero-shape w-64 h-64 bg-warm rounded-full bottom-[-10%] left-[-5%]"></div>
+                <!-- 科技网格背景 -->
+                <div class="tech-grid"></div>
+
+                <!-- 光晕圆（渐变脉动） -->
+                <div class="hero-shape w-96 h-96 bg-accent rounded-full top-[-20%] right-[-10%] animate-pulse-glow"></div>
+                <div class="hero-shape w-64 h-64 bg-warm rounded-full bottom-[-10%] left-[-5%] animate-pulse-glow" style="animation-delay:-2s"></div>
+
+                <!-- 科技光晕 orb -->
+                <div class="tech-orb w-72 h-72 bg-accent/40 top-[30%] right-[5%]" style="animation:drift 12s ease-in-out infinite"></div>
+                <div class="tech-orb w-56 h-56 bg-warm/30 bottom-[15%] left-[8%]" style="animation:drift 10s ease-in-out infinite;animation-delay:-4s"></div>
+
+                <!-- 旋转实线环 -->
+                <div class="tech-ring w-80 h-80 border-accent/20 top-[-8%] right-[2%] animate-spin-slow"></div>
+                <div class="tech-ring w-52 h-52 border-warm/20 bottom-[5%] left-[0%] animate-spin-slower"></div>
+
+                <!-- 旋转虚线环 -->
+                <div class="tech-ring-dashed w-64 h-64 border-accent/15 top-[5%] right-[12%] animate-spin-slower"></div>
+                <div class="tech-ring-dashed w-40 h-40 border-warm/15 bottom-[20%] left-[4%] animate-spin-slow" style="animation-duration:25s"></div>
+
+                <!-- 漂浮光点 -->
+                <div class="tech-dot w-1.5 h-1.5 bg-accent top-[12%] right-[22%] animate-float" style="box-shadow:0 0 6px 2px rgba(216,73,239,.4)"></div>
+                <div class="tech-dot w-1 h-1 bg-warm top-[40%] right-[8%] animate-float-reverse" style="box-shadow:0 0 4px 1px rgba(245,158,11,.4)"></div>
+                <div class="tech-dot w-1 h-1 bg-accent top-[70%] left-[12%] animate-float" style="animation-delay:-3s;box-shadow:0 0 4px 1px rgba(216,73,239,.4)"></div>
+                <div class="tech-dot w-1.5 h-1.5 bg-warm bottom-[30%] right-[18%] animate-float-reverse" style="animation-delay:-1.5s;box-shadow:0 0 6px 2px rgba(245,158,11,.4)"></div>
 
                 <div class="max-w-6xl mx-auto px-5 py-20 sm:py-28 lg:py-36 relative z-10">
                     <div class="grid lg:grid-cols-5 gap-12 items-center">
@@ -96,50 +149,51 @@
                                         架构</span></div>
                             </div>
                         </div>
-                        <div class="hidden lg:flex lg:col-span-2 justify-center animate-fade-in-up delay-300"
-                             <div class="relative">
-                            <div class="absolute inset-0 bg-accent/5 rounded-3xl rotate-6"></div>
-                            <div
-                                 class="absolute inset-3 bg-white rounded-2xl shadow-xl p-5 flex flex-col gap-3 rotate-3 border border-border-l h-56">
-                                <div class="flex items-center gap-3">
+                        <div class="hidden lg:flex lg:col-span-2 justify-center animate-fade-in-up delay-300">
+                            <div class="relative">
+                                <div class="absolute inset-0 bg-accent/5 rounded-3xl rotate-6"></div>
+                                <div
+                                     class="absolute inset-3 bg-white rounded-2xl shadow-xl p-5 flex flex-col gap-3 rotate-3 border border-border-l h-56">
+                                    <div class="flex items-center gap-3">
+                                        <div
+                                             class="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center">
+                                            <i class="ti ti-circle-check text-accent text-lg"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold">作文评分 A+</span>
+                                        <span class="ml-auto text-sm font-bold text-accent">+50分</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-warm-light flex items-center justify-center">
+                                            <i class="ti ti-brain text-warm text-lg"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold">AI 周报分析</span>
+                                        <span class="ml-auto text-xs text-muted">已完成</span>
+                                    </div>
+                                    <div class="flex items-center gap-3">
+                                        <div class="w-8 h-8 rounded-lg bg-warm-light flex items-center justify-center">
+                                            <i class="ti ti-credit-card text-warm text-lg"></i>
+                                        </div>
+                                        <span class="text-sm font-semibold">积分预支</span>
+                                        <span
+                                              class="ml-auto text-xs bg-warm-light text-warm px-2 py-0.5 rounded-full">3期剩余</span>
+                                    </div>
                                     <div
-                                         class="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center">
-                                        <i class="ti ti-circle-check text-accent text-lg"></i>
+                                         class="mt-2 pt-3 border-t border-dashed border-border flex justify-between text-xs text-muted">
+                                        <span>本月可用积分</span>
+                                        <span class="font-bold text-accent">815</span>
                                     </div>
-                                    <span class="text-sm font-semibold">作文评分 A+</span>
-                                    <span class="ml-auto text-sm font-bold text-accent">+50分</span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-warm-light flex items-center justify-center">
-                                        <i class="ti ti-brain text-warm text-lg"></i>
-                                    </div>
-                                    <span class="text-sm font-semibold">AI 周报分析</span>
-                                    <span class="ml-auto text-xs text-muted">已完成</span>
-                                </div>
-                                <div class="flex items-center gap-3">
-                                    <div class="w-8 h-8 rounded-lg bg-warm-light flex items-center justify-center">
-                                        <i class="ti ti-credit-card text-warm text-lg"></i>
-                                    </div>
-                                    <span class="text-sm font-semibold">积分预支</span>
-                                    <span
-                                          class="ml-auto text-xs bg-warm-light text-warm px-2 py-0.5 rounded-full">3期剩余</span>
                                 </div>
                                 <div
-                                     class="mt-2 pt-3 border-t border-dashed border-border flex justify-between text-xs text-muted">
-                                    <span>本月可用积分</span>
-                                    <span class="font-bold text-accent">815</span>
+                                     class="absolute -top-3 -right-3 w-14 h-14 bg-accent rounded-2xl rotate-12 shadow-lg flex items-center justify-center animate-float">
+                                    <i class="ti ti-star text-white text-[28px]"></i>
                                 </div>
-                            </div>
-                            <div
-                                 class="absolute -top-3 -right-3 w-14 h-14 bg-accent rounded-2xl rotate-12 shadow-lg flex items-center justify-center animate-float">
-                                <i class="ti ti-star text-white text-[28px]"></i>
-                            </div>
-                            <div class="absolute -bottom-4 -left-4 w-12 h-12 bg-warm rounded-2xl -rotate-12 shadow-lg flex items-center justify-center animate-float delay-2000"
-                                 <i class="ti ti-cpu text-white text-2xl"></i>
+                                <div
+                                     class="absolute -bottom-4 -left-4 w-12 h-12 bg-warm rounded-2xl -rotate-12 shadow-lg flex items-center justify-center animate-float delay-2000">
+                                    <i class="ti ti-cpu text-white text-2xl"></i>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
                 </div>
                 <div class="absolute bottom-0 left-0 right-0">
                     <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg"
@@ -708,8 +762,8 @@
 
         </main>
 
-        <script src="main.js">
-        </script>
+        <script src="./main.js"></script>
+        <script src="https://cdn.tailwindcss.com"></script>
     </body>
 
 </html>
