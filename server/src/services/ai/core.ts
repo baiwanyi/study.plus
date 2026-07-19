@@ -22,13 +22,22 @@ interface DeepSeekUsage {
     total_tokens?: number
 }
 
+interface DeepSeekChoice {
+    message?: {
+        content?: string
+        role?: string
+    }
+    finish_reason?: string
+}
+
 interface DeepSeekResponse {
-    choices?: Array<{
-        message?: {
-            content?: string
-        }
-    }>
+    choices?: DeepSeekChoice[]
     usage?: DeepSeekUsage
+    error?: {
+        message?: string
+        type?: string
+        code?: string
+    }
 }
 
 interface DeepSeekParsedResult {
@@ -114,8 +123,36 @@ async function callDeepSeek(
     }
 
     const data = (await response.json()) as DeepSeekResponse
-    const content = data.choices?.[0]?.message?.content
-    if (!content) throw new Error('Empty response from DeepSeek')
+
+    // 检查 API 级错误（即使 HTTP 200 也可能携带 error 字段）
+    if (data.error?.message) {
+        throw new Error(
+            `DeepSeek API error: ${data.error.message}${data.error.code ? ` (code: ${data.error.code})` : ''}`,
+        )
+    }
+
+    const choice = data.choices?.[0]
+    const content = choice?.message?.content
+    const finishReason = choice?.finish_reason
+
+    if (!content) {
+        // 记录完整诊断信息辅助排查
+        const diagnostic = {
+            finish_reason: finishReason,
+            has_choices: !!data.choices,
+            choices_length: data.choices?.length ?? 0,
+            response_keys: Object.keys(data),
+            model: 'deepseek-v4-flash',
+        }
+        console.warn('[DeepSeek Empty Response]', JSON.stringify(diagnostic))
+
+        if (finishReason === 'content_filter') {
+            throw new Error(
+                'DeepSeek 内容被过滤，请修改问题后重试（finish_reason=content_filter）',
+            )
+        }
+        throw new Error('Empty response from DeepSeek')
+    }
 
     return { content, usage: data.usage }
 }
@@ -129,12 +166,7 @@ function safeJsonParse<T>(json: string, fallback: T): T {
     }
 }
 
-export {
-    callDeepSeek,
-    DEEPSEEK_API_KEY,
-    logAiUsage,
-    safeJsonParse,
-}
+export { callDeepSeek, DEEPSEEK_API_KEY, logAiUsage, safeJsonParse }
 export type {
     CallDeepSeekOptions,
     CallDeepSeekResult,

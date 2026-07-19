@@ -32,10 +32,7 @@ export async function evaluateStudynotesReflection(
     const prompt = defaultPromptEvaluateStudynotes
         .replace(
             '{subject}',
-            () =>
-                studynotesSubjectLabels[subject] ||
-                subject ||
-                '未填写学科',
+            () => studynotesSubjectLabels[subject] || subject || '未填写学科',
         )
         .replace('{topic}', () => topic || '未填写课题')
         .replace('{summary}', () => summary || '未填写')
@@ -60,18 +57,13 @@ export async function evaluateStudynotesReflection(
             reply,
             null,
         )
-        if (
-            !parsed ||
-            typeof parsed !== 'object' ||
-            Array.isArray(parsed)
-        ) {
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
             throw new Error('Invalid evaluation response format')
         }
 
         return reply
     } catch (error: unknown) {
-        const message =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI evaluation error:', message)
         return JSON.stringify({
             completenessScore: 0,
@@ -102,7 +94,10 @@ export async function studynotesFollowUpChat(
         prevMessages.length > 0
             ? '已有对话历史：\n' +
               prevMessages
-                  .map((m) => `${m.role === 'assistant' ? '老师' : '学生'}：${m.content}`)
+                  .map(
+                      (m) =>
+                          `${m.role === 'assistant' ? '老师' : '学生'}：${m.content}`,
+                  )
                   .join('\n') +
               '\n\n'
             : ''
@@ -114,10 +109,7 @@ export async function studynotesFollowUpChat(
     let prompt = defaultPromptStudynotesFollowUp
         .replace(
             '{subject}',
-            () =>
-                studynotesSubjectLabels[subject] ||
-                subject ||
-                '未填写学科',
+            () => studynotesSubjectLabels[subject] || subject || '未填写学科',
         )
         .replace('{topic}', () => topic || '未填写课题')
         .replace('{summary}', () => summary || '未填写')
@@ -146,9 +138,16 @@ export async function studynotesFollowUpChat(
 
         return reply
     } catch (error: unknown) {
-        const message =
-            error instanceof Error ? error.message : String(error)
+        const message = error instanceof Error ? error.message : String(error)
         console.error('AI follow-up error:', message)
+
+        // 针对特定错误类型给出更友好的提示
+        if (message.includes('Empty response')) {
+            return '追问服务暂时不可用（AI 返回为空），请稍后重试。如果持续出现，请检查 API 配置或联系管理员。'
+        }
+        if (message.includes('内容被过滤')) {
+            return '您的问题包含不合适的内容，已被 AI 过滤，请换一种方式提问。'
+        }
         return `追问出错：${message}，请稍后重试`
     }
 }
