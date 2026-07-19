@@ -54,11 +54,6 @@ tailwind.config = {
 
 // 页面交互逻辑
 document.addEventListener('DOMContentLoaded', function () {
-    // 初始化 Lucide 图标
-    if (typeof lucide !== 'undefined') {
-        lucide.createIcons()
-    }
-
     // 为所有锚点链接添加平滑滚动
     document.querySelectorAll('a[href^="#"]').forEach(function (anchor) {
         anchor.addEventListener('click', function (e) {

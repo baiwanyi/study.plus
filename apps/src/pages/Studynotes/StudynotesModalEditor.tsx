@@ -63,14 +63,13 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     const [hasTriggeredConversation, setHasTriggeredConversation] =
         useState(false)
 
-    const assistantCount = chatMessages.filter(
-        (m) => m.role === 'assistant',
+    const userCount = chatMessages.filter(
+        (m) => m.role === 'user',
     ).length
     const conversationActive =
         hasTriggeredConversation &&
-        assistantCount > 0 &&
-        assistantCount < MAX_FOLLOWUP_ROUNDS
-    const conversationComplete = assistantCount >= MAX_FOLLOWUP_ROUNDS
+        userCount < MAX_FOLLOWUP_ROUNDS
+    const conversationComplete = userCount >= MAX_FOLLOWUP_ROUNDS
 
     const mountedRef = useRef(false)
     const formContainerRef = useRef<HTMLDivElement>(null)
@@ -287,7 +286,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             return
         }
         if (!canFollowUp) {
-            showSnackbar('评分未达到80分，暂无法进行追问', 'error')
+            showSnackbar('评分未达到80分，暂无法进行测验', 'error')
             return
         }
         setHasTriggeredConversation(true)
@@ -297,7 +296,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             setChatMessages(mapMessages(result.messages))
         } catch {
             showSnackbar(
-                message ? '发送失败，请稍后重试' : '追问出错，请稍后重试',
+                message ? '发送失败，请稍后重试' : '测验出错，请稍后重试',
                 'error',
             )
         } finally {
@@ -311,9 +310,9 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
 
     function getEmptyText(): string {
         if (!currentCard) return '请先保存卡片后再使用 AI 功能'
-        if (!canFollowUp) return '评分未达80分，暂无法追问'
-        if (!hasTriggeredConversation) return '点击"追问"或输入问题与 AI 对话'
-        if (conversationComplete) return '本轮追问已结束，可再次点击"追问"开启新一轮'
+        if (!canFollowUp) return '评分未达80分，暂无法测验'
+        if (!hasTriggeredConversation) return '点击"开始测验"进行10道题智能测验'
+        if (conversationComplete) return '本轮测验已结束，可再次点击"重新测验"开始新一轮'
         return ''
     }
 
@@ -466,7 +465,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 sending={chatSending}
                                 aiHelperName=""
                                 emptyText={getEmptyText()}
-                                inputPlaceholder="输入你的问题...">
+                                inputPlaceholder="输入你的答案...">
                                 <button
                                     onClick={handleFollowUp}
                                     disabled={
@@ -479,8 +478,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                     <MessageSquareText className="size-4" />
                                     <span className="ml-1">
                                         {conversationComplete
-                                            ? '新一轮追问'
-                                            : '追问'}
+                                            ? '重新测验'
+                                            : '开始测验'}
                                     </span>
                                 </button>
                             </AiChatPanel>

@@ -1,102 +1,182 @@
 :root {
-    --scrollbar-width: 6px;
+    --bg: #faf8f4;
+    --bg-card: #fff;
+    --text: #1a2e1f;
+    --text2: #5a6b5e;
+    --text3: #8a9a8e;
+    --accent: #1a5c3a;
+    --accent-l: #2d7a50;
+    --accent-bg: #e8f2ec;
+    --warm: #d97706;
+    --warm-bg: #fef3e2;
+    --border: #e2e0da;
+    --border-l: #edebe6;
+    --shadow-sm: 0 1px 2px rgba(26, 92, 58, .04);
+    --shadow-md: 0 4px 16px rgba(26, 92, 58, .06);
+    --shadow-lg: 0 12px 32px rgba(26, 92, 58, .08);
+    --shadow-xl: 0 20px 48px rgba(26, 92, 58, .12)
 }
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: #cbd5e1 transparent;
+    scrollbar-color: #c0bdb5 transparent
 }
 
 ::-webkit-scrollbar {
-    width: var(--scrollbar-width);
-    height: var(--scrollbar-width);
-}
-
-::-webkit-scrollbar-track {
-    background: transparent;
+    width: 5px;
+    height: 5px
 }
 
 ::-webkit-scrollbar-thumb {
-    background: #cbd5e1;
-    border-radius: 3px;
+    background: #c0bdb5;
+    border-radius: 3px
 }
 
-.gradient-text {
-    background: linear-gradient(135deg, #2563eb 0%, #d946ef 100%);
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-    background-clip: text;
+body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Outfit', 'Noto Sans SC', system-ui, sans-serif
 }
 
-.hero-bg {
-    background: radial-gradient(circle at 20% 50%, rgba(59, 130, 246, 0.08) 0%, transparent 50%),
-        radial-gradient(circle at 80% 20%, rgba(217, 70, 239, 0.06) 0%, transparent 50%),
-        radial-gradient(circle at 50% 80%, rgba(245, 158, 11, 0.04) 0%, transparent 50%);
+.font-display {
+    font-family: 'Outfit', 'Noto Sans SC', sans-serif;
+    letter-spacing: -.02em
 }
 
-.card-hover {
-    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+.text-accent { color: var(--accent) }
+.text-warm { color: var(--warm) }
+.bg-accent { background-color: var(--accent) }
+.bg-warm { background-color: var(--warm) }
+.bg-accent-light { background-color: var(--accent-bg) }
+.bg-warm-light { background-color: var(--warm-bg) }
+
+.nav-glass {
+    background: rgba(250, 248, 244, .85);
+    backdrop-filter: blur(12px) saturate(1.5);
+    -webkit-backdrop-filter: blur(12px) saturate(1.5);
+    border-bottom: 1px solid var(--border-l)
 }
 
-.card-hover:hover {
-    transform: translateY(-6px);
-    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15), 0 4px 12px rgba(0, 0, 0, 0.05);
+.btn-primary {
+    background: var(--accent);
+    color: #fff;
+    box-shadow: 0 2px 8px rgba(26, 92, 58, .25), inset 0 1px 0 rgba(255, 255, 255, .1);
+    transition: all .3s cubic-bezier(.4, 0, .2, 1)
 }
 
-.badge {
-    display: inline-flex;
-    align-items: center;
-    gap: 4px;
-    padding: 4px 12px;
-    border-radius: 9999px;
-    font-size: 0.75rem;
-    font-weight: 500;
-    line-height: 1.25rem;
+.btn-primary:hover {
+    background: var(--accent-l);
+    transform: translateY(-1px);
+    box-shadow: 0 6px 20px rgba(26, 92, 58, .35)
 }
 
-.feature-icon {
+.btn-outline {
+    border: 1.5px solid var(--border);
+    color: var(--text);
+    transition: all .3s cubic-bezier(.4, 0, .2, 1)
+}
+
+.btn-outline:hover {
+    border-color: var(--accent);
+    color: var(--accent);
+    background: var(--accent-bg)
+}
+
+.btn-ghost { transition: all .3s }
+.btn-ghost:hover { color: var(--accent) }
+
+.grain::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none
+}
+
+.section-number {
+    font-family: 'Outfit', sans-serif;
+    font-weight: 700;
+    font-size: .75rem;
+    letter-spacing: .15em;
+    text-transform: uppercase
+}
+
+.card {
+    background: var(--bg-card);
+    border: 1px solid var(--border-l);
+    box-shadow: var(--shadow-sm);
+    transition: all .4s cubic-bezier(.4, 0, .2, 1)
+}
+
+.card:hover {
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-2px);
+    border-color: var(--border)
+}
+
+.step-dot {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
-    border-radius: 12px;
-    background: white;
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.06);
-    margin-bottom: 16px;
+    font-weight: 700;
+    font-size: .75rem;
+    position: relative;
+    z-index: 1
 }
 
-.timeline-dot {
-    width: 12px;
-    height: 12px;
-    border-radius: 50%;
-    background: #2563eb;
-    box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.2);
-    margin-right: 16px;
-    flex-shrink: 0;
+.tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 12px;
+    font-size: .75rem;
+    font-weight: 500;
+    border-radius: 9999px
 }
 
-.tech-item {
+.stat-badge {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 16px;
-    background: white;
-    border-radius: 9999px;
-    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
-    font-size: 0.875rem;
+    padding: 8px 16px;
+    background: #fff;
+    border: 1px solid var(--border-l);
+    border-radius: 12px;
+    box-shadow: var(--shadow-sm);
+    font-size: .875rem;
     font-weight: 500;
-    color: #334155;
-    transition: box-shadow 0.2s;
+    color: var(--text2);
+    transition: all .3s
 }
 
-.tech-item:hover {
-    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+.stat-badge:hover {
+    box-shadow: var(--shadow-md);
+    border-color: var(--accent)
 }
 
-@media (max-width: 640px) {
-    .feature-icon {
-        width: 40px;
-        height: 40px;
-    }
+.score-bar {
+    height: 6px;
+    border-radius: 3px;
+    background: var(--border-l)
 }
+
+.score-fill {
+    height: 100%;
+    border-radius: 3px
+}
+
+.hero-shape {
+    position: absolute;
+    border-radius: 50%;
+    filter: blur(80px);
+    opacity: .15
+}
+
+.footer-link { transition: all .2s }
+.footer-link:hover { color: var(--accent) }
+
+/* 修复 Tabler Icons 行高被 Tailwind text-* 覆盖的问题 */
+.ti { line-height: 1 !important }

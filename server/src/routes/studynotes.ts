@@ -388,7 +388,7 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             userMessage || undefined,
         )
 
-        // 追问出错时（如 AI 返回为空）不允许将错误信息写入数据库
+        // 测验出错时（如 AI 返回为空）不允许将错误信息写入数据库
         if (aiReply.startsWith('追问出错：')) {
             throw new Error(aiReply)
         }
@@ -399,8 +399,8 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             content: aiReply,
         })
 
-        // 解析 AI 回复中的评分 【评分】XX分，保存到卡片
-        const scoreMatch = aiReply.match(/【评分】\s*(\d+)\s*分/)
+        // 解析 AI 回复中的掌握程度评分，保存到卡片
+        const scoreMatch = aiReply.match(/【掌握程度评分】\s*(\d+)\s*分/)
         if (scoreMatch) {
             const followUpScore = Number.parseInt(scoreMatch[1], 10)
             if (!Number.isNaN(followUpScore)) {
@@ -429,7 +429,7 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error in studynotes follow-up:', message)
-        res.status(500).json({ error: 'AI 追问失败' })
+        res.status(500).json({ error: 'AI 测验失败' })
     }
 })
 

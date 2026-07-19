@@ -151,6 +151,11 @@ async function callDeepSeek(
                 'DeepSeek 内容被过滤，请修改问题后重试（finish_reason=content_filter）',
             )
         }
+        if (finishReason === 'length') {
+            throw new Error(
+                'DeepSeek 响应被 max_tokens 限制截断导致内容为空，请增加 max_tokens 后重试',
+            )
+        }
         throw new Error('Empty response from DeepSeek')
     }
 
