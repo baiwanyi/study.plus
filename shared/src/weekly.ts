@@ -22,13 +22,25 @@ export type WeeklyReportContent = z.infer<typeof WeeklyContentSchema>
  * 统一解析：将数据库中的 JSON 字符串（或未知对象）转为安全的 WeeklyReportContent。
  * - 旧数据缺字段 → 自动补默认值
  * - 旧数据多余字段 → 自动剔除
- * - 类型不匹配 → 抛出 ZodError
+ * - 类型不匹配或 JSON 损坏 → 返回空内容（不抛异常）
  */
 export function parseContent(raw: unknown): WeeklyReportContent {
+    if (raw == null) return createEmptyContent()
     if (typeof raw === 'string') {
-        return WeeklyContentSchema.parse(JSON.parse(raw))
+        try {
+            return WeeklyContentSchema.parse(JSON.parse(raw))
+        } catch {
+            return createEmptyContent()
+        }
     }
-    return WeeklyContentSchema.parse(raw)
+    if (typeof raw === 'object' && !Array.isArray(raw)) {
+        try {
+            return WeeklyContentSchema.parse(raw)
+        } catch {
+            return createEmptyContent()
+        }
+    }
+    return createEmptyContent()
 }
 
 /**
@@ -38,4 +50,25 @@ export function parseContent(raw: unknown): WeeklyReportContent {
  */
 export function stringifyContent(content: WeeklyReportContent): string {
     return JSON.stringify(WeeklyContentSchema.parse(content))
+}
+
+const MS_PER_WEEK = 7 * 24 * 60 * 60 * 1000
+
+/** ISO 周数：获取指定日期所在的年度第几周 */
+export function getWeekNumber(date: Date): number {
+    const temp = new Date(date.valueOf())
+    const dayNum = (date.getDay() + 6) % 7
+    temp.setDate(temp.getDate() - dayNum + 3)
+    const firstThursday = temp.valueOf()
+    temp.setMonth(0, 1)
+    if (temp.getDay() !== 4) {
+        temp.setMonth(0, 1 + ((4 - temp.getDay() + 7) % 7))
+    }
+    return 1 + Math.ceil((firstThursday - temp.valueOf()) / MS_PER_WEEK)
+}
+
+/** 利用 Schema 默认值生成空白内容 */
+const EMPTY_CONTENT = WeeklyContentSchema.parse({})
+export function createEmptyContent(): WeeklyReportContent {
+    return { ...EMPTY_CONTENT }
 }
