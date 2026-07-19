@@ -17,7 +17,8 @@ async function migrate(): Promise<void> {
       title TEXT NOT NULL,
       type TEXT NOT NULL CHECK(type IN ('composition', 'mindmap', 'notes')),
       status TEXT NOT NULL DEFAULT 'pending' CHECK(status IN ('pending', 'completed', 'expired')),
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
 
@@ -85,6 +86,13 @@ async function migrate(): Promise<void> {
         console.log('Tasks table migrated to remove math/english types.')
     }
 
+    try {
+        await client.execute(
+            'ALTER TABLE tasks ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+        )
+        console.log('Added updated_at column to tasks table.')
+    } catch {}
+
     const subFKResult = await client.execute(
         'PRAGMA foreign_key_list(submissions)',
     )
@@ -148,11 +156,13 @@ async function migrate(): Promise<void> {
         await client.execute(`
       CREATE TABLE IF NOT EXISTS submissions (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
-        task_id INTEGER NOT NULL REFERENCES tasks(id),
+        task_id INTEGER NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
         content TEXT NOT NULL,
         grade TEXT CHECK(grade IN ('A+', 'A', 'B', 'C', 'D', 'E')),
         ai_score TEXT,
-        created_at TEXT NOT NULL DEFAULT (datetime('now'))
+        scored_at TEXT,
+        created_at TEXT NOT NULL DEFAULT (datetime('now')),
+        updated_at TEXT NOT NULL DEFAULT (datetime('now'))
       )
     `)
     }
@@ -175,9 +185,10 @@ async function migrate(): Promise<void> {
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       item_type TEXT NOT NULL,
       points_cost INTEGER NOT NULL,
-      detail TEXT NOT NULL,
+      detail TEXT NOT NULL DEFAULT '',
       status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'revoked')),
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
 
@@ -242,12 +253,39 @@ async function migrate(): Promise<void> {
     } catch {}
 
     try {
+        await client.execute(
+            'ALTER TABLE submissions ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+        )
+        console.log('Added updated_at column to submissions table.')
+    } catch {}
+
+    // Ensure task_id unique index (one submission per task)
+    try {
+        await client.execute(
+            "SELECT name FROM sqlite_master WHERE type='index' AND name='submissions_task_id_unique'",
+        )
+    } catch {
+        try {
+            await client.execute(
+                'CREATE UNIQUE INDEX IF NOT EXISTS submissions_task_id_unique ON submissions(task_id)',
+            )
+        } catch {}
+    }
+
+    try {
         await client.execute('ALTER TABLE exchanges DROP COLUMN expires_at')
         console.log('Dropped unused column: exchanges.expires_at')
     } catch {}
     try {
         await client.execute('ALTER TABLE exchanges DROP COLUMN revoked_at')
         console.log('Dropped unused column: exchanges.revoked_at')
+    } catch {}
+
+    try {
+        await client.execute(
+            'ALTER TABLE exchanges ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+        )
+        console.log('Added updated_at column to exchanges table.')
     } catch {}
 
     await client.execute(`
@@ -267,9 +305,17 @@ async function migrate(): Promise<void> {
       installment_amount INTEGER NOT NULL,
       paid_installments INTEGER NOT NULL DEFAULT 0,
       status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'completed')),
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+
+    try {
+        await client.execute(
+            'ALTER TABLE point_advances ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+        )
+        console.log('Added updated_at column to point_advances table.')
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS month_summary (
@@ -591,14 +637,30 @@ async function migrate(): Promise<void> {
     )
   `)
 
+    // Ensure unique index on (year, week_number) for existing tables
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS week_year_unique ON weekly_reports(year, week_number)',
+        )
+        console.log('Created week_year_unique index on weekly_reports.')
+    } catch {}
+
     await client.execute(`
     CREATE TABLE IF NOT EXISTS task_conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      task_id INTEGER NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+      task_id INTEGER NOT NULL UNIQUE REFERENCES tasks(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+
+    // Ensure task_id unique index for existing tables
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS task_conversations_task_id_unique ON task_conversations(task_id)',
+        )
+        console.log('Created unique index on task_conversations.task_id.')
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS task_messages (
@@ -613,11 +675,19 @@ async function migrate(): Promise<void> {
     await client.execute(`
     CREATE TABLE IF NOT EXISTS weekly_conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      weekly_report_id INTEGER NOT NULL REFERENCES weekly_reports(id) ON DELETE CASCADE,
+      weekly_report_id INTEGER NOT NULL UNIQUE REFERENCES weekly_reports(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
+
+    // Ensure weekly_report_id unique index for existing tables
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS weekly_conversations_report_id_unique ON weekly_conversations(weekly_report_id)',
+        )
+        console.log('Created unique index on weekly_conversations.weekly_report_id.')
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS weekly_messages (
@@ -640,21 +710,37 @@ async function migrate(): Promise<void> {
       memory_hook TEXT,
       evaluation TEXT,
       evaluated_at TEXT,
+      follow_up_score INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
     console.log('Created studynotes table.')
 
+    try {
+        await client.execute(
+            'ALTER TABLE studynotes ADD COLUMN follow_up_score INTEGER',
+        )
+        console.log('Added follow_up_score column to studynotes table.')
+    } catch {}
+
     await client.execute(`
     CREATE TABLE IF NOT EXISTS studynote_conversations (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      studynote_id INTEGER NOT NULL REFERENCES studynotes(id) ON DELETE CASCADE,
+      studynote_id INTEGER NOT NULL UNIQUE REFERENCES studynotes(id) ON DELETE CASCADE,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
     console.log('Created studynote_conversations table.')
+
+    // Ensure studynote_id unique index for existing tables
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS studynote_conversations_note_id_unique ON studynote_conversations(studynote_id)',
+        )
+        console.log('Created unique index on studynote_conversations.studynote_id.')
+    } catch {}
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS studynote_messages (

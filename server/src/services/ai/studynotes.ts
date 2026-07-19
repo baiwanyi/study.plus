@@ -102,7 +102,7 @@ export async function studynotesFollowUpChat(
               '\n\n'
             : ''
     const scoringText =
-        roundNumber >= 5
+        roundNumber >= 11
             ? '这是最后一轮对话。请先回答学生的提问，然后对学生的回答进行简要打分（满分100分），并给出简短评语。格式：\n【回答】...\n【评分】XX分\n【评语】...'
             : ''
 

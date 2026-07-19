@@ -90,6 +90,8 @@ export const studynotesSubjectLabels: Record<string, string> = {
     math: '数学',
     chinese: '语文',
     english: '英语',
+    science: '科学',
+    custom: '自定义',
 }
 
 export const studynotesSubjectValues = ['math', 'chinese', 'english'] as const

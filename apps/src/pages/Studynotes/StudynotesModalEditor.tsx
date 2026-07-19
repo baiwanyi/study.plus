@@ -16,6 +16,8 @@ import type {
     ChatMessage,
 } from '@shared/types'
 
+const MAX_FOLLOWUP_ROUNDS = 10
+
 function mapMessages(msgs: StudynotesMessage[]): ChatMessage[] {
     return msgs.map(({ role, content }) => ({ role, content }))
 }
@@ -60,6 +62,15 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     const [chatSending, setChatSending] = useState(false)
     const [hasTriggeredConversation, setHasTriggeredConversation] =
         useState(false)
+
+    const assistantCount = chatMessages.filter(
+        (m) => m.role === 'assistant',
+    ).length
+    const conversationActive =
+        hasTriggeredConversation &&
+        assistantCount > 0 &&
+        assistantCount < MAX_FOLLOWUP_ROUNDS
+    const conversationComplete = assistantCount >= MAX_FOLLOWUP_ROUNDS
 
     const mountedRef = useRef(false)
     const formContainerRef = useRef<HTMLDivElement>(null)
@@ -298,14 +309,26 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
 
     const handleChatSend = useCallback((message: string) => runFollowUp(message), [runFollowUp])
 
+    function getEmptyText(): string {
+        if (!currentCard) return '请先保存卡片后再使用 AI 功能'
+        if (!canFollowUp) return '评分未达80分，暂无法追问'
+        if (!hasTriggeredConversation) return '点击"追问"或输入问题与 AI 对话'
+        if (conversationComplete) return '本轮追问已结束，可再次点击"追问"开启新一轮'
+        return ''
+    }
+
+    function getConfirmLabel(): string {
+        if (evaluating) return '评估中...'
+        if (saving) return '保存中...'
+        return '保存并评估'
+    }
+
     return (
         <Modal
             open={open}
             onCancel={onClose}
             onConfirm={handleSave}
-            confirmLabel={
-                evaluating ? '评估中...' : saving ? '保存中...' : '保存并评估'
-            }
+            confirmLabel={getConfirmLabel()}
             isDisabled={
                 saving || evaluating || loadingCard || !summary || !example
             }
@@ -442,26 +465,23 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 onSend={handleChatSend}
                                 sending={chatSending}
                                 aiHelperName=""
-                                emptyText={
-                                    currentCard
-                                        ? !canFollowUp
-                                            ? '评分未达80分，暂无法追问'
-                                            : hasTriggeredConversation
-                                              ? ''
-                                              : '点击"追问"或输入问题与 AI 对话'
-                                        : '请先保存卡片后再使用 AI 功能'
-                                }
+                                emptyText={getEmptyText()}
                                 inputPlaceholder="输入你的问题...">
                                 <button
                                     onClick={handleFollowUp}
                                     disabled={
                                         chatSending ||
                                         !currentCard ||
-                                        !canFollowUp
+                                        !canFollowUp ||
+                                        conversationActive
                                     }
                                     className="btn btn-outline btn-sm">
                                     <MessageSquareText className="size-4" />
-                                    <span className="ml-1">追问</span>
+                                    <span className="ml-1">
+                                        {conversationComplete
+                                            ? '新一轮追问'
+                                            : '追问'}
+                                    </span>
                                 </button>
                             </AiChatPanel>
                         </div>

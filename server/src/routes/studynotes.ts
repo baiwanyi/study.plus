@@ -1,4 +1,4 @@
-import { and, desc, eq, asc, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { Router } from 'express'
 import { studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
@@ -388,11 +388,31 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             userMessage || undefined,
         )
 
+        // 追问出错时（如 AI 返回为空）不允许将错误信息写入数据库
+        if (aiReply.startsWith('追问出错：')) {
+            throw new Error(aiReply)
+        }
+
         await db.insert(studynoteMessages).values({
             conversationId,
             role: 'assistant',
             content: aiReply,
         })
+
+        // 解析 AI 回复中的评分 【评分】XX分，保存到卡片
+        const scoreMatch = aiReply.match(/【评分】\s*(\d+)\s*分/)
+        if (scoreMatch) {
+            const followUpScore = Number.parseInt(scoreMatch[1], 10)
+            if (!Number.isNaN(followUpScore)) {
+                await db
+                    .update(studynotes)
+                    .set({
+                        followUpScore,
+                        updatedAt: new Date().toISOString(),
+                    })
+                    .where(eq(studynotes.id, id))
+            }
+        }
 
         await db
             .update(studynoteConversations)

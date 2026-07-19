@@ -16,7 +16,7 @@
 - **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
 - **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
-- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可追问，追问最多3轮（最后一轮打分并结束），支持分享
+- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可追问，追问最多10轮（第11轮打分并结束），支持分享
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 - **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
@@ -85,7 +85,7 @@
 | 周报对话     | 针对周报内容与 AI 进行追问对话                                                                                                |
 | 作业对话     | 在作业编辑器中与 AI 对话，支持生成示范作业与答疑                                                                              |
 | 学习心得评估 | AI 评估学习心得完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议）                                                                |
-| 学习心得追问 | 基于心得内容进行最多3轮的苏格拉底式追问对话，最后一轮打分并结束                                                               |
+| 学习心得追问 | 基于心得内容进行最多10轮的苏格拉底式追问对话，第11轮对对话总结并打分                                                               |
 
 - 集成 DeepSeek API（deepseek-v4-flash 模型），评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
@@ -268,7 +268,7 @@ weekly_conversations-> id, reportId(FK), role(ai/student), createdAt
 weekly_messages     -> id, conversationId(FK), role, content, createdAt
 task_conversations  -> id, taskId(FK, CASCADE), createdAt, updatedAt
 task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
-studynotes               -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, createdAt, updatedAt
+studynotes               -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, followUpScore?, createdAt, updatedAt
 studynote_conversations-> id, studynoteId(FK, CASCADE), createdAt, updatedAt
 studynote_messages     -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
 ```
@@ -466,7 +466,7 @@ study.webian.dev/
 - [x] AI 评估报告组件（EvaluationReport，lucide 图标替代 emoji）
 - [x] AI 追问对话（支持历史消息 + 无卡壳心得自动出变式题）
 - [x] 追问评分门槛：评估分达80分后方可使用追问
-- [x] 追问轮次限制：最多3轮，最后一轮对回答打分并结束
+- [x] 追问轮次限制：最多10轮，第11轮对总结和打分并结束
 - [x] 保存时自动评估（内容无变更跳过）：保存前先清空旧评分，AI 评分生成后再写入；评分失败标记错误，可点击「保存并评分」二次评分（仅重评不重复保存）
 - [x] 编辑表单 textarea 自适应高度：每次打开/加载完成（含再次打开同一卡片）均按内容重设高度
 - [x] 问题三可留空

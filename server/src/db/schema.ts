@@ -1,9 +1,14 @@
-import { sqliteTable, text, integer } from 'drizzle-orm/sqlite-core'
+import {
+    integer,
+    sqliteTable,
+    text,
+    uniqueIndex,
+} from 'drizzle-orm/sqlite-core'
 import {
     defaultGradeValues,
-    taskStatus,
-    relatedTypeValues,
     exchangeStatusValues,
+    relatedTypeValues,
+    taskStatus,
 } from '@shared/utils'
 
 export const tasks = sqliteTable('tasks', {
@@ -14,18 +19,25 @@ export const tasks = sqliteTable('tasks', {
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
 })
 
 export const submissions = sqliteTable('submissions', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     taskId: integer('task_id')
         .notNull()
-        .references(() => tasks.id),
+        .unique()
+        .references(() => tasks.id, { onDelete: 'cascade' }),
     content: text('content').notNull(),
     grade: text('grade', { enum: defaultGradeValues }),
     aiScore: text('ai_score'),
     scoredAt: text('scored_at'),
     createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
 })
@@ -49,11 +61,14 @@ export const exchanges = sqliteTable('exchanges', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     itemType: text('item_type').notNull(),
     pointsCost: integer('points_cost').notNull(),
-    detail: text('detail').notNull(),
+    detail: text('detail').notNull().default(''),
     status: text('status', { enum: exchangeStatusValues })
         .notNull()
         .default('active'),
     createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
 })
@@ -68,10 +83,10 @@ export const aiScoreLogs = sqliteTable('ai_score_logs', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     taskId: integer('task_id')
         .notNull()
-        .references(() => tasks.id),
+        .references(() => tasks.id, { onDelete: 'cascade' }),
     submissionId: integer('submission_id')
         .notNull()
-        .references(() => submissions.id),
+        .references(() => submissions.id, { onDelete: 'cascade' }),
     content: text('content').notNull(),
     grade: text('grade', { enum: defaultGradeValues }),
     aiScore: text('ai_score').notNull(),
@@ -107,6 +122,9 @@ export const pointAdvances = sqliteTable('point_advances', {
         .notNull()
         .default('active'),
     createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
 })
@@ -146,12 +164,15 @@ export const weeklyReports = sqliteTable('weekly_reports', {
     updatedAt: text('updated_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
-})
+}, (table) => ({
+    weekYearUnique: uniqueIndex('week_year_unique').on(table.year, table.weekNumber),
+}))
 
 export const weeklyConversations = sqliteTable('weekly_conversations', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     weeklyReportId: integer('weekly_report_id')
         .notNull()
+        .unique()
         .references(() => weeklyReports.id, { onDelete: 'cascade' }),
     createdAt: text('created_at')
         .notNull()
@@ -165,6 +186,7 @@ export const taskConversations = sqliteTable('task_conversations', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     taskId: integer('task_id')
         .notNull()
+        .unique()
         .references(() => tasks.id, { onDelete: 'cascade' }),
     createdAt: text('created_at')
         .notNull()
@@ -196,6 +218,7 @@ export const studynotes = sqliteTable('studynotes', {
     memoryHook: text('memory_hook'),
     evaluation: text('evaluation'),
     evaluatedAt: text('evaluated_at'),
+    followUpScore: integer('follow_up_score'),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
@@ -208,6 +231,7 @@ export const studynoteConversations = sqliteTable('studynote_conversations', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     studynoteId: integer('studynote_id')
         .notNull()
+        .unique()
         .references(() => studynotes.id, { onDelete: 'cascade' }),
     createdAt: text('created_at')
         .notNull()

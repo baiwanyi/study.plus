@@ -21,6 +21,8 @@ const SUBJECT_COLORS: Record<string, string> = {
     math: 'bg-blue-100 text-blue-800',
     chinese: 'bg-red-100 text-red-800',
     english: 'bg-yellow-100 text-yellow-800',
+    science: 'bg-green-100 text-green-800',
+    custom: 'bg-purple-100 text-purple-800',
 }
 
 function colorForScore(score: number): string {
@@ -44,6 +46,13 @@ function renderEvaluation(evaluation: string | null) {
     } catch {
         return <span className="text-xs text-gray-600">-</span>
     }
+}
+
+function renderFollowUpScore(score: number | null | undefined) {
+    if (score == null) {
+        return <span className="text-xs text-gray-600">-</span>
+    }
+    return <span className={`font-semibold text-base ${colorForScore(score)}`}>{score}</span>
 }
 
 export const StudynotesCardList: FC<StudynotesCardListProps> = ({
@@ -90,25 +99,13 @@ export const StudynotesCardList: FC<StudynotesCardListProps> = ({
         },
         {
             key: 'evaluation',
-            header: '评分',
+            header: '心得评分',
             render: (record) => renderEvaluation(record.evaluation),
         },
         {
-            key: 'followUpCount',
-            header: '追问',
-            render: (record) => {
-                const count = record.followUpCount ?? 0
-                return (
-                    <span
-                        className={`text-xs ${
-                            count > 0
-                                ? 'text-primary font-medium'
-                                : 'text-gray-600'
-                        }`}>
-                        {count > 0 ? `${count} 次` : '-'}
-                    </span>
-                )
-            },
+            key: 'followUpScore',
+            header: '追问评分',
+            render: (record) => renderFollowUpScore(record.followUpScore),
         },
         {
             key: 'createdAt',

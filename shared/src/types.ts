@@ -23,6 +23,7 @@ export interface StudynotesCard {
     createdAt: string
     updatedAt: string
     followUpCount?: number
+    followUpScore?: number | null
 }
 
 export interface StudynotesEvaluation {
