@@ -33,7 +33,7 @@
                 "applicationCategory": "EducationalApplication",
                 "operatingSystem": "Web",
                 "description": "面向3-15岁孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯的智能学习管理工具。融合作业管理、周报分析与费曼学习法，DeepSeek AI 全程赋能。",
-                "url": "https://study.plus",
+                "url": "https://baiwanyi.github.io/study.plus/",
                 "author": {
                     "@type": "Person",
                     "name": "baiwanyi"
@@ -45,14 +45,13 @@
                 }
             }
         </script>
-
+        <script src="./assets/js/tailwindcss.min.js"></script>
+        <script src="./assets/js/main.js"></script>
         <link rel="icon" type="image/svg+xml" href="./assets/images/favicon.svg">
-        <link rel="stylesheet" href="./assets/tabler-icons.min.css">
         <link rel="stylesheet" href="./assets/style.css">
     </head>
 
     <body class="font-body antialiased">
-
         <!-- 导航栏 -->
         <nav class="fixed top-0 left-0 right-0 nav-glass z-50">
             <div class="max-w-6xl mx-auto px-5 flex items-center justify-between h-16">
@@ -86,7 +85,7 @@
         <main class="pt-16">
 
             <!-- ==================== Hero 区域 ==================== -->
-            <section class="relative overflow-hidden grain bg-[--bg]">
+            <section class="relative overflow-hidden grain bg-surface">
                 <!-- 科技网格背景 -->
                 <div class="tech-grid"></div>
 
@@ -125,7 +124,7 @@
                     <div class="grid lg:grid-cols-5 gap-12 items-center">
                         <div class="lg:col-span-3 animate-fade-in-up delay-100">
                             <div
-                                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-light text-accent text-xs font-medium mb-6 border border-accent/20">
+                                 class="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-accent-subtle text-accent text-xs font-medium mb-6 border border-accent/20">
                                 <span class="relative flex h-2 w-2"><span
                                           class="animate-ping absolute inline-flex h-full w-full rounded-full bg-accent opacity-40"></span><span
                                           class="relative inline-flex rounded-full h-2 w-2 bg-accent"></span></span>
@@ -135,7 +134,7 @@
                                 智能学习管理<br>
                                 <span class="text-accent">让成长</span><span class="text-warm">有迹可循</span>
                             </h1>
-                            <p class="mt-6 text-lg text-[--text2] max-w-xl leading-relaxed">
+                            <p class="mt-6 text-lg text-text-muted max-w-xl leading-relaxed">
                                 以积分制为核心，融合作业管理、周报分析与费曼学习法，<br>
                                 DeepSeek AI 全程赋能，帮助家长培养孩子的学习习惯与自律性。
                             </p>
@@ -162,32 +161,32 @@
                             <div class="relative">
                                 <div class="absolute inset-0 bg-accent/5 rounded-3xl rotate-6"></div>
                                 <div
-                                     class="absolute inset-3 bg-white rounded-2xl shadow-xl p-5 flex flex-col gap-3 rotate-3 border border-border-l size-56">
+                                     class="absolute inset-3 bg-white rounded-2xl shadow-xl p-5 flex flex-col gap-3 rotate-3 border border-border-light size-56">
                                     <div class="flex items-center gap-3">
                                         <div
-                                             class="w-8 h-8 rounded-lg bg-accent-light flex items-center justify-center">
+                                             class="w-8 h-8 rounded-lg bg-accent-subtle flex items-center justify-center">
                                             <i class="ti ti-circle-check text-accent text-lg"></i>
                                         </div>
                                         <span class="text-sm font-semibold">作文评分 A+</span>
                                         <span class="ml-auto text-sm font-bold text-accent">+50分</span>
                                     </div>
                                     <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-warm-light flex items-center justify-center">
+                                        <div class="w-8 h-8 rounded-lg bg-warm-subtle flex items-center justify-center">
                                             <i class="ti ti-brain text-warm text-lg"></i>
                                         </div>
                                         <span class="text-sm font-semibold">AI 周报分析</span>
-                                        <span class="ml-auto text-xs text-muted">已完成</span>
+                                        <span class="ml-auto text-xs text-text-muted">已完成</span>
                                     </div>
                                     <div class="flex items-center gap-3">
-                                        <div class="w-8 h-8 rounded-lg bg-warm-light flex items-center justify-center">
+                                        <div class="w-8 h-8 rounded-lg bg-warm-subtle flex items-center justify-center">
                                             <i class="ti ti-credit-card text-warm text-lg"></i>
                                         </div>
                                         <span class="text-sm font-semibold">积分预支</span>
                                         <span
-                                              class="ml-auto text-xs bg-warm-light text-warm px-2 py-0.5 rounded-full">3期剩余</span>
+                                              class="ml-auto text-xs bg-warm-subtle text-warm px-2 py-0.5 rounded-full">3期剩余</span>
                                     </div>
                                     <div
-                                         class="mt-2 pt-3 border-t border-dashed border-border flex justify-between text-muted">
+                                         class="mt-2 pt-3 border-t border-dashed border-border flex justify-between text-text-muted">
                                         <span>本月可用积分</span>
                                         <span class="font-bold text-accent">815</span>
                                     </div>
@@ -207,18 +206,18 @@
                 <div class="absolute bottom-0 left-0 right-0">
                     <svg viewBox="0 0 1440 100" fill="none" xmlns="http://www.w3.org/2000/svg"
                          preserveAspectRatio="none" class="w-full h-auto">
-                        <path d="M0 50C240 100 480 0 720 50C960 100 1200 0 1440 50V100H0V50Z" fill="var(--bg-card)" />
+                        <path d="M0 50C240 100 480 0 720 50C960 100 1200 0 1440 50V100H0V50Z" fill="var(--color-surface-card)" />
                     </svg>
                 </div>
             </section>
 
             <!-- ==================== 三大核心功能 ==================== -->
-            <section id="features" class="pt-16 pb-8 sm:pt-24 sm:pb-16 bg-[--bg-card]">
+            <section id="features" class="pt-16 pb-8 sm:pt-24 sm:pb-16 bg-surface-card">
                 <div class="max-w-6xl mx-auto px-5">
                     <div class="max-w-2xl mb-14">
                         <span class="section-number text-accent mb-3 block">01 — 核心功能</span>
                         <h2 class="font-display text-3xl sm:text-4xl font-bold tracking-tight">三大核心学习模块</h2>
-                        <p class="mt-3 text-lg text-[--text2]">从作业提交到知识巩固，AI 赋能每一个学习环节</p>
+                        <p class="mt-3 text-lg text-text-muted">从作业提交到知识巩固，AI 赋能每一个学习环节</p>
                     </div>
 
                     <!-- 功能一：学习周报 -->
@@ -227,7 +226,7 @@
                             <div class="lg:col-span-7">
                                 <div class="flex items-center gap-4 mb-6">
                                     <div
-                                         class="w-12 h-12 rounded-xl bg-accent-light flex items-center justify-center shadow-sm">
+                                         class="w-12 h-12 rounded-xl bg-accent-subtle flex items-center justify-center shadow-sm">
                                         <i class="ti ti-calendar-check text-accent text-2xl"></i>
                                     </div>
                                     <div>
@@ -235,68 +234,76 @@
                                         <p class="text-sm text-accent font-medium">Weekly Report · AI 智能分析</p>
                                     </div>
                                 </div>
-                                <p class="text-[--text2] leading-relaxed mb-6">
+                                <p class="text-text-muted leading-relaxed mb-6">
                                     每周学习总结记录，包含所学内容、遇到的问题、薄弱知识点与成就感事项。
                                     配合 <strong>SMART 目标规划</strong>，帮助孩子从模糊的学习记忆中提取结构化信息，养成复盘习惯。
                                 </p>
                                 <div class="grid sm:grid-cols-2 gap-4">
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">SMART 目标</span>
-                                            <p class="text-xs text-[--text2] mt-1">按 S/M/A/R/T 五维度填写，清晰可衡量</p>
+                                            <p class="text-xs text-text-muted mt-1">按 S/M/A/R/T 五维度填写，清晰可衡量</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 智能分析</span>
-                                            <p class="text-xs text-[--text2] mt-1">自动生成鼓励、困难方案、目标建议</p>
+                                            <p class="text-xs text-text-muted mt-1">自动生成鼓励、困难方案、目标建议</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 追问对话</span>
-                                            <p class="text-xs text-[--text2]">针对周报内容深入对话，探讨改进</p>
+                                            <p class="text-xs text-text-muted">针对周报内容深入对话，探讨改进</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">一键分享</span>
-                                            <p class="text-xs text-[--text2] mt-1">截图生成长图，留存成长轨迹</p>
+                                            <p class="text-xs text-text-muted mt-1">截图生成长图，留存成长轨迹</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="lg:col-span-5 card rounded-2xl p-6">
-                                <h4 class="section-number text-muted mb-5">工作流程</h4>
+                                <h4 class="section-number text-text-muted mb-5">工作流程</h4>
                                 <div class="relative">
-                                    <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-accent/20"></div>
+                                    <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-accent/20"></div>
                                     <div class="space-y-6 relative">
                                         <div class="flex items-start gap-4 pl-4">
-                                            <div class="step-dot bg-accent text-white">1</div>
+                                            <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                <i class="ti ti-number-1 text-white text-lg"></i>
+                                            </div>
                                             <div><span class="font-semibold text-sm">填写周报</span>
-                                                <p class="text-xs text-muted mt-0.5">记录本周学习情况</p>
+                                                <p class="text-xs text-text-muted mt-0.5">记录本周学习情况</p>
                                             </div>
                                         </div>
                                         <div class="flex items-start gap-4 pl-4">
-                                            <div class="step-dot bg-accent text-white">2</div>
+                                            <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                <i class="ti ti-number-2 text-white text-lg"></i>
+                                            </div>
                                             <div><span class="font-semibold text-sm">AI 分析</span>
-                                                <p class="text-xs text-muted mt-0.5">自动生成反馈</p>
+                                                <p class="text-xs text-text-muted mt-0.5">自动生成反馈</p>
                                             </div>
                                         </div>
                                         <div class="flex items-start gap-4 pl-4">
-                                            <div class="step-dot bg-accent text-white">3</div>
+                                            <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                <i class="ti ti-number-3 text-white text-lg"></i>
+                                            </div>
                                             <div><span class="font-semibold text-sm">设 SMART 目标</span>
-                                                <p class="text-xs text-muted mt-0.5">规划下周方向</p>
+                                                <p class="text-xs text-text-muted mt-0.5">规划下周方向</p>
                                             </div>
                                         </div>
                                         <div class="flex items-start gap-4 pl-4">
-                                            <div class="step-dot bg-accent text-white">4</div>
+                                            <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                <i class="ti ti-number-4 text-white text-lg"></i>
+                                            </div>
                                             <div><span class="font-semibold text-sm">分享记录</span>
-                                                <p class="text-xs text-muted mt-0.5">留存成长时刻</p>
+                                                <p class="text-xs text-text-muted mt-0.5">留存成长时刻</p>
                                             </div>
                                         </div>
                                     </div>
@@ -309,19 +316,19 @@
                     <div class="mb-12 border-b pb-10">
                         <div class="grid lg:grid-cols-12 gap-6 items-stretch">
                             <div class="lg:col-span-5 card rounded-2xl p-6 order-2 lg:order-1">
-                                <h4 class="section-number text-muted mb-5">评分标准</h4>
+                                <h4 class="section-number text-text-muted mb-5">评分标准</h4>
                                 <div class="space-y-2.5">
-                                    <div class="flex items-center justify-between p-3 rounded-xl bg-accent-light"><span
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-accent-subtle"><span
                                               class="font-semibold text-sm text-accent">A+ 优秀</span><span
                                               class="font-bold text-accent">+50 分</span></div>
-                                    <div class="flex items-center justify-between p-3 rounded-xl bg-accent-light/60">
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-accent-subtle/60">
                                         <span class="font-semibold text-sm">A 良好</span><span
                                               class="font-bold text-accent">+20 分</span>
                                     </div>
-                                    <div class="flex items-center justify-between p-3 rounded-xl bg-warm-light"><span
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-warm-subtle"><span
                                               class="font-semibold text-sm text-warm">B 合格</span><span
                                               class="font-bold text-warm">+10 分</span></div>
-                                    <div class="flex items-center justify-between p-3 rounded-xl bg-warm-light/60"><span
+                                    <div class="flex items-center justify-between p-3 rounded-xl bg-warm-subtle/60"><span
                                               class="font-semibold text-sm">C 需改进</span><span
                                               class="font-bold text-warm">-5 分</span></div>
                                     <div class="flex items-center justify-between p-3 rounded-xl bg-red-50"><span
@@ -331,12 +338,12 @@
                                               class="font-semibold text-sm">E 未完成</span><span class="font-bold">-50
                                             分</span></div>
                                 </div>
-                                <p class="text-xs text-muted mt-4">读书笔记另设专属评分（摘抄赏析50分 + 读后感40分 + 好词积累10分）</p>
+                                <p class="text-xs text-text-muted mt-4">读书笔记另设专属评分（摘抄赏析50分 + 读后感40分 + 好词积累10分）</p>
                             </div>
                             <div class="lg:col-span-7 order-1 lg:order-2">
                                 <div class="flex items-center gap-4 mb-6">
                                     <div
-                                         class="w-12 h-12 rounded-xl bg-warm-light flex items-center justify-center shadow-sm">
+                                         class="w-12 h-12 rounded-xl bg-warm-subtle flex items-center justify-center shadow-sm">
                                         <i class="ti ti-file-text text-warm text-2xl"></i>
                                     </div>
                                     <div>
@@ -344,37 +351,37 @@
                                         <p class="text-sm text-warm font-medium">Task Management · AI 全流程辅助</p>
                                     </div>
                                 </div>
-                                <p class="text-[--text2] leading-relaxed mb-6">
+                                <p class="text-text-muted leading-relaxed mb-6">
                                     支持 <strong>作文、思维导图、读书笔记</strong> 三种作业类型，集成 Markdown 编辑器。
                                     DeepSeek AI 提供出题、评分、起名、答疑等全链路智能辅助。
                                 </p>
                                 <div class="grid sm:grid-cols-2 gap-4">
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-light/50 border border-warm/10">
-                                        <i class="ti ti-check text-warm mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-subtle/50 border border-warm/10">
+                                        <i class="ti ti-check text-warm mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 出题</span>
-                                            <p class="text-xs text-[--text2]">根据年级和作业类型随机出题</p>
+                                            <p class="text-xs text-text-muted">根据年级和作业类型随机出题</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-light/50 border border-warm/10">
-                                        <i class="ti ti-check text-warm mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-subtle/50 border border-warm/10">
+                                        <i class="ti ti-check text-warm mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">Markdown 编辑器</span>
-                                            <p class="text-xs text-[--text2] mt-1">实时预览、Mermaid 思维导图、自动保存</p>
+                                            <p class="text-xs text-text-muted mt-1">实时预览、Mermaid 思维导图、自动保存</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-light/50 border border-warm/10">
-                                        <i class="ti ti-check text-warm mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-subtle/50 border border-warm/10">
+                                        <i class="ti ti-check text-warm mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 评分</span>
-                                            <p class="text-xs text-[--text2]">一键保存并评分，内容无变更自动跳过</p>
+                                            <p class="text-xs text-text-muted">一键保存并评分，内容无变更自动跳过</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-light/50 border border-warm/10">
-                                        <i class="ti ti-check text-warm mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-warm-subtle/50 border border-warm/10">
+                                        <i class="ti ti-check text-warm mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 起名 & 答疑</span>
-                                            <p class="text-xs text-[--text2] mt-1">自动生成标题，作业中直接提问</p>
+                                            <p class="text-xs text-text-muted mt-1">自动生成标题，作业中直接提问</p>
                                         </div>
                                     </div>
                                 </div>
@@ -388,7 +395,7 @@
                             <div class="lg:col-span-7">
                                 <div class="flex items-center gap-4 mb-6">
                                     <div
-                                         class="w-12 h-12 rounded-xl bg-accent-light flex items-center justify-center shadow-sm">
+                                         class="w-12 h-12 rounded-xl bg-accent-subtle flex items-center justify-center shadow-sm">
                                         <i class="ti ti-brain text-accent text-2xl"></i>
                                     </div>
                                     <div>
@@ -396,76 +403,84 @@
                                         <p class="text-sm text-accent font-medium">Feynman Technique · 以教促学</p>
                                     </div>
                                 </div>
-                                <p class="text-[--text2] leading-relaxed mb-6">
+                                <p class="text-text-muted leading-relaxed mb-6">
                                     基于费曼学习法设计，通过 <strong>概括 → 举例 → 反思 → 记忆锚点</strong> 四步法，
                                     帮助孩子将知识内化。AI 全程参与评估与巩固。
                                 </p>
                                 <div class="grid sm:grid-cols-2 gap-4">
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">四个核心问题</span>
-                                            <p class="text-xs text-[--text2] mt-1">一句话概括 · 举例 · 卡壳 · 记忆钩子</p>
+                                            <p class="text-xs text-text-muted mt-1">一句话概括 · 举例 · 卡壳 · 记忆钩子</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 评估完整度</span>
-                                            <p class="text-xs text-[--text2]">评分环 + 遗漏点 + 错误纠正 + 建议</p>
+                                            <p class="text-xs text-text-muted">评分环 + 遗漏点 + 错误纠正 + 建议</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">AI 智能测验</span>
-                                            <p class="text-xs text-[--text2] mt-1">80分可测验：出题 → 回答 → 分析 → 报告</p>
+                                            <p class="text-xs text-text-muted mt-1">80分可测验：出题 → 回答 → 分析 → 报告</p>
                                         </div>
                                     </div>
                                     <div
-                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-light/50 border border-accent/10">
-                                        <i class="ti ti-check text-accent mt-0.5 text-base"></i>
+                                         class="flex items-start gap-3 p-4 rounded-xl bg-accent-subtle/50 border border-accent/10">
+                                        <i class="ti ti-check text-accent mt-1.5 text-base"></i>
                                         <div><span class="font-semibold text-sm">分享卡片</span>
-                                            <p class="text-xs text-[--text2] mt-1">一键生成学习心得分享卡片</p>
+                                            <p class="text-xs text-text-muted mt-1">一键生成学习心得分享卡片</p>
                                         </div>
                                     </div>
                                 </div>
                             </div>
                             <div class="lg:col-span-5 space-y-5">
                                 <div class="card rounded-2xl p-6">
-                                    <h4 class="section-number text-muted mb-5">知识巩固流程</h4>
+                                    <h4 class="section-number text-text-muted mb-5">知识巩固流程</h4>
                                     <div class="relative">
-                                        <div class="absolute left-4 top-0 bottom-0 w-0.5 bg-accent/20"></div>
+                                        <div class="absolute left-8 top-0 bottom-0 w-0.5 bg-accent/20"></div>
                                         <div class="space-y-5 relative">
                                             <div class="flex items-start gap-4 pl-4">
-                                                <div class="step-dot bg-accent text-white">①</div>
+                                                <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                    <i class="ti ti-number-1 text-white text-lg"></i>
+                                                </div>
                                                 <div><span class="font-semibold text-sm">写心得</span>
-                                                    <p class="text-xs text-muted mt-0.5">四步法内化知识</p>
+                                                    <p class="text-xs text-text-muted mt-0.5">四步法内化知识</p>
                                                 </div>
                                             </div>
                                             <div class="flex items-start gap-4 pl-4">
-                                                <div class="step-dot bg-accent text-white">②</div>
+                                                <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                    <i class="ti ti-number-2 text-white text-lg"></i>
+                                                </div>
                                                 <div><span class="font-semibold text-sm">AI 评估</span>
-                                                    <p class="text-xs text-muted mt-0.5">评分 ≥ 80 方可测验</p>
+                                                    <p class="text-xs text-text-muted mt-0.5">评分 ≥ 80 方可测验</p>
                                                 </div>
                                             </div>
                                             <div class="flex items-start gap-4 pl-4">
-                                                <div class="step-dot bg-accent text-white">③</div>
+                                                <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                    <i class="ti ti-number-3 text-white text-lg"></i>
+                                                </div>
                                                 <div><span class="font-semibold text-sm">10 题测验</span>
-                                                    <p class="text-xs text-muted mt-0.5">出题 → 回答 → 即时分析</p>
+                                                    <p class="text-xs text-text-muted mt-0.5">出题 → 回答 → 即时分析</p>
                                                 </div>
                                             </div>
                                             <div class="flex items-start gap-4 pl-4">
-                                                <div class="step-dot bg-accent text-white">④</div>
+                                                <div class="w-9 h-9 rounded-full bg-accent flex items-center justify-center shrink-0">
+                                                    <i class="ti ti-number-4 text-white text-lg"></i>
+                                                </div>
                                                 <div><span class="font-semibold text-sm">总结报告</span>
-                                                    <p class="text-xs text-muted mt-0.5">错题回顾 + 评分 + 建议</p>
+                                                    <p class="text-xs text-text-muted mt-0.5">错题回顾 + 评分 + 建议</p>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
                                 </div>
                                 <div class="card rounded-2xl p-6">
-                                    <h4 class="section-number text-muted mb-4">评估评分权重</h4>
+                                    <h4 class="section-number text-text-muted mb-4">评估评分权重</h4>
                                     <div class="space-y-3 text-sm">
                                         <div>
                                             <div class="flex justify-between mb-1"><span>一句话概括</span><span
@@ -497,7 +512,7 @@
             </section>
 
             <!-- ==================== 其他功能速览 ==================== -->
-            <section class="py-16 border-t border-border-l bg-[--bg]">
+            <section class="py-16 border-t border-border-light bg-surface">
                 <div class="max-w-6xl mx-auto px-5">
                     <div class="max-w-2xl mb-10">
                         <span class="section-number text-accent mb-3 block">02 — 更多功能</span>
@@ -507,94 +522,94 @@
                     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-4">
                         <div class="card rounded-2xl p-5 text-center">
                             <div
-                                 class="w-12 h-12 rounded-xl bg-warm-light mx-auto mb-3 flex items-center justify-center">
+                                 class="w-12 h-12 rounded-xl bg-warm-subtle mx-auto mb-3 flex items-center justify-center">
                                 <i class="ti ti-coins text-warm text-[22px]"></i>
                             </div>
                             <h3 class="font-semibold mb-1 text-sm">积分奖惩与兑换</h3>
-                            <p class="text-xs text-muted leading-relaxed">完成作业赚积分，兑换娱乐/现金，支持预支与分期，规则可配置</p>
+                            <p class="text-xs text-text-muted leading-relaxed">完成作业赚积分，兑换娱乐/现金，支持预支与分期，规则可配置</p>
                         </div>
                         <div class="card rounded-2xl p-5 text-center">
                             <div
-                                 class="w-12 h-12 rounded-xl bg-accent-light mx-auto mb-3 flex items-center justify-center">
+                                 class="w-12 h-12 rounded-xl bg-accent-subtle mx-auto mb-3 flex items-center justify-center">
                                 <i class="ti ti-share text-accent text-[22px]"></i>
                             </div>
                             <h3 class="font-semibold mb-1 text-sm">学习分享卡片</h3>
-                            <p class="text-xs text-muted leading-relaxed">一键生成长图，多背景可选，记录积分/作业/周报/心得</p>
+                            <p class="text-xs text-text-muted leading-relaxed">一键生成长图，多背景可选，记录积分/作业/周报/心得</p>
                         </div>
                         <div class="card rounded-2xl p-5 text-center">
                             <div
-                                 class="w-12 h-12 rounded-xl bg-warm-light mx-auto mb-3 flex items-center justify-center">
+                                 class="w-12 h-12 rounded-xl bg-warm-subtle mx-auto mb-3 flex items-center justify-center">
                                 <i class="ti ti-player-play text-warm text-[22px]"></i>
                             </div>
                             <h3 class="font-semibold mb-1 text-sm">学迹电台</h3>
-                            <p class="text-xs text-muted leading-relaxed">本地视频轮播、续播记忆、收藏管理，键盘/鼠标控制</p>
+                            <p class="text-xs text-text-muted leading-relaxed">本地视频轮播、续播记忆、收藏管理，键盘/鼠标控制</p>
                         </div>
                         <div class="card rounded-2xl p-5 text-center">
                             <div
-                                 class="w-12 h-12 rounded-xl bg-accent-light mx-auto mb-3 flex items-center justify-center">
+                                 class="w-12 h-12 rounded-xl bg-accent-subtle mx-auto mb-3 flex items-center justify-center">
                                 <i class="ti ti-rss text-accent text-[22px]"></i>
                             </div>
                             <h3 class="font-semibold mb-1 text-sm">RSS 科普阅读</h3>
-                            <p class="text-xs text-muted leading-relaxed">订阅环球科学 RSS，分类浏览前沿科普文章</p>
+                            <p class="text-xs text-text-muted leading-relaxed">订阅环球科学 RSS，分类浏览前沿科普文章</p>
                         </div>
                     </div>
                 </div>
             </section>
 
             <!-- ==================== 技术栈 ==================== -->
-            <section id="tech" class="py-16 sm:py-24 bg-[--bg-card]">
+            <section id="tech" class="py-16 sm:py-24 bg-surface-card">
                 <div class="max-w-6xl mx-auto px-5">
                     <div class="max-w-2xl mb-12">
                         <span class="section-number text-accent mb-3 block">03 — 技术栈</span>
                         <h2 class="font-display text-3xl sm:text-4xl font-bold tracking-tight">现代化全栈架构</h2>
-                        <p class="mt-3 text-lg text-[--text2]">前后端分离，Monorepo 管理，类型安全，高性能</p>
+                        <p class="mt-3 text-lg text-text-muted">前后端分离，Monorepo 管理，类型安全，高性能</p>
                     </div>
 
                     <div class="grid lg:grid-cols-3 gap-5">
                         <div class="card rounded-2xl p-6">
                             <div class="flex items-center gap-3 mb-4">
-                                <div class="size-10 rounded-xl bg-accent-light flex items-center justify-center">
+                                <div class="size-10 rounded-xl bg-accent-subtle flex items-center justify-center">
                                     <i class="ti ti-apps text-accent text-xl"></i>
                                 </div>
                                 <h3 class="font-semibold">前端 (apps/)</h3>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <span class="tag bg-accent-light text-accent">React 19</span>
-                                <span class="tag bg-accent-light text-accent">React Router 7</span>
-                                <span class="tag bg-accent-light text-accent">TypeScript 6</span>
-                                <span class="tag bg-accent-light text-accent">Tailwind CSS 4</span>
-                                <span class="tag bg-accent-light text-accent">Lucide React</span>
-                                <span class="tag bg-accent-light text-accent">@uiw/react-md-editor</span>
-                                <span class="tag bg-accent-light text-accent">Mermaid.js</span>
-                                <span class="tag bg-accent-light text-accent">React Compiler</span>
+                                <span class="tag bg-accent-subtle text-accent">React 19</span>
+                                <span class="tag bg-accent-subtle text-accent">React Router 7</span>
+                                <span class="tag bg-accent-subtle text-accent">TypeScript 6</span>
+                                <span class="tag bg-accent-subtle text-accent">Tailwind CSS 4</span>
+                                <span class="tag bg-accent-subtle text-accent">Lucide React</span>
+                                <span class="tag bg-accent-subtle text-accent">@uiw/react-md-editor</span>
+                                <span class="tag bg-accent-subtle text-accent">Mermaid.js</span>
+                                <span class="tag bg-accent-subtle text-accent">React Compiler</span>
                             </div>
                         </div>
                         <div class="card rounded-2xl p-6">
                             <div class="flex items-center gap-3 mb-4">
-                                <div class="size-10 rounded-xl bg-warm-light flex items-center justify-center"><i
+                                <div class="size-10 rounded-xl bg-warm-subtle flex items-center justify-center"><i
                                        class="ti ti-server-2 text-warm text-xl"></i></div>
                                 <h3 class="font-semibold">后端 (server/)</h3>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <span class="tag bg-warm-light text-warm">Express 5</span>
-                                <span class="tag bg-warm-light text-warm">SQLite + Drizzle ORM</span>
-                                <span class="tag bg-warm-light text-warm">DeepSeek API</span>
-                                <span class="tag bg-warm-light text-warm">Zod 验证</span>
-                                <span class="tag bg-warm-light text-warm">tsx 热加载</span>
+                                <span class="tag bg-warm-subtle text-warm">Express 5</span>
+                                <span class="tag bg-warm-subtle text-warm">SQLite + Drizzle ORM</span>
+                                <span class="tag bg-warm-subtle text-warm">DeepSeek API</span>
+                                <span class="tag bg-warm-subtle text-warm">Zod 验证</span>
+                                <span class="tag bg-warm-subtle text-warm">tsx 热加载</span>
                             </div>
                         </div>
                         <div class="card rounded-2xl p-6">
                             <div class="flex items-center gap-3 mb-4">
-                                <div class="size-10 rounded-xl bg-accent-light flex items-center justify-center"><i
+                                <div class="size-10 rounded-xl bg-accent-subtle flex items-center justify-center"><i
                                        class="ti ti-tool text-accent text-xl"></i></div>
                                 <h3 class="font-semibold">开发工具</h3>
                             </div>
                             <div class="flex flex-wrap gap-2">
-                                <span class="tag bg-accent-light text-accent">pnpm workspace</span>
-                                <span class="tag bg-accent-light text-accent">Vitest</span>
-                                <span class="tag bg-accent-light text-accent">html-to-image</span>
-                                <span class="tag bg-accent-light text-accent">react-player</span>
-                                <span class="tag bg-accent-light text-accent">RSS 解析</span>
+                                <span class="tag bg-accent-subtle text-accent">pnpm workspace</span>
+                                <span class="tag bg-accent-subtle text-accent">Vitest</span>
+                                <span class="tag bg-accent-subtle text-accent">html-to-image</span>
+                                <span class="tag bg-accent-subtle text-accent">react-player</span>
+                                <span class="tag bg-accent-subtle text-accent">RSS 解析</span>
                             </div>
                         </div>
                     </div>
@@ -604,29 +619,29 @@
                             <i class="ti ti-layout-kanban text-accent text-lg"></i>项目架构
                         </h4>
                         <div class="flex flex-col md:flex-row items-center justify-center gap-3 text-sm">
-                            <div class="bg-accent-light text-accent px-4 py-2 rounded-xl font-medium">React 前端 (端口 5173)
+                            <div class="bg-accent-subtle text-accent px-4 py-2 rounded-xl font-medium">React 前端 (端口 5173)
                             </div>
-                            <span class="text-muted font-bold">←→</span>
-                            <div class="bg-warm-light text-warm px-4 py-2 rounded-xl font-medium">Shared 共享层 (类型/工具)
+                            <span class="text-text-muted font-bold">←→</span>
+                            <div class="bg-warm-subtle text-warm px-4 py-2 rounded-xl font-medium">Shared 共享层 (类型/工具)
                             </div>
-                            <span class="text-muted font-bold">←→</span>
-                            <div class="bg-accent-light text-accent px-4 py-2 rounded-xl font-medium">Express API (端口
+                            <span class="text-text-muted font-bold">←→</span>
+                            <div class="bg-accent-subtle text-accent px-4 py-2 rounded-xl font-medium">Express API (端口
                                 3001)</div>
-                            <span class="text-muted font-bold">→</span>
-                            <div class="bg-warm-light text-warm px-4 py-2 rounded-xl font-medium">SQLite 数据库</div>
+                            <span class="text-text-muted font-bold">→</span>
+                            <div class="bg-warm-subtle text-warm px-4 py-2 rounded-xl font-medium">SQLite 数据库</div>
                         </div>
-                        <p class="text-center text-xs text-muted mt-3">Vite 代理 /api → Express，生产模式 Express 托管静态文件</p>
+                        <p class="text-center text-xs text-text-muted mt-3">Vite 代理 /api → Express，生产模式 Express 托管静态文件</p>
                     </div>
                 </div>
             </section>
 
             <!-- ==================== 开发路线图 ==================== -->
-            <section id="roadmap" class="py-16 sm:py-24 grain bg-[--bg]">
+            <section id="roadmap" class="py-16 sm:py-24 grain bg-surface">
                 <div class="max-w-6xl mx-auto px-5">
                     <div class="max-w-2xl mb-12">
                         <span class="section-number text-accent mb-3 block">04 — 开发计划</span>
                         <h2 class="font-display text-3xl sm:text-4xl font-bold tracking-tight">阶段化迭代路线</h2>
-                        <p class="mt-3 text-lg text-[--text2]">从 MVP 到完整功能，稳步推进</p>
+                        <p class="mt-3 text-lg text-text-muted">从 MVP 到完整功能，稳步推进</p>
                     </div>
 
                     <div class="grid md:grid-cols-2 lg:grid-cols-4 gap-5">
@@ -636,7 +651,7 @@
                             </div>
                             <span class="section-number text-accent">Phase 1-2</span>
                             <h4 class="font-semibold mt-1 text-sm">基础框架 & 核心功能</h4>
-                            <ul class="mt-2 text-xs text-muted space-y-1 list-disc pl-4">
+                            <ul class="mt-2 text-xs text-text-muted space-y-1 list-disc pl-4">
                                 <li>项目初始化 + SQLite</li>
                                 <li>作业创建与 AI 评分</li>
                                 <li>Markdown + 思维导图</li>
@@ -648,7 +663,7 @@
                             </div>
                             <span class="section-number text-warm">Phase 3</span>
                             <h4 class="font-semibold mt-1 text-sm">积分系统</h4>
-                            <ul class="mt-2 text-xs text-muted space-y-1 list-disc pl-4">
+                            <ul class="mt-2 text-xs text-text-muted space-y-1 list-disc pl-4">
                                 <li>自动计算与月度结算</li>
                                 <li>兑换（娱乐/现金）与预支</li>
                                 <li>规则自定义配置</li>
@@ -660,7 +675,7 @@
                             </div>
                             <span class="section-number text-accent">Phase 4-5</span>
                             <h4 class="font-semibold mt-1 text-sm">视频 & 文档</h4>
-                            <ul class="mt-2 text-xs text-muted space-y-1 list-disc pl-4">
+                            <ul class="mt-2 text-xs text-text-muted space-y-1 list-disc pl-4">
                                 <li>本地视频播放与收藏</li>
                                 <li>分享卡片生成</li>
                                 <li>帮助文档与测试</li>
@@ -672,7 +687,7 @@
                             </div>
                             <span class="section-number text-warm">Phase 6-8</span>
                             <h4 class="font-semibold mt-1 text-sm">周报 & 费曼学习法</h4>
-                            <ul class="mt-2 text-xs text-muted space-y-1 list-disc pl-4">
+                            <ul class="mt-2 text-xs text-text-muted space-y-1 list-disc pl-4">
                                 <li>周报 + AI 分析</li>
                                 <li>作业 AI 对话</li>
                                 <li>费曼学习法全流程</li>
@@ -680,12 +695,12 @@
                             </ul>
                         </div>
                     </div>
-                    <div class="text-center mt-10 text-sm text-muted">✅ 所有阶段已完成，持续优化中</div>
+                    <div class="text-center mt-10 text-sm text-text-muted">所有阶段已完成，持续优化中</div>
                 </div>
             </section>
 
             <!-- ==================== 快速开始 ==================== -->
-            <section id="quickstart" class="py-16 sm:py-24 bg-[--accent]">
+            <section id="quickstart" class="py-16 sm:py-24 bg-accent">
                 <div class="max-w-4xl mx-auto px-5">
                     <div class="text-center mb-10">
                         <span class="tag bg-white/15 text-white border border-white/20 mb-4">
@@ -737,7 +752,7 @@
 
                     <div class="mt-8 flex flex-wrap justify-center gap-4">
                         <a href="https://github.com/baiwanyi/study.plus" target="_blank"
-                           class="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-xl hover:bg-white/90 transition-all font-semibold shadow-lg text-[--accent]">
+                           class="inline-flex items-center gap-2 px-6 py-3 bg-white rounded-xl hover:bg-white/90 transition-all font-semibold shadow-lg text-accent">
                             <i class="ti ti-brand-github text-xl"></i>在 GitHub 上查看完整文档
                         </a>
                         <a href="https://github.com/baiwanyi/study.plus/issues" target="_blank"
@@ -749,7 +764,7 @@
             </section>
 
             <!-- ==================== 页脚 ==================== -->
-            <footer class="py-12 border-t bg-[--bg] border-[--border]">
+            <footer class="py-12 border-t bg-surface border-border">
                 <div class="max-w-6xl mx-auto px-5">
                     <div class="flex flex-col md:flex-row items-center justify-between gap-4">
                         <div class="flex items-center gap-2">
@@ -758,7 +773,7 @@
                             <span class="font-bold text-lg tracking-tight">学迹<span
                                       class="text-accent">Plus</span></span>
                         </div>
-                        <p class="text-sm text-muted">© 2026 学迹Plus. MIT License. 智能学习管理，让成长有迹可循。</p>
+                        <p class="text-sm text-text-muted">© 2026 学迹Plus. MIT License. 智能学习管理，让成长有迹可循。</p>
                         <div class="flex gap-4">
                             <a href="https://github.com/baiwanyi/study.plus" target="_blank" class="footer-link"
                                title="GitHub 仓库"><i class="ti ti-brand-github text-xl"></i></a>
@@ -768,11 +783,7 @@
                     </div>
                 </div>
             </footer>
-
         </main>
-
-        <script src="./assets/js/tailwindcss.min.js"></script>
-        <script src="./assets/js/main.js"></script>
     </body>
 
 </html>
