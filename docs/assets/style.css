@@ -11,107 +11,131 @@
     --warm-bg: #fef3e2;
     --border: #e2e0da;
     --border-l: #edebe6;
-    --shadow-sm: 0 1px 2px rgba(26, 92, 58, .04);
-    --shadow-md: 0 4px 16px rgba(26, 92, 58, .06);
-    --shadow-lg: 0 12px 32px rgba(26, 92, 58, .08);
-    --shadow-xl: 0 20px 48px rgba(26, 92, 58, .12)
+    --shadow-sm: 0 1px 2px rgba(26, 92, 58, 0.04);
+    --shadow-md: 0 4px 16px rgba(26, 92, 58, 0.06);
+    --shadow-lg: 0 12px 32px rgba(26, 92, 58, 0.08);
+    --shadow-xl: 0 20px 48px rgba(26, 92, 58, 0.12);
 }
 
 * {
     scrollbar-width: thin;
-    scrollbar-color: #c0bdb5 transparent
+    scrollbar-color: #c0bdb5 transparent;
 }
 
 ::-webkit-scrollbar {
     width: 5px;
-    height: 5px
+    height: 5px;
 }
 
 ::-webkit-scrollbar-thumb {
     background: #c0bdb5;
-    border-radius: 3px
+    border-radius: 3px;
 }
 
 body {
     background: var(--bg);
     color: var(--text);
-    font-family: 'Outfit', 'Noto Sans SC', system-ui, sans-serif
+    font-family: 'Outfit', 'Noto Sans SC', system-ui, sans-serif;
 }
 
 .font-display {
     font-family: 'Outfit', 'Noto Sans SC', sans-serif;
-    letter-spacing: -.02em
+    letter-spacing: -0.02em;
 }
 
-.text-accent { color: var(--accent) }
-.text-warm { color: var(--warm) }
-.bg-accent { background-color: var(--accent) }
-.bg-warm { background-color: var(--warm) }
-.bg-accent-light { background-color: var(--accent-bg) }
-.bg-warm-light { background-color: var(--warm-bg) }
+.text-accent {
+    color: var(--accent);
+}
+
+.text-warm {
+    color: var(--warm);
+}
+
+.bg-accent {
+    background-color: var(--accent);
+}
+
+.bg-warm {
+    background-color: var(--warm);
+}
+
+.bg-accent-light {
+    background-color: var(--accent-bg);
+}
+
+.bg-warm-light {
+    background-color: var(--warm-bg);
+}
 
 .nav-glass {
-    background: rgba(250, 248, 244, .85);
+    background: rgba(250, 248, 244, 0.85);
     backdrop-filter: blur(12px) saturate(1.5);
     -webkit-backdrop-filter: blur(12px) saturate(1.5);
-    border-bottom: 1px solid var(--border-l)
+    border-bottom: 1px solid var(--border-l);
 }
 
 .btn-primary {
     background: var(--accent);
     color: #fff;
-    box-shadow: 0 2px 8px rgba(26, 92, 58, .25), inset 0 1px 0 rgba(255, 255, 255, .1);
-    transition: all .3s cubic-bezier(.4, 0, .2, 1)
+    box-shadow:
+        0 2px 8px rgba(26, 92, 58, 0.25),
+        inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-primary:hover {
     background: var(--accent-l);
     transform: translateY(-1px);
-    box-shadow: 0 6px 20px rgba(26, 92, 58, .35)
+    box-shadow: 0 6px 20px rgba(26, 92, 58, 0.35);
 }
 
 .btn-outline {
     border: 1.5px solid var(--border);
     color: var(--text);
-    transition: all .3s cubic-bezier(.4, 0, .2, 1)
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .btn-outline:hover {
     border-color: var(--accent);
     color: var(--accent);
-    background: var(--accent-bg)
+    background: var(--accent-bg);
 }
 
-.btn-ghost { transition: all .3s }
-.btn-ghost:hover { color: var(--accent) }
+.btn-ghost {
+    transition: all 0.3s;
+}
+
+.btn-ghost:hover {
+    color: var(--accent);
+}
 
 .grain::after {
     content: '';
     position: absolute;
     inset: 0;
     background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.03'/%3E%3C/svg%3E");
-    pointer-events: none
+    pointer-events: none;
 }
 
 .section-number {
     font-family: 'Outfit', sans-serif;
     font-weight: 700;
-    font-size: .75rem;
-    letter-spacing: .15em;
-    text-transform: uppercase
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
 }
 
 .card {
     background: var(--bg-card);
     border: 1px solid var(--border-l);
     box-shadow: var(--shadow-sm);
-    transition: all .4s cubic-bezier(.4, 0, .2, 1)
+    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 .card:hover {
     box-shadow: var(--shadow-lg);
     transform: translateY(-2px);
-    border-color: var(--border)
+    border-color: var(--border);
 }
 
 .step-dot {
@@ -122,9 +146,9 @@ body {
     align-items: center;
     justify-content: center;
     font-weight: 700;
-    font-size: .75rem;
+    font-size: 0.75rem;
     position: relative;
-    z-index: 1
+    z-index: 1;
 }
 
 .tag {
@@ -132,9 +156,9 @@ body {
     align-items: center;
     gap: 6px;
     padding: 4px 12px;
-    font-size: .75rem;
+    font-size: 0.75rem;
     font-weight: 500;
-    border-radius: 9999px
+    border-radius: 9999px;
 }
 
 .stat-badge {
@@ -146,33 +170,33 @@ body {
     border: 1px solid var(--border-l);
     border-radius: 12px;
     box-shadow: var(--shadow-sm);
-    font-size: .875rem;
+    font-size: 0.875rem;
     font-weight: 500;
     color: var(--text2);
-    transition: all .3s
+    transition: all 0.3s;
 }
 
 .stat-badge:hover {
     box-shadow: var(--shadow-md);
-    border-color: var(--accent)
+    border-color: var(--accent);
 }
 
 .score-bar {
     height: 6px;
     border-radius: 3px;
-    background: var(--border-l)
+    background: var(--border-l);
 }
 
 .score-fill {
     height: 100%;
-    border-radius: 3px
+    border-radius: 3px;
 }
 
 .hero-shape {
     position: absolute;
     border-radius: 50%;
     filter: blur(80px);
-    opacity: .15
+    opacity: 0.15;
 }
 
 /* 科技感装饰元素 */
@@ -180,40 +204,51 @@ body {
     position: absolute;
     border-radius: 50%;
     border: 1px solid;
-    opacity: .12;
-    pointer-events: none
+    opacity: 0.12;
+    pointer-events: none;
 }
+
 .tech-ring-dashed {
     position: absolute;
     border-radius: 50%;
     border: 1px dashed;
-    opacity: .08;
-    pointer-events: none
+    opacity: 0.08;
+    pointer-events: none;
 }
+
 .tech-dot {
     position: absolute;
     border-radius: 50%;
-    pointer-events: none
+    pointer-events: none;
 }
+
 .tech-grid {
     position: absolute;
     inset: 0;
     background-image:
-        linear-gradient(rgba(216, 73, 239, .03) 1px, transparent 1px),
-        linear-gradient(90deg, rgba(216, 73, 239, .03) 1px, transparent 1px);
+        linear-gradient(rgba(216, 73, 239, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(216, 73, 239, 0.03) 1px, transparent 1px);
     background-size: 48px 48px;
     pointer-events: none;
-    z-index: 0
+    z-index: 0;
 }
+
 .tech-orb {
     position: absolute;
     border-radius: 50%;
     filter: blur(60px);
-    pointer-events: none
+    pointer-events: none;
 }
 
-.footer-link { transition: all .2s }
-.footer-link:hover { color: var(--accent) }
+.footer-link {
+    transition: all 0.2s;
+}
+
+.footer-link:hover {
+    color: var(--accent);
+}
 
 /* 修复 Tabler Icons 行高被 Tailwind text-* 覆盖的问题 */
-.ti { line-height: 1 !important }
+.ti {
+    line-height: 1 !important;
+}
