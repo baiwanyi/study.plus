@@ -1,6 +1,6 @@
 'use client'
 
-import { Loader2, Check, Plus, Sparkles, Trash2 } from 'lucide-react'
+import { Loader2, Check, Plus, Trash2 } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { tasksApi, systemAPI } from '@apps/utils/api'
 import {
@@ -10,8 +10,9 @@ import {
 } from '@apps/utils/client'
 import AiChatPanel from '@components/AiChatPanel'
 import { Modal } from '@components/Modal'
+import { ScoreResultPanel } from '@apps/pages/Tasks/ScoreResultPanel'
 import { useSnackbar } from '@components/Snackbar'
-import type { ChatMessage, Task } from '@shared/types'
+import type { AIScoreResult, ChatMessage, Task } from '@shared/types'
 
 interface BookNoteData {
     bookInfo: {
@@ -47,17 +48,30 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
     const [data, setData] = useState<BookNoteData>(DEFAULT_DATA)
     const [title, setTitle] = useState(task.title)
     const [saving, setSaving] = useState(false)
+    const [scoring, setScoring] = useState(false)
+    const [evaluationError, setEvaluationError] = useState(false)
     const [showExcerptDialog, setShowExcerptDialog] = useState(false)
     const [editExcerptIdx, setEditExcerptIdx] = useState<number | null>(null)
     const [excerptSentence, setExcerptSentence] = useState('')
     const [excerptInsight, setExcerptInsight] = useState('')
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatting, setChatting] = useState(false)
+    const [editorScoreResult, setEditorScoreResult] =
+        useState<AIScoreResult | null>(() => {
+            try {
+                return task.submission?.aiScore
+                    ? (JSON.parse(task.submission.aiScore) as AIScoreResult)
+                    : null
+            } catch {
+                return null
+            }
+        })
     const [lastSaved, setLastSaved] = useState<Date | null>(null)
     const [autosaveStatus, setAutosaveStatus] = useState<
         'idle' | 'saving' | 'saved' | 'error'
     >('idle')
     const lastSavedContentRef = useRef('')
+    const contentSnapshotRef = useRef('')
     const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const autosaveIntervalRef = useRef<number>(30)
 
@@ -108,6 +122,7 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
             } catch {
                 // fallback to default
             }
+            contentSnapshotRef.current = task.submission?.content ?? ''
         }
     }, [task.submission?.content])
 
@@ -184,32 +199,32 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
         }
     }, [])
 
-    const updateBookInfo = (
-        field: keyof BookNoteData['bookInfo'],
-        value: string,
-    ) => {
-        setData((prev) => ({
-            ...prev,
-            bookInfo: { ...prev.bookInfo, [field]: value },
-        }))
-    }
+    const updateBookInfo = useCallback(
+        (field: keyof BookNoteData['bookInfo'], value: string) => {
+            setData((prev) => ({
+                ...prev,
+                bookInfo: { ...prev.bookInfo, [field]: value },
+            }))
+        },
+        [],
+    )
 
-    const updateReflection = (
-        field: keyof BookNoteData['reflection'],
-        value: string,
-    ) => {
-        setData((prev) => ({
-            ...prev,
-            reflection: { ...prev.reflection, [field]: value },
-        }))
-    }
+    const updateReflection = useCallback(
+        (field: keyof BookNoteData['reflection'], value: string) => {
+            setData((prev) => ({
+                ...prev,
+                reflection: { ...prev.reflection, [field]: value },
+            }))
+        },
+        [],
+    )
 
-    const openAddExcerpt = () => {
+    const openAddExcerpt = useCallback(() => {
         setEditExcerptIdx(null)
         setExcerptSentence('')
         setExcerptInsight('')
         setShowExcerptDialog(true)
-    }
+    }, [])
 
     const openEditExcerpt = (idx: number) => {
         setEditExcerptIdx(idx)
@@ -218,9 +233,9 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
         setShowExcerptDialog(true)
     }
 
-    const closeExcerptDialog = () => {
+    const closeExcerptDialog = useCallback(() => {
         setShowExcerptDialog(false)
-    }
+    }, [])
 
     const saveExcerpt = () => {
         if (!excerptSentence.trim() || !excerptInsight.trim()) {
@@ -245,47 +260,83 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
         setShowExcerptDialog(false)
     }
 
-    const deleteExcerpt = (idx: number) => {
+    const deleteExcerpt = useCallback((idx: number) => {
         setData((prev) => ({
             ...prev,
             excerpts: prev.excerpts.filter((_, i) => i !== idx),
         }))
+    }, [])
+
+    function hasContentChanged(): boolean {
+        return JSON.stringify(data) !== contentSnapshotRef.current
     }
 
-    const handleSave = async () => {
+    const handleSave = useCallback(async () => {
         const { bookName, chapter, author } = data.bookInfo
         if (!bookName.trim() || !chapter.trim() || !author.trim()) {
             showSnackbar('请填写完整的书籍信息（书名、篇目、作者）', 'error')
             return
         }
+
+        const isRetry = evaluationError && !hasContentChanged()
+        const hasBeenScored = !!(task.submission?.scoredAt || task.gradedAt)
+
+        // 从未评分过时，即使内容无变化也执行评分
+        if (!isRetry && !hasContentChanged() && hasBeenScored) {
+            showSnackbar('内容没有变化')
+            return
+        }
+
         setSaving(true)
         try {
-            await doSave(JSON.stringify(data))
-            showSnackbar('保存成功')
+            const json = JSON.stringify(data)
+
+            if (!isRetry && hasContentChanged()) {
+                await doSave(json)
+            }
+
+            setScoring(true)
+            setEvaluationError(false)
+            try {
+                const res = await tasksApi.aiScore(task.id)
+                setEditorScoreResult(res.aiResult)
+                contentSnapshotRef.current = json
+                showSnackbar('保存并评分成功')
+            } catch {
+                setEvaluationError(true)
+                showSnackbar(
+                    '内容已保存，但 AI 评分失败，可点击"保存并评分"重试',
+                    'error',
+                )
+            }
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setSaving(false)
+            setScoring(false)
         }
-    }
+    }, [data, evaluationError, task.id, showSnackbar, doSave])
 
-    const handleChatSend = async (message: string) => {
-        const userMsg: ChatMessage = { role: 'user', content: message }
-        setChatMessages((prev) => [...prev, userMsg])
-        setChatting(true)
-        try {
-            await tasksApi.aiChat(task.id, message)
-            const conv = await tasksApi.getConversation(task.id)
-            setChatMessages(conv.messages)
-        } catch (err) {
-            showSnackbar('AI对话失败: ' + formatErrorMessage(err), 'error')
-        } finally {
-            setChatting(false)
-        }
-    }
+    const handleChatSend = useCallback(
+        async (message: string) => {
+            const userMsg: ChatMessage = { role: 'user', content: message }
+            setChatMessages((prev) => [...prev, userMsg])
+            setChatting(true)
+            try {
+                await tasksApi.aiChat(task.id, message)
+                const conv = await tasksApi.getConversation(task.id)
+                setChatMessages(conv.messages)
+            } catch (err) {
+                showSnackbar('AI对话失败: ' + formatErrorMessage(err), 'error')
+            } finally {
+                setChatting(false)
+            }
+        },
+        [task.id, showSnackbar],
+    )
 
-    const aiSuggestions = task.aiSuggestions
-    const hasSuggestions = aiSuggestions && aiSuggestions.length > 0
+    const displaySuggestions =
+        editorScoreResult?.suggestions ?? task.aiSuggestions
 
     return (
         <div className="fixed inset-0 z-50 bg-gray-50 flex flex-col">
@@ -305,9 +356,13 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || scoring}
                         className="btn btn-primary">
-                        {saving ? '保存中...' : '保存'}
+                        {scoring
+                            ? '评分中...'
+                            : saving
+                              ? '保存中...'
+                              : '保存并评分'}
                     </button>
                 </div>
             </div>
@@ -315,22 +370,10 @@ export function BookNoteEditor({ task, onCancel }: BookNoteEditorProps) {
             {/* Body - left form + right AI chat */}
             <div className="flex-1 flex overflow-hidden">
                 <div className="flex-1 overflow-y-auto space-y-3">
-                    {/* AI 改进建议 */}
-                    {hasSuggestions && (
-                        <div className="bg-amber-50 border-b border-warning-background px-6 py-3 shrink-0">
-                            <div className="flex items-start gap-2">
-                                <Sparkles className="size-5 text-warning shrink-0" />
-                                <div className="space-y-1 text-sm font-medium text-warning">
-                                    <h6 className="text-warning">改进建议</h6>
-                                    <ul className="list-disc list-inside">
-                                        {aiSuggestions.map((s, i) => (
-                                            <li key={i}>{s}</li>
-                                        ))}
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-                    )}
+                    <ScoreResultPanel
+                        result={editorScoreResult}
+                        suggestions={displaySuggestions}
+                    />
                     <BookNoteForm
                         data={data}
                         setData={setData}

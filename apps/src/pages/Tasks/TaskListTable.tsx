@@ -24,7 +24,6 @@ export interface ListTaskProps {
     tasks: Task[]
     onEdit: (task: Task) => void
     onEditContent: (task: Task) => void
-    onScore: (task: Task) => void
     onShare: (task: Task) => void
     onDelete: (id: number) => void
     onAdd: () => void
@@ -35,7 +34,6 @@ export function ListTask({
     tasks,
     onEdit,
     onEditContent,
-    onScore,
     onShare,
     onDelete,
     onAdd,
@@ -57,7 +55,8 @@ export function ListTask({
         }
     }, [tasks.length])
 
-    const taskColumns: Column<Task>[] = [
+    const taskColumns = useMemo<Column<Task>[]>(
+        () => [
         {
             key: 'title',
             header: '题目',
@@ -171,23 +170,25 @@ export function ListTask({
                         分享
                     </button>
                     {isAdminRole && (
-                        <>
-                            <button
-                                onClick={() => onScore(task)}
-                                className="btn btn-primary btn-sm">
-                                AI评分
-                            </button>
-                            <button
-                                onClick={() => onDelete(task.id)}
-                                className="btn btn-danger btn-sm">
-                                删除
-                            </button>
-                        </>
+                        <button
+                            onClick={() => onDelete(task.id)}
+                            className="btn btn-danger btn-sm">
+                            删除
+                        </button>
                     )}
                 </span>
             ),
         },
-    ]
+    ], [isAdminRole, onEdit, onEditContent, onShare, onDelete])
+
+    const pagination = useMemo(
+        () => ({
+            current: page,
+            total: tasks.length,
+            onChange: setPage,
+        }),
+        [page, tasks.length],
+    )
 
     return (
         <div className="space-y-6">
@@ -208,11 +209,7 @@ export function ListTask({
                 <DataTable<Task>
                     data={pagedTasks}
                     columns={taskColumns}
-                    pagination={{
-                        current: page,
-                        total: tasks.length,
-                        onChange: setPage,
-                    }}
+                    pagination={pagination}
                     emptyText="暂无作业记录"
                 />
             </div>

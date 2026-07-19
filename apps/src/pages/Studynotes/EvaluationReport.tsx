@@ -52,7 +52,7 @@ export const EvaluationReport: FC<EvaluationReportProps> = ({ evaluation }) => {
                             }
                             strokeWidth="6"
                             strokeLinecap="round"
-                            strokeDasharray={`${(evaluation.completenessScore / 100) * 188.5} 188.5`}
+                            strokeDasharray={`${Math.max(0, (evaluation.completenessScore / 100) * 188.5)} 188.5`}
                         />
                     </svg>
                     <span

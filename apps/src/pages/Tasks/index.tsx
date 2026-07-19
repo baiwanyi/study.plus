@@ -7,14 +7,12 @@ import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { BookNoteEditor } from './BookNoteEditor'
-import { EditTask } from './TaskEdit'
+import { EditTask } from './TaskEditor'
 import { ListTask } from './TaskListTable'
-import { TaskModalAIScore } from './TaskModalAIScore'
-import { TaskModalAIResult } from './TaskModalAIResult'
 import { TaskModalCreate } from './TaskModalCreate'
 import { TaskModalEdit } from './TaskModalEdit'
 import { TaskModalShare } from './TaskModalShare'
-import type { Task, TaskType, AIScoreResult } from '@shared/types'
+import type { Task, TaskType } from '@shared/types'
 
 export function Tasks() {
     const { showSnackbar } = useSnackbar()
@@ -28,12 +26,6 @@ export function Tasks() {
     // Full-screen markdown editor
     const [editingTask, setEditingTask] = useState<Task | null>(null)
 
-    // AI Score modal state
-    const [scoreTask, setScoreTask] = useState<Task | null>(null)
-    const [scoring, setScoring] = useState(false)
-    const [scoreResult, setScoreResult] = useState<AIScoreResult | null>(null)
-    const [scorePoints, setScorePoints] = useState<number>(0)
-
     // Edit task detail state
     const [editTask, setEditTask] = useState<Task | null>(null)
     const [editSaving, setEditSaving] = useState(false)
@@ -41,13 +33,13 @@ export function Tasks() {
     // Share modal state
     const [shareTask, setShareTask] = useState<Task | null>(null)
 
-    const openShareModal = (task: Task) => {
+    const openShareModal = useCallback((task: Task) => {
         setShareTask(task)
-    }
+    }, [])
 
-    const closeShareModal = () => {
+    const closeShareModal = useCallback(() => {
         setShareTask(null)
-    }
+    }, [])
 
     const handleEditContent = useCallback((task: Task) => {
         setEditingTask(task)
@@ -85,19 +77,22 @@ export function Tasks() {
         loadTasks()
     }, [loadTasks])
 
-    const handleCreate = async (title: string, type: TaskType) => {
-        const resolvedTitle = title || taskTypeDefaultTitles[type]
-        try {
-            await tasksApi.create({ title: resolvedTitle, type })
-            setShowCreate(false)
-            showSnackbar('作业创建成功')
-            loadTasks()
-        } catch (err) {
-            showSnackbar('创建失败: ' + formatErrorMessage(err), 'error')
-        }
-    }
+    const handleCreate = useCallback(
+        async (title: string, type: TaskType) => {
+            const resolvedTitle = title || taskTypeDefaultTitles[type]
+            try {
+                await tasksApi.create({ title: resolvedTitle, type })
+                setShowCreate(false)
+                showSnackbar('作业创建成功')
+                loadTasks()
+            } catch (err) {
+                showSnackbar('创建失败: ' + formatErrorMessage(err), 'error')
+            }
+        },
+        [showSnackbar, loadTasks],
+    )
 
-    const handleAddBookNote = async () => {
+    const handleAddBookNote = useCallback(async () => {
         try {
             const task = await tasksApi.create({
                 title: '未命名读书笔记',
@@ -107,13 +102,13 @@ export function Tasks() {
         } catch (err) {
             showSnackbar('创建失败: ' + formatErrorMessage(err), 'error')
         }
-    }
+    }, [showSnackbar])
 
-    const handleDelete = (id: number) => {
+    const handleDelete = useCallback((id: number) => {
         setDeleteId(id)
-    }
+    }, [])
 
-    const confirmDelete = async () => {
+    const confirmDelete = useCallback(async () => {
         if (deleteId === null) return
         try {
             await tasksApi.delete(deleteId)
@@ -124,64 +119,35 @@ export function Tasks() {
         } finally {
             setDeleteId(null)
         }
-    }
+    }, [deleteId, showSnackbar, loadTasks])
 
     // Open edit task detail modal (click on task name)
-    const openEditModal = (task: Task) => {
+    const openEditModal = useCallback((task: Task) => {
         setEditTask(task)
         setEditSaving(false)
-    }
+    }, [])
 
-    const closeEditModal = () => {
+    const closeEditModal = useCallback(() => {
         setEditTask(null)
-    }
+    }, [])
 
-    const handleEditSave = async (title: string, type: TaskType) => {
-        if (!editTask || !title) return
-        setEditSaving(true)
-        try {
-            await tasksApi.update(editTask.id, { title, type })
-            showSnackbar('保存成功')
-            closeEditModal()
-            loadTasks()
-        } catch (err) {
-            showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
-        } finally {
-            setEditSaving(false)
-        }
-    }
-
-    // Open AI score modal
-    const openScoreModal = (task: Task) => {
-        setScoreTask(task)
-        setScoring(false)
-        setScoreResult(null)
-        setScorePoints(0)
-    }
-
-    const closeScoreModal = () => {
-        setScoreTask(null)
-        setScoring(false)
-        setScoreResult(null)
-        setScorePoints(0)
-    }
-
-    // Handle AI scoring
-    const handleAiScore = async () => {
-        if (!scoreTask) return
-        setScoring(true)
-        try {
-            const res = await tasksApi.aiScore(scoreTask.id)
-            setScoreResult(res.aiResult)
-            setScorePoints(res.pointsEarned)
-            showSnackbar('AI评分完成')
-            loadTasks()
-        } catch (err) {
-            showSnackbar('AI评分失败: ' + formatErrorMessage(err), 'error')
-        } finally {
-            setScoring(false)
-        }
-    }
+    const handleEditSave = useCallback(
+        async (title: string, type: TaskType) => {
+            if (!editTask || !title) return
+            setEditSaving(true)
+            try {
+                await tasksApi.update(editTask.id, { title, type })
+                showSnackbar('保存成功')
+                closeEditModal()
+                loadTasks()
+            } catch (err) {
+                showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
+            } finally {
+                setEditSaving(false)
+            }
+        },
+        [editTask, showSnackbar, closeEditModal, loadTasks],
+    )
 
     if (loading) {
         return <Loading />
@@ -201,7 +167,6 @@ export function Tasks() {
                 tasks={tasks}
                 onEdit={openEditModal}
                 onEditContent={handleEditContent}
-                onScore={openScoreModal}
                 onShare={openShareModal}
                 onDelete={handleDelete}
                 onAdd={handleAdd}
@@ -220,22 +185,6 @@ export function Tasks() {
                 onCancel={closeEditModal}
                 onConfirm={handleEditSave}
                 isLoading={editSaving}
-            />
-
-            <TaskModalAIScore
-                open={!!scoreTask && !scoreResult}
-                task={scoreTask}
-                scoring={scoring}
-                onCancel={closeScoreModal}
-                onScore={handleAiScore}
-            />
-
-            <TaskModalAIResult
-                open={!!scoreTask && !!scoreResult}
-                task={scoreTask}
-                result={scoreResult}
-                points={scorePoints}
-                onCancel={closeScoreModal}
             />
 
             <TaskModalShare

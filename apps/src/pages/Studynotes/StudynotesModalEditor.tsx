@@ -1,13 +1,13 @@
 'use client'
 
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { MessageSquareText } from 'lucide-react'
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { studynotesApi } from '@apps/utils/api'
-import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import AiChatPanel from '@components/AiChatPanel'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
+import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import { EvaluationReport } from './EvaluationReport'
 import type {
     StudynotesCard,
@@ -175,15 +175,16 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         }
     }, [open, cardId, showSnackbar])
 
-    const handleSave = async () => {
+    const handleSave = useCallback(async () => {
         const targetId = cardId ?? currentCard?.id ?? null
 
         // 评分失败后点击「保存并评分」属于二次评分：内容未变也允许执行，且仅重评不重复保存
         const isRetry =
             evaluationError && targetId != null && !hasContentChanged()
+        const hasBeenEvaluated = !!(currentCard?.evaluatedAt || currentCard?.evaluation)
 
-        // 非重试且内容无变化 → 提示并停留
-        if (!isRetry && targetId != null && !hasContentChanged()) {
+        // 从未评估过时，即使内容无变化也执行评估
+        if (!isRetry && targetId != null && !hasContentChanged() && hasBeenEvaluated) {
             showSnackbar('内容没有变化')
             return
         }
@@ -264,9 +265,9 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         } finally {
             setSaving(false)
         }
-    }
+    }, [cardId, currentCard, evaluationError, subject, topic, summary, example, stuckPoints, memoryHook, showSnackbar, onSaved])
 
-    const runFollowUp = async (message?: string) => {
+    const runFollowUp = useCallback(async (message?: string) => {
         if (!currentCard) {
             showSnackbar(
                 message ? '请先保存卡片后再发送消息' : '请先保存卡片',
@@ -291,11 +292,11 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         } finally {
             setChatSending(false)
         }
-    }
+    }, [currentCard, canFollowUp, showSnackbar])
 
-    const handleFollowUp = () => runFollowUp()
+    const handleFollowUp = useCallback(() => runFollowUp(), [runFollowUp])
 
-    const handleChatSend = (message: string) => runFollowUp(message)
+    const handleChatSend = useCallback((message: string) => runFollowUp(message), [runFollowUp])
 
     return (
         <Modal

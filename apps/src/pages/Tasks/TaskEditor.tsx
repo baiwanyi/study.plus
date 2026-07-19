@@ -1,7 +1,7 @@
 'use client'
 
 import MDEditor from '@uiw/react-md-editor'
-import { Sparkles, Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
+import { Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import mermaid from 'mermaid'
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import '@apps/styles/markdown-editor.css'
@@ -12,8 +12,14 @@ import {
     formatErrorMessage,
 } from '@apps/utils/client'
 import AiChatPanel from '@components/AiChatPanel'
+import { ScoreResultPanel } from '@apps/pages/Tasks/ScoreResultPanel'
 import { useSnackbar } from '@components/Snackbar'
-import type { AiScoreLog, Task, ChatMessage } from '@shared/types'
+import type {
+    AiScoreLog,
+    AIScoreResult,
+    Task,
+    ChatMessage,
+} from '@shared/types'
 
 export interface EditTaskProps {
     task: Task | null
@@ -37,12 +43,15 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
 
     const [mdContent, setMdContent] = useState('')
     const [saving, setSaving] = useState(false)
+    const [scoring, setScoring] = useState(false)
+    const [evaluationError, setEvaluationError] = useState(false)
     const [lastSaved, setLastSaved] = useState<Date | null>(null)
     const [autosaveStatus, setAutosaveStatus] = useState<
         'idle' | 'saving' | 'saved' | 'error'
     >('idle')
     const autosaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
     const lastSavedContentRef = useRef<string>('')
+    const contentSnapshotRef = useRef<string>('')
     const autosaveIntervalRef = useRef<number>(10) // default 10s
     const editingTaskIdRef = useRef<number | null>(null)
     const [generatingTitle, setGeneratingTitle] = useState(false)
@@ -51,6 +60,8 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
     const [showLogs, setShowLogs] = useState(false)
     const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
     const [chatting, setChatting] = useState(false)
+    const [editorScoreResult, setEditorScoreResult] =
+        useState<AIScoreResult | null>(null)
     const [generatingDemo, setGeneratingDemo] = useState(false)
 
     // Sync task from props
@@ -62,6 +73,16 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
             const content = task.submission?.content ?? ''
             setMdContent(content)
             lastSavedContentRef.current = content
+            contentSnapshotRef.current = content
+            try {
+                setEditorScoreResult(
+                    task.submission?.aiScore
+                        ? (JSON.parse(task.submission.aiScore) as AIScoreResult)
+                        : null,
+                )
+            } catch {
+                setEditorScoreResult(null)
+            }
             setLastSaved(null)
             setAutosaveStatus('idle')
 
@@ -93,7 +114,7 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
             })
             .catch((err) => {
                 console.warn(
-                    '[TaskEdit] Failed to load autosave config, using default 10s:',
+                    '[TaskEditor] Failed to load autosave config, using default 10s:',
                     err,
                 )
             })
@@ -119,26 +140,59 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
         [currentTask],
     )
 
+    function hasContentChanged(): boolean {
+        return mdContent !== contentSnapshotRef.current
+    }
+
     // Manual save (close after save)
-    const handleSave = async () => {
+    const handleSave = useCallback(async () => {
         if (!currentTask || !mdContent.trim()) return
         if (autosaveTimerRef.current) {
             clearTimeout(autosaveTimerRef.current)
             autosaveTimerRef.current = null
         }
+
+        const isRetry = evaluationError && !hasContentChanged()
+        const hasBeenScored = !!(
+            currentTask?.submission?.scoredAt || currentTask?.gradedAt
+        )
+
+        // 从未评分过时，即使内容无变化也执行评分
+        if (!isRetry && !hasContentChanged() && hasBeenScored) {
+            showSnackbar('内容没有变化')
+            return
+        }
+
         setSaving(true)
         try {
-            await tasksApi.submit(currentTask.id, {
-                content: mdContent.trim(),
-            })
-            showSnackbar('保存成功')
-            onCancel()
+            if (!isRetry && hasContentChanged()) {
+                await tasksApi.submit(currentTask.id, {
+                    content: mdContent.trim(),
+                })
+            }
+
+            setScoring(true)
+            setEvaluationError(false)
+            try {
+                const res = await tasksApi.aiScore(currentTask.id)
+                setEditorScoreResult(res.aiResult)
+                contentSnapshotRef.current = mdContent
+                showSnackbar('保存并评分成功')
+                onCancel()
+            } catch {
+                setEvaluationError(true)
+                showSnackbar(
+                    '内容已保存，但 AI 评分失败，可点击"保存并评分"重试',
+                    'error',
+                )
+            }
         } catch (err) {
             showSnackbar('保存失败: ' + formatErrorMessage(err), 'error')
         } finally {
             setSaving(false)
+            setScoring(false)
         }
-    }
+    }, [currentTask, mdContent, evaluationError, onCancel, showSnackbar])
 
     // Autosave effect: trigger on content change, debounce
     useEffect(() => {
@@ -158,7 +212,7 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
     }, [currentTask, mdContent, doSave])
 
     // AI generate title based on submission content
-    const handleAiTitle = async () => {
+    const handleAiTitle = useCallback(async () => {
         if (!currentTask) return
         setGeneratingTitle(true)
         try {
@@ -170,10 +224,10 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
         } finally {
             setGeneratingTitle(false)
         }
-    }
+    }, [currentTask, showSnackbar])
 
     // AI generate demo submission
-    const handleGenerateDemo = async () => {
+    const handleGenerateDemo = useCallback(async () => {
         if (!currentTask) return
         setGeneratingDemo(true)
         try {
@@ -189,25 +243,28 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
         } finally {
             setGeneratingDemo(false)
         }
-    }
+    }, [currentTask, showSnackbar])
 
     // AI chat send
-    const handleChatSend = async (message: string) => {
-        if (!currentTask) return
-        const userMsg: ChatMessage = { role: 'user', content: message }
-        setChatMessages((prev) => [...prev, userMsg])
-        setChatting(true)
-        try {
-            await tasksApi.aiChat(currentTask.id, message)
-            const conv = await tasksApi.getConversation(currentTask.id)
-            if (editingTaskIdRef.current !== currentTask.id) return
-            setChatMessages(conv.messages)
-        } catch (err) {
-            showSnackbar('AI对话失败: ' + formatErrorMessage(err), 'error')
-        } finally {
-            setChatting(false)
-        }
-    }
+    const handleChatSend = useCallback(
+        async (message: string) => {
+            if (!currentTask) return
+            const userMsg: ChatMessage = { role: 'user', content: message }
+            setChatMessages((prev) => [...prev, userMsg])
+            setChatting(true)
+            try {
+                await tasksApi.aiChat(currentTask.id, message)
+                const conv = await tasksApi.getConversation(currentTask.id)
+                if (editingTaskIdRef.current !== currentTask.id) return
+                setChatMessages(conv.messages)
+            } catch (err) {
+                showSnackbar('AI对话失败: ' + formatErrorMessage(err), 'error')
+            } finally {
+                setChatting(false)
+            }
+        },
+        [currentTask, showSnackbar],
+    )
 
     // Fetch AI score history
     useEffect(() => {
@@ -236,8 +293,8 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
 
     if (!currentTask) return null
 
-    const aiSuggestions = currentTask.aiSuggestions
-    const hasSuggestions = aiSuggestions && aiSuggestions.length > 0
+    const displaySuggestions =
+        editorScoreResult?.suggestions ?? currentTask.aiSuggestions
 
     const autoconfirmLabel =
         autosaveStatus === 'saving'
@@ -274,29 +331,21 @@ export function EditTask({ task, onCancel }: EditTaskProps) {
                     </button>
                     <button
                         onClick={handleSave}
-                        disabled={saving}
+                        disabled={saving || scoring}
                         className="btn btn-primary">
-                        {saving ? '保存中...' : '保存并关闭'}
+                        {scoring
+                            ? '评分中...'
+                            : saving
+                              ? '保存中...'
+                              : '保存并评分'}
                     </button>
                 </div>
             </div>
 
-            {/* AI 改进建议 */}
-            {hasSuggestions && (
-                <div className="bg-amber-50 border-b border-warning-background px-6 py-3 shrink-0">
-                    <div className="flex items-start gap-2">
-                        <Sparkles className="size-5 text-warning shrink-0" />
-                        <div className="space-y-1 text-sm font-medium text-warning">
-                            <h6 className="text-warning">改进建议</h6>
-                            <ul className="list-disc list-inside">
-                                {aiSuggestions.map((s, i) => (
-                                    <li key={i}>{s}</li>
-                                ))}
-                            </ul>
-                        </div>
-                    </div>
-                </div>
-            )}
+            <ScoreResultPanel
+                result={editorScoreResult}
+                suggestions={displaySuggestions}
+            />
 
             <div className="flex-1 flex overflow-hidden">
                 <div data-color-mode="light" className="m-2 flex-1">
