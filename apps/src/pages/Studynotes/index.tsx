@@ -6,29 +6,29 @@ import { studynotesApi } from '@apps/utils/api'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { StudynotesModalEditor } from './StudynotesModalEditor'
-import { StudynotesCardList } from './StudynotesListTable'
+import { StudynotesListTable } from './StudynotesListTable'
 import { StudynotesModalShare } from './StudynotesModalShare'
 import { StudynotesSubjectFilter } from './StudynotesSubjectFilter'
-import { useStudynotesCards } from './hooks/useStudynotesCards'
-import type { StudynotesCard } from '@shared/types'
+import { useStudynotes } from './hooks/useStudynotes'
+import type { StudynotesItem } from '@shared/types'
 
 export const Studynotes: FC = () => {
     const { showSnackbar } = useSnackbar()
     const [searchParams, setSearchParams] = useSearchParams()
     const subject = searchParams.get('subject') || ''
     const {
-        data: cards = [],
+        data: notes = [],
         isLoading: loading,
         isError: hasError,
         refetch,
-    } = useStudynotesCards(subject)
+    } = useStudynotes(subject)
 
-    const [modalCardId, setModalCardId] = useState<number | null | undefined>(
+    const [modalNoteId, setModalNoteId] = useState<number | null | undefined>(
         undefined,
     )
     const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
     const [deleting, setDeleting] = useState(false)
-    const [shareCard, setShareCard] = useState<StudynotesCard | null>(null)
+    const [shareNote, setShareNote] = useState<StudynotesItem | null>(null)
 
     const handleSubjectChange = (value: string) => {
         if (value) {
@@ -58,7 +58,7 @@ export const Studynotes: FC = () => {
             <div className="flex items-center justify-between">
                 <h2>学习心得</h2>
                 <button
-                    onClick={() => setModalCardId(null)}
+                    onClick={() => setModalNoteId(null)}
                     className="btn btn-primary">
                     添加心得
                 </button>
@@ -69,29 +69,29 @@ export const Studynotes: FC = () => {
                 onSubjectChange={handleSubjectChange}
             />
 
-            <StudynotesCardList
+            <StudynotesListTable
                 loading={loading}
                 hasError={hasError}
-                cards={cards}
-                onCardClick={(id) => setModalCardId(id)}
-                onShare={(card) => setShareCard(card)}
+                notes={notes}
+                onCardClick={(id) => setModalNoteId(id)}
+                onShare={(card) => setShareNote(card)}
                 onDelete={(id) => setDeleteTargetId(id)}
             />
 
             <StudynotesModalEditor
-                open={modalCardId !== undefined}
-                cardId={modalCardId ?? null}
+                open={modalNoteId !== undefined}
+                cardId={modalNoteId ?? null}
                 onClose={() => {
-                    setModalCardId(undefined)
+                    setModalNoteId(undefined)
                     refetch()
                 }}
                 onSaved={() => refetch()}
             />
 
             <StudynotesModalShare
-                open={shareCard != null}
-                card={shareCard}
-                onCancel={() => setShareCard(null)}
+                open={shareNote != null}
+                card={shareNote}
+                onCancel={() => setShareNote(null)}
             />
 
             <Modal

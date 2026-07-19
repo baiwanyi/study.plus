@@ -1,6 +1,5 @@
 'use client'
 
-import { BookOpen } from 'lucide-react'
 import { useState, useEffect, useMemo, useRef } from 'react'
 import {
     taskTypeLabels,
@@ -57,129 +56,131 @@ export function ListTask({
 
     const taskColumns = useMemo<Column<Task>[]>(
         () => [
-        {
-            key: 'title',
-            header: '题目',
-            render: (task) => (
-                <button
-                    onClick={() => isAdminRole && onEdit(task)}
-                    className={`font-medium text-headline truncate max-w-75 ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
-                    title={task.title}>
-                    {task.title.length > TRUNCATE_LENGTH
-                        ? `${task.title.slice(0, TRUNCATE_LENGTH)}...`
-                        : task.title}
-                </button>
-            ),
-        },
-        {
-            key: 'type',
-            header: '类型',
-            render: (task) => (
-                <span className={`badge ${taskTypeColors[task.type]}`}>
-                    {taskTypeLabels[task.type]}
-                </span>
-            ),
-        },
-        {
-            key: 'grade',
-            header: '评分等级',
-            render: (task) =>
-                task.submission?.grade ? (
-                    <span
-                        className={`badge ${defaultGradeColors[task.submission.grade]}`}>
-                        {task.submission.grade}
-                    </span>
-                ) : (
-                    <span className="text-gray-400">-</span>
+            {
+                key: 'title',
+                header: '题目',
+                render: (task) => (
+                    <button
+                        onClick={() => isAdminRole && onEdit(task)}
+                        className={`font-medium text-headline truncate max-w-75 ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
+                        title={task.title}>
+                        {task.title.length > TRUNCATE_LENGTH
+                            ? `${task.title.slice(0, TRUNCATE_LENGTH)}...`
+                            : task.title}
+                    </button>
                 ),
-        },
-        {
-            key: 'aiComment',
-            header: '评语',
-            render: (task) =>
-                task.aiComment ? (
-                    task.aiComment.length > TRUNCATE_LENGTH ? (
-                        task.aiComment.slice(0, TRUNCATE_LENGTH) + '...'
+            },
+            {
+                key: 'type',
+                header: '类型',
+                render: (task) => (
+                    <span className={`badge ${taskTypeColors[task.type]}`}>
+                        {taskTypeLabels[task.type]}
+                    </span>
+                ),
+            },
+            {
+                key: 'grade',
+                header: '评分等级',
+                render: (task) =>
+                    task.submission?.grade ? (
+                        <span
+                            className={`badge ${defaultGradeColors[task.submission.grade]}`}>
+                            {task.submission.grade}
+                        </span>
                     ) : (
-                        task.aiComment
-                    )
-                ) : (
-                    <span className="text-gray-400">-</span>
-                ),
-        },
-        {
-            key: 'pointsEarned',
-            header: '积分',
-            render: (task) =>
-                task.pointsEarned !== null ? (
-                    <span
-                        className={
-                            task.pointsEarned >= 0
-                                ? pointColors.earn
-                                : pointColors.deduct
-                        }>
-                        {task.pointsEarned >= 0
-                            ? pointSymbol.earn
-                            : pointSymbol.deduct}
-                        {Math.abs(task.pointsEarned)}
+                        <span className="text-gray-400">-</span>
+                    ),
+            },
+            {
+                key: 'aiComment',
+                header: '评语',
+                render: (task) =>
+                    task.aiComment ? (
+                        task.aiComment.length > TRUNCATE_LENGTH ? (
+                            task.aiComment.slice(0, TRUNCATE_LENGTH) + '...'
+                        ) : (
+                            task.aiComment
+                        )
+                    ) : (
+                        <span className="text-gray-400">-</span>
+                    ),
+            },
+            {
+                key: 'pointsEarned',
+                header: '积分',
+                render: (task) =>
+                    task.pointsEarned !== null ? (
+                        <span
+                            className={
+                                task.pointsEarned >= 0
+                                    ? pointColors.earn
+                                    : pointColors.deduct
+                            }>
+                            {task.pointsEarned >= 0
+                                ? pointSymbol.earn
+                                : pointSymbol.deduct}
+                            {Math.abs(task.pointsEarned)}
+                        </span>
+                    ) : (
+                        <span className="text-gray-400">-</span>
+                    ),
+            },
+            {
+                key: 'status',
+                header: '状态',
+                render: (task) => (
+                    <span className={taskStatusColors[task.status]}>
+                        {taskStatusLabels[task.status]}
                     </span>
-                ) : (
-                    <span className="text-gray-400">-</span>
                 ),
-        },
-        {
-            key: 'status',
-            header: '状态',
-            render: (task) => (
-                <span className={taskStatusColors[task.status]}>
-                    {taskStatusLabels[task.status]}
-                </span>
-            ),
-        },
-        {
-            key: 'submittedAt',
-            header: '提交时间',
-            render: (task) => (
-                <span className="text-gray-600 text-xs">
-                    {formatDate(task.submittedAt)}
-                </span>
-            ),
-        },
-        {
-            key: 'gradedAt',
-            header: '评分时间',
-            render: (task) => (
-                <span className="text-gray-600 text-xs">
-                    {formatDate(task.gradedAt)}
-                </span>
-            ),
-        },
-        {
-            key: 'actions',
-            header: '操作',
-            render: (task) => (
-                <span className="space-x-2">
-                    <button
-                        onClick={() => onEditContent(task)}
-                        className="btn btn-outline btn-sm">
-                        编辑
-                    </button>
-                    <button
-                        onClick={() => onShare(task)}
-                        className="btn btn-outline btn-sm">
-                        分享
-                    </button>
-                    {isAdminRole && (
+            },
+            {
+                key: 'submittedAt',
+                header: '提交时间',
+                render: (task) => (
+                    <span className="text-gray-600 text-xs">
+                        {formatDate(task.submittedAt)}
+                    </span>
+                ),
+            },
+            {
+                key: 'gradedAt',
+                header: '评分时间',
+                render: (task) => (
+                    <span className="text-gray-600 text-xs">
+                        {formatDate(task.gradedAt)}
+                    </span>
+                ),
+            },
+            {
+                key: 'actions',
+                header: '操作',
+                render: (task) => (
+                    <span className="space-x-2">
                         <button
-                            onClick={() => onDelete(task.id)}
-                            className="btn btn-danger btn-sm">
-                            删除
+                            onClick={() => onEditContent(task)}
+                            className="btn btn-outline btn-sm">
+                            编辑
                         </button>
-                    )}
-                </span>
-            ),
-        },
-    ], [isAdminRole, onEdit, onEditContent, onShare, onDelete])
+                        <button
+                            onClick={() => onShare(task)}
+                            className="btn btn-outline btn-sm">
+                            分享
+                        </button>
+                        {isAdminRole && (
+                            <button
+                                onClick={() => onDelete(task.id)}
+                                className="btn btn-danger btn-sm">
+                                删除
+                            </button>
+                        )}
+                    </span>
+                ),
+            },
+        ],
+        [isAdminRole, onEdit, onEditContent, onShare, onDelete],
+    )
 
     const pagination = useMemo(
         () => ({
@@ -195,8 +196,9 @@ export function ListTask({
             <div className="flex items-center justify-between">
                 <h2>作业管理</h2>
                 <div className="flex items-center gap-2">
-                    <button onClick={onAddBookNote} className="btn btn-outline">
-                        <BookOpen className="w-4 h-4 mr-1" />
+                    <button
+                        onClick={onAddBookNote}
+                        className="btn btn-outline bg-white">
                         添加读书笔记
                     </button>
                     <button onClick={onAdd} className="btn btn-primary">

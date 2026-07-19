@@ -88,7 +88,7 @@ async function migrate(): Promise<void> {
 
     try {
         await client.execute(
-            'ALTER TABLE tasks ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+            'ALTER TABLE tasks ADD COLUMN updated_at TEXT',
         )
         console.log('Added updated_at column to tasks table.')
     } catch {}
@@ -254,7 +254,7 @@ async function migrate(): Promise<void> {
 
     try {
         await client.execute(
-            'ALTER TABLE submissions ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+            'ALTER TABLE submissions ADD COLUMN updated_at TEXT',
         )
         console.log('Added updated_at column to submissions table.')
     } catch {}
@@ -283,7 +283,7 @@ async function migrate(): Promise<void> {
 
     try {
         await client.execute(
-            'ALTER TABLE exchanges ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+            'ALTER TABLE exchanges ADD COLUMN updated_at TEXT',
         )
         console.log('Added updated_at column to exchanges table.')
     } catch {}
@@ -312,7 +312,7 @@ async function migrate(): Promise<void> {
 
     try {
         await client.execute(
-            'ALTER TABLE point_advances ADD COLUMN updated_at TEXT NOT NULL DEFAULT (datetime(\'now\'))',
+            'ALTER TABLE point_advances ADD COLUMN updated_at TEXT',
         )
         console.log('Added updated_at column to point_advances table.')
     } catch {}

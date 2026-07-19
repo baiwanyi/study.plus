@@ -10,7 +10,7 @@ export type StudynotesSubject =
     | 'science'
     | 'custom'
 
-export interface StudynotesCard {
+export interface StudynotesItem {
     id: number
     subject: string
     topic: string

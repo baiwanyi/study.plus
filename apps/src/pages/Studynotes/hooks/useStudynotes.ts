@@ -1,9 +1,9 @@
 import { useQuery } from '@tanstack/react-query'
 import { studynotesApi } from '@apps/utils/api'
-import type { StudynotesCard } from '@shared/types'
+import type { StudynotesItem } from '@shared/types'
 
-export function useStudynotesCards(subject: string) {
-    return useQuery<StudynotesCard[]>({
+export function useStudynotes(subject: string) {
+    return useQuery<StudynotesItem[]>({
         queryKey: ['studynotes', subject, 'list'],
         queryFn: () => {
             const params: Record<string, string> = {}

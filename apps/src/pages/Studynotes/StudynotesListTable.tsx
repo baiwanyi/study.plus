@@ -1,19 +1,20 @@
 'use client'
 
-import { isAdmin } from '@apps/utils/client'
+import { useState, useMemo } from 'react'
+import { isAdmin, paginate, getPageSize } from '@apps/utils/client'
 import { DataTable } from '@components/DataTable'
 import { Loading } from '@components/Loading'
 import { studynotesSubjectLabels, formatDate } from '@shared/utils'
 import type { Column } from '@components/DataTable'
-import type { StudynotesCard, StudynotesEvaluation } from '@shared/types'
+import type { StudynotesItem, StudynotesEvaluation } from '@shared/types'
 import type { FC } from 'react'
 
-interface StudynotesCardListProps {
+interface StudynotesListTableProps {
     loading: boolean
     hasError: boolean
-    cards: StudynotesCard[]
+    notes: StudynotesItem[]
     onCardClick: (id: number) => void
-    onShare: (card: StudynotesCard) => void
+    onShare: (card: StudynotesItem) => void
     onDelete: (id: number) => void
 }
 
@@ -52,20 +53,41 @@ function renderFollowUpScore(score: number | null | undefined) {
     if (score == null) {
         return <span className="text-xs text-gray-600">-</span>
     }
-    return <span className={`font-semibold text-base ${colorForScore(score)}`}>{score}</span>
+    return (
+        <span className={`font-semibold text-base ${colorForScore(score)}`}>
+            {score}
+        </span>
+    )
 }
 
-export const StudynotesCardList: FC<StudynotesCardListProps> = ({
+export const StudynotesListTable: FC<StudynotesListTableProps> = ({
     loading,
     hasError,
-    cards,
+    notes,
     onCardClick,
     onShare,
     onDelete,
 }) => {
     const showAdminActions = isAdmin()
+    const [page, setPage] = useState(1)
+    const pageSize = getPageSize()
+    // 钳制页码到有效范围，避免数据变化后停留在不存在的页导致空白
+    const totalPages = Math.max(1, Math.ceil(notes.length / pageSize))
+    const currentPage = Math.min(page, totalPages)
+    const pagedCards = useMemo(
+        () => paginate(notes, currentPage, pageSize),
+        [notes, currentPage, pageSize],
+    )
+    const pagination = useMemo(
+        () => ({
+            current: currentPage,
+            total: notes.length,
+            onChange: setPage,
+        }),
+        [currentPage, notes.length, setPage],
+    )
 
-    const columns: Column<StudynotesCard>[] = [
+    const columns: Column<StudynotesItem>[] = [
         {
             key: 'subject',
             header: '学科',
@@ -158,8 +180,9 @@ export const StudynotesCardList: FC<StudynotesCardListProps> = ({
     return (
         <div className="card overflow-hidden p-0!">
             <DataTable
-                data={cards}
+                data={pagedCards}
                 columns={columns}
+                pagination={pagination}
                 emptyText={'还没有学习心得记录，点击"添加心得"开始吧'}
             />
         </div>

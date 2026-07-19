@@ -5,12 +5,12 @@ import { BookOpen, Sparkles } from 'lucide-react'
 import { useRef, useCallback, type FC } from 'react'
 import { Modal } from '@components/Modal'
 import { studynotesSubjectLabels, formatDate } from '@shared/utils'
-import type { StudynotesCard, StudynotesEvaluation } from '@shared/types'
+import type { StudynotesItem, StudynotesEvaluation } from '@shared/types'
 import { EvaluationReport } from './EvaluationReport'
 
 interface StudynotesModalShareProps {
     open: boolean
-    card: StudynotesCard | null
+    card: StudynotesItem | null
     onCancel: () => void
 }
 

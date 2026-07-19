@@ -10,7 +10,7 @@ import { useSnackbar } from '@components/Snackbar'
 import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import { EvaluationReport } from './EvaluationReport'
 import type {
-    StudynotesCard,
+    StudynotesItem,
     StudynotesEvaluation,
     StudynotesMessage,
     ChatMessage,
@@ -54,7 +54,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     const [evaluation, setEvaluation] = useState<StudynotesEvaluation | null>(
         null,
     )
-    const [currentCard, setCurrentCard] = useState<StudynotesCard | null>(null)
+    const [currentCard, setCurrentCard] = useState<StudynotesItem | null>(null)
 
     const canFollowUp = evaluation != null && evaluation.completenessScore >= 80
 
@@ -202,7 +202,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
 
         setSaving(true)
         try {
-            let card: StudynotesCard
+            let card: StudynotesItem
             if (isRetry) {
                 // 二次评分：卡片已保存，仅重新评估，跳过内容保存
                 if (!currentCard) {

@@ -2,7 +2,7 @@
 
 import { request } from './request'
 import type {
-    StudynotesCard,
+    StudynotesItem,
     StudynotesCreateRequest,
     StudynotesEvaluation,
     StudynotesMessage,
@@ -20,14 +20,14 @@ export const studynotesApi = {
             params && Object.keys(params).length > 0
                 ? '?' + new URLSearchParams(params).toString()
                 : ''
-        return request<StudynotesCard[]>(`/studynotes${qs}`)
+        return request<StudynotesItem[]>(`/studynotes${qs}`)
     },
     get: (id: number) => {
         assertValidId(id)
-        return request<StudynotesCard>(`/studynotes/${id}`)
+        return request<StudynotesItem>(`/studynotes/${id}`)
     },
     create: (data: StudynotesCreateRequest) =>
-        request<StudynotesCard>('/studynotes', {
+        request<StudynotesItem>('/studynotes', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
@@ -38,7 +38,7 @@ export const studynotesApi = {
         },
     ) => {
         assertValidId(id)
-        return request<StudynotesCard>(`/studynotes/${id}`, {
+        return request<StudynotesItem>(`/studynotes/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
