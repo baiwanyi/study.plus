@@ -291,17 +291,28 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         }
         setHasTriggeredConversation(true)
         setChatSending(true)
-        try {
-            const result = await studynotesApi.followUp(currentCard.id, message)
-            setChatMessages(mapMessages(result.messages))
-        } catch {
+        const MAX_RETRIES = 1
+        let lastError: unknown
+        for (let i = 0; i <= MAX_RETRIES; i++) {
+            try {
+                const result = await studynotesApi.followUp(currentCard.id, message)
+                setChatMessages(mapMessages(result.messages))
+                lastError = undefined
+                break
+            } catch (err) {
+                lastError = err
+                if (i < MAX_RETRIES) {
+                    await new Promise((r) => setTimeout(r, 2000))
+                }
+            }
+        }
+        if (lastError) {
             showSnackbar(
                 message ? '发送失败，请稍后重试' : '测验出错，请稍后重试',
                 'error',
             )
-        } finally {
-            setChatSending(false)
         }
+        setChatSending(false)
     }, [currentCard, canFollowUp, showSnackbar])
 
     const handleFollowUp = useCallback(() => runFollowUp(), [runFollowUp])

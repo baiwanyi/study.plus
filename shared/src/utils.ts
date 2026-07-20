@@ -120,14 +120,14 @@ export const taskClassLabels: TaskClass[] = [
 ]
 
 export const taskAILabels: Record<TaskAI, string> = {
-    'ai-score': 'AI评分',
-    'ai-title': 'AI起名',
-    'ai-task': 'AI出题',
-    'task-chat': 'AI作业对话',
-    'weekly-analyze': 'AI周报分析',
-    'weekly-chat': 'AI周报对话',
-    'studynotes-followup': 'AI费曼跟进',
-    'studynotes-evaluate': 'AI费曼评估',
+    'ai-score': '作业评分',
+    'ai-title': '作业起名',
+    'ai-task': '作业出题',
+    'task-chat': '作业对话',
+    'weekly-analyze': '周报分析',
+    'weekly-chat': '周报对话',
+    'studynotes-followup': '心得测验',
+    'studynotes-evaluate': '心得评估',
 }
 
 export function getCurrentMonth(): string {

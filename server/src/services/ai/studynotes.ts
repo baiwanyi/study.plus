@@ -3,7 +3,6 @@ import {
     defaultPromptStudynotesFollowUp,
 } from '@shared/constants'
 import { studynotesSubjectLabels } from '@shared/utils'
-
 import {
     callDeepSeek,
     DEEPSEEK_API_KEY,
@@ -32,12 +31,12 @@ export async function evaluateStudynotesReflection(
     const prompt = defaultPromptEvaluateStudynotes
         .replace(
             '{subject}',
-            () => studynotesSubjectLabels[subject] || subject || '未填写学科',
+            studynotesSubjectLabels[subject] || subject || '未填写学科',
         )
-        .replace('{topic}', () => topic || '未填写课题')
-        .replace('{summary}', () => summary || '未填写')
-        .replace('{example}', () => example || '未填写')
-        .replace('{stuckPoints}', () => stuckPoints || '未填写')
+        .replace('{topic}', topic || '未填写课题')
+        .replace('{summary}', summary || '未填写')
+        .replace('{example}', example || '未填写')
+        .replace('{stuckPoints}', stuckPoints || '未填写')
 
     try {
         const { content: reply, usage } = await callDeepSeek({
@@ -103,27 +102,27 @@ export async function studynotesFollowUpChat(
     const prompt = defaultPromptStudynotesFollowUp
         .replace(
             '{subject}',
-            () => studynotesSubjectLabels[subject] || subject || '未填写学科',
+            studynotesSubjectLabels[subject] || subject || '未填写学科',
         )
-        .replace('{topic}', () => topic || '未填写课题')
-        .replace('{summary}', () => summary || '未填写')
-        .replace('{example}', () => example || '未填写')
-        .replace('{stuckPoints}', () => stuckPoints || '未填写')
-        .replace('{roundNumber}', () => String(roundNumber))
-        .replace('{history}', () => historyText)
-        .replace('{studentAnswer}', () => userMessage || '')
+        .replace('{topic}', topic || '未填写课题')
+        .replace('{summary}', summary || '未填写')
+        .replace('{example}', example || '未填写')
+        .replace('{stuckPoints}', stuckPoints || '未填写')
+        .replace('{roundNumber}', String(roundNumber))
+        .replace('{history}', historyText)
+        .replace('{studentAnswer}', userMessage || '')
 
     try {
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
-            max_tokens: 2000,
+            max_tokens: 4000,
         })
 
         await logAiUsage(
             'studynotes-followup',
             usage,
-            `学习心得测验：${topic || subject}`,
+            `学习心得追问：${topic || subject}`,
         )
 
         return reply

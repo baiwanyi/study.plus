@@ -91,7 +91,10 @@ async function logAiUsage(
 
 async function callDeepSeek(
     options: CallDeepSeekOptions,
+    retryCount = 0,
 ): Promise<CallDeepSeekResult> {
+    const MAX_RETRIES = 2
+
     if (!DEEPSEEK_API_KEY) {
         throw new Error('DEEPSEEK_API_KEY 未配置，无法调用 DeepSeek API')
     }
@@ -143,8 +146,22 @@ async function callDeepSeek(
             choices_length: data.choices?.length ?? 0,
             response_keys: Object.keys(data),
             model: 'deepseek-v4-flash',
+            retry_count: retryCount,
         }
         console.warn('[DeepSeek Empty Response]', JSON.stringify(diagnostic))
+
+        // 非过滤类错误：自动重试（网络抖动/临时空响应）
+        if (
+            finishReason !== 'content_filter'
+            && retryCount < MAX_RETRIES
+        ) {
+            const delay = 1000 * (retryCount + 1)
+            console.warn(
+                `[DeepSeek Retry ${retryCount + 1}/${MAX_RETRIES}] waiting ${delay}ms`,
+            )
+            await new Promise((r) => setTimeout(r, delay))
+            return callDeepSeek(options, retryCount + 1)
+        }
 
         if (finishReason === 'content_filter') {
             throw new Error(
