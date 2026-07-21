@@ -289,6 +289,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             showSnackbar('评分未达到80分，暂无法进行测验', 'error')
             return
         }
+        // 重新测验时清空旧消息，避免旧内容残留
+        if (!message) {
+            setChatMessages([])
+        }
         setHasTriggeredConversation(true)
         setChatSending(true)
         const MAX_RETRIES = 1

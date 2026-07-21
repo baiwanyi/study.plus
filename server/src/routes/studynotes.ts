@@ -344,24 +344,27 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             .where(eq(studynoteConversations.studynoteId, id))
             .limit(1)
 
-        if (existingConv[0]) {
+        // 重新测验（无 message 且已有对话）：清空旧消息后复用 conversation，
+        // 因为 studynoteId 有 UNIQUE 约束，不能创建多条 conversation
+        const isRestart = !userMessage && !!existingConv[0]
+
+        if (isRestart) {
             conversationId = existingConv[0].id
+            await db
+                .delete(studynoteMessages)
+                .where(
+                    eq(studynoteMessages.conversationId, conversationId),
+                )
+        } else if (!existingConv[0]) {
+            // 首次测验：创建新 conversation
+            const newConv = await db
+                .insert(studynoteConversations)
+                .values({ studynoteId: id })
+                .returning()
+            conversationId = newConv[0].id
         } else {
-            try {
-                const newConv = await db
-                    .insert(studynoteConversations)
-                    .values({ studynoteId: id })
-                    .returning()
-                conversationId = newConv[0].id
-            } catch {
-                const retry = await db
-                    .select()
-                    .from(studynoteConversations)
-                    .where(eq(studynoteConversations.studynoteId, id))
-                    .limit(1)
-                if (!retry[0]) throw new Error('创建对话失败')
-                conversationId = retry[0].id
-            }
+            // 正常答题：复用已有 conversation
+            conversationId = existingConv[0].id
         }
 
         if (userMessage) {
@@ -446,6 +449,7 @@ studynotesRouter.get('/:id/messages', async (req: Request, res: Response) => {
             .select()
             .from(studynoteConversations)
             .where(eq(studynoteConversations.studynoteId, id))
+            .orderBy(desc(studynoteConversations.id))
             .limit(1)
 
         if (!conv[0]) {

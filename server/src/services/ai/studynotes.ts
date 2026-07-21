@@ -1,6 +1,9 @@
 import {
     defaultPromptEvaluateStudynotes,
-    defaultPromptStudynotesFollowUp,
+    promptStudynotesFollowUpHeader,
+    promptStudynotesFollowUpQuiz,
+    promptStudynotesFollowUpRound1,
+    promptStudynotesFollowUpSummary,
 } from '@shared/constants'
 import { studynotesSubjectLabels } from '@shared/utils'
 import {
@@ -99,24 +102,37 @@ export async function studynotesFollowUpChat(
                   .join('\n')
             : ''
 
-    const prompt = defaultPromptStudynotesFollowUp
-        .replace(
-            '{subject}',
-            studynotesSubjectLabels[subject] || subject || '未填写学科',
-        )
+    const subjectLabel = studynotesSubjectLabels[subject] || subject || '未填写学科'
+
+    // 按轮次选择对应的指令段落，避免 AI 看到无关指令产生误导
+    let sectionPrompt: string
+    if (roundNumber === 1) {
+        sectionPrompt = promptStudynotesFollowUpRound1
+    } else if (roundNumber <= 10) {
+        sectionPrompt = promptStudynotesFollowUpQuiz
+            .replace('{history}', historyText)
+            .replace('{studentAnswer}', userMessage || '')
+            .replace('{roundNumber}', String(roundNumber))
+    } else {
+        sectionPrompt = promptStudynotesFollowUpSummary
+            .replace('{history}', historyText)
+            .replace('{studentAnswer}', userMessage || '')
+    }
+
+    const prompt = promptStudynotesFollowUpHeader
+        .replace('{subject}', subjectLabel)
         .replace('{topic}', topic || '未填写课题')
         .replace('{summary}', summary || '未填写')
         .replace('{example}', example || '未填写')
         .replace('{stuckPoints}', stuckPoints || '未填写')
-        .replace('{roundNumber}', String(roundNumber))
-        .replace('{history}', historyText)
-        .replace('{studentAnswer}', userMessage || '')
+        + sectionPrompt
 
     try {
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 4000,
+            timeoutMs: 90_000,
         })
 
         await logAiUsage(

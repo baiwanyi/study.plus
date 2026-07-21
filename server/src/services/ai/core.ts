@@ -53,6 +53,7 @@ interface CallDeepSeekOptions {
     max_tokens?: number
     response_format?: { type: 'json_object' }
     signal?: AbortSignal
+    timeoutMs?: number
 }
 
 interface CallDeepSeekResult {
@@ -99,8 +100,14 @@ async function callDeepSeek(
         throw new Error('DEEPSEEK_API_KEY 未配置，无法调用 DeepSeek API')
     }
 
-    const { messages, temperature, max_tokens, response_format, signal } =
-        options
+    const {
+        messages,
+        temperature,
+        max_tokens,
+        response_format,
+        signal,
+        timeoutMs,
+    } = options
 
     const response = await fetch(`${DEEPSEEK_BASE_URL}/chat/completions`, {
         method: 'POST',
@@ -108,7 +115,7 @@ async function callDeepSeek(
             'Content-Type': 'application/json',
             Authorization: `Bearer ${DEEPSEEK_API_KEY}`,
         },
-        signal: signal ?? AbortSignal.timeout(30_000),
+        signal: signal ?? AbortSignal.timeout(timeoutMs ?? 30_000),
         body: JSON.stringify({
             model: 'deepseek-v4-flash',
             messages,
