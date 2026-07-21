@@ -121,12 +121,12 @@ export const StudynotesListTable: FC<StudynotesListTableProps> = ({
         },
         {
             key: 'evaluation',
-            header: '心得评分',
+            header: '评分',
             render: (record) => renderEvaluation(record.evaluation),
         },
         {
             key: 'followUpScore',
-            header: '追问评分',
+            header: '测验',
             render: (record) => renderFollowUpScore(record.followUpScore),
         },
         {

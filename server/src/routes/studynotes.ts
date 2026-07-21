@@ -391,8 +391,8 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
             userMessage || undefined,
         )
 
-        // 测验出错时（如 AI 返回为空）不允许将错误信息写入数据库
-        if (aiReply.startsWith('追问出错：')) {
+        // 测验出错时（如 AI 超时、过滤、返回为空）不允许将错误信息写入数据库
+        if (aiReply.startsWith('测验出错：') || aiReply.startsWith('追问出错：')) {
             throw new Error(aiReply)
         }
 
@@ -403,10 +403,13 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
         })
 
         // 解析 AI 回复中的掌握程度评分，保存到卡片
-        const scoreMatch = aiReply.match(/【掌握程度评分】\s*(\d+)\s*分/)
+        // 使用宽松正则以兼容 AI 的各种格式变体（如"】："、"】: "等）
+        const scoreRegex = /掌握程度评分[^0-9]*(\d+)/
+        const scoreMatch = aiReply.match(scoreRegex)
         if (scoreMatch) {
             const followUpScore = Number.parseInt(scoreMatch[1], 10)
-            if (!Number.isNaN(followUpScore)) {
+            if (!Number.isNaN(followUpScore) && followUpScore >= 0 && followUpScore <= 100) {
+                console.log(`[FollowUp Score] 卡片 ${id} 评分: ${followUpScore} 分`)
                 await db
                     .update(studynotes)
                     .set({
@@ -414,6 +417,13 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
                         updatedAt: new Date().toISOString(),
                     })
                     .where(eq(studynotes.id, id))
+            }
+        } else {
+            // 仅在可能是总结回复时（内容较长）记录未匹配情况，便于排查
+            if (aiReply.length > 200) {
+                console.warn(
+                    `[FollowUp Score] 卡片 ${id} 未匹配到评分，回复前 200 字: ${aiReply.slice(0, 200)}`,
+                )
             }
         }
 

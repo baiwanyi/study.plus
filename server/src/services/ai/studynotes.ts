@@ -132,7 +132,7 @@ export async function studynotesFollowUpChat(
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 4000,
-            timeoutMs: 90_000,
+            timeoutMs: 120_000,
         })
 
         await logAiUsage(
