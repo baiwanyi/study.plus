@@ -177,7 +177,15 @@ export const promptStudynotesFollowUpHeader =
     '学生心得内容：\n' +
     '- 一句话概括：{summary}\n' +
     '- 自己的例子：{example}\n' +
-    '- 卡壳点：{stuckPoints}\n'
+    '- 卡壳点：{stuckPoints}\n' +
+    '\n' +
+    '文本表达规范（所有回复必须遵守）：\n' +
+    '- 禁止使用 HTML 标签、Markdown 格式和 LaTeX 公式\n' +
+    '- 禁止使用 $$、$、\\(、\\) 等公式标记\n' +
+    '- 数学符号必须用中文文字表达，例如：平方代替²、立方代替³、次方代替^、根号代替√、大于等于代替≥\n' +
+    '- 分数用"几分之几"表达，如"二分之一"\n' +
+    '- 化学式和特殊符号用中文描述，如"水（H2O）"、温度用"摄氏度"\n' +
+    '- 禁止使用任何 HTML 实体（如 &times; &divide; &sup2; 等）\n'
 
 // Round 1 — first call, no history yet
 export const promptStudynotesFollowUpRound1 =
@@ -189,7 +197,8 @@ export const promptStudynotesFollowUpRound1 =
     '- 题目考察学生是否真正理解，不能仅靠记忆回答\n' +
     '- 每题设置1-2个小陷阱或易错点，检验学生是否真正吃透\n' +
     '- 难度适中，从基础开始\n' +
-    '- 语气鼓励亲切，用"你"称呼\n'
+    '- 语气鼓励亲切，用"你"称呼\n' +
+    '- 题目中禁止使用 HTML 符号、Markdown 和 LaTeX 公式，数学符号用中文文字表达\n'
 
 // Rounds 2-10 — normal quiz: evaluate previous answer + ask next question
 export const promptStudynotesFollowUpQuiz =
@@ -210,7 +219,8 @@ export const promptStudynotesFollowUpQuiz =
     '- 结合学生之前的表现和卡壳点，针对性出题\n' +
     '- 每题设置1-2个小陷阱或易错点，检验学生是否真正吃透\n' +
     '- 难度逐步递进\n' +
-    '- 语气鼓励亲切，用"你"称呼\n'
+    '- 语气鼓励亲切，用"你"称呼\n' +
+    '- 题目中禁止使用 HTML 符号、Markdown 和 LaTeX 公式，数学符号用中文文字表达\n'
 
 // Round 11+ — all 10 questions answered, generate summary report
 export const promptStudynotesFollowUpSummary =
@@ -229,6 +239,8 @@ export const promptStudynotesFollowUpSummary =
     '【答题统计】共10题，答对X题，答错Y题\n' +
     '【错题回顾】逐题列出：第X题-正确答案-解析（仅列出答错的题）\n' +
     '【掌握程度评分】XX分（满分100分，综合正确率和知识掌握深度评估）\n' +
-    '【复习建议】针对薄弱点给1-2条具体建议\n'
+    '【复习建议】针对薄弱点给1-2条具体建议\n' +
+    '\n' +
+    '以上所有内容禁止使用 HTML 符号、Markdown 和 LaTeX 公式，数学符号用中文文字表达。\n'
 
 export const defaultVideoDirectory = ''
