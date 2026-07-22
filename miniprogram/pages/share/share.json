@@ -5,6 +5,7 @@
     "t-tag": "tdesign-miniprogram/tag/tag",
     "t-picker": "tdesign-miniprogram/picker/picker",
     "t-loading": "tdesign-miniprogram/loading/loading",
-    "share-card": "/components/share-card/share-card"
+    "share-card": "/components/share-card/share-card",
+    "pc-layout": "/components/pc-layout/pc-layout"
   }
 }

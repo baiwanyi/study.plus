@@ -16,6 +16,7 @@ interface ShareStats {
 Page({
     data: {
         loading: true,
+        isWide: false,
         months: [] as string[],
         monthIndex: 0,
         month: '',
@@ -26,7 +27,17 @@ Page({
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
+        const app = getApp<AppOption>()
+        this.setData({
+            isWide: app.globalData.platform.isWide,
+            user: app.globalData.user,
+            children: app.globalData.children,
+            currentChildId: app.globalData.currentChildId,
+        })
         this.initMonths()
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
     async initMonths() {
         const current = new Date().toISOString().slice(0, 7)

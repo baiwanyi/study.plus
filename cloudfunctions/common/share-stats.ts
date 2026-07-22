@@ -1,7 +1,8 @@
-import { query } from './db'
 import { listChildren } from './children'
+import { query } from './db'
 import { loadRules } from './rules'
 import { recomputeMonthSummary } from './summary-helper'
+import { monthRange } from './date-utils'
 
 export interface ExchangeInfo {
     totalDuration: number
@@ -23,29 +24,46 @@ export interface ShareStats {
     availableBalance: number
 }
 
-function monthRange(month: string): { start: string; end: string } {
-    const start = new Date(`${month}-01T00:00:00.000Z`)
-    const end = new Date(start)
-    end.setUTCMonth(end.getUTCMonth() + 1)
-    end.setUTCDate(0)
-    end.setUTCHours(23, 59, 59, 999)
-    return { start: start.toISOString(), end: end.toISOString() }
-}
-
 export async function computeShareStats(userId: number, month: string): Promise<ShareStats> {
     const { start, end } = monthRange(month)
-    const rules = await loadRules()
+    const [rules, gameExchanges, earnExcl, deductExcl, submissionEarn, examEarn] = await Promise.all([
+        loadRules(),
+        query<{ points_cost: number; created_at: string }>(
+            `SELECT points_cost, created_at FROM exchanges
+         WHERE item_type IN ('game', 'games') AND status = 'active'
+         AND user_id = ? AND created_at >= ? AND created_at <= ?`,
+            [userId, start, end],
+        ),
+        query<{ total: number }>(
+            `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
+         WHERE user_id = ? AND type = 'earn' AND related_type <> 'exchange'
+         AND related_type <> 'revoked' AND reason NOT LIKE ? AND created_at >= ? AND created_at <= ?`,
+            [userId, '积分预支 - %', start, end],
+        ),
+        query<{ total: number }>(
+            `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
+         WHERE user_id = ? AND type = 'deduct' AND related_type <> 'exchange'
+         AND related_type <> 'revoked' AND reason NOT LIKE ? AND created_at >= ? AND created_at <= ?`,
+            [userId, '积分预支 - %', start, end],
+        ),
+        query<{ total: number }>(
+            `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
+         WHERE user_id = ? AND type = 'earn' AND related_type = 'submission'
+         AND created_at >= ? AND created_at <= ?`,
+            [userId, start, end],
+        ),
+        query<{ total: number }>(
+            `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
+         WHERE user_id = ? AND type = 'earn' AND related_type = 'exam'
+         AND created_at >= ? AND created_at <= ?`,
+            [userId, start, end],
+        ),
+    ])
     const gameRate = rules.exchange.find((e) => e.key === 'game') ??
         rules.exchange.find((e) => e.key === 'games')
     const gameDurationPerPoint = gameRate ? gameRate.ratio : 10
     const gamePointsPerDuration = gameRate ? gameRate.points : 1
 
-    const gameExchanges = await query<{ points_cost: number; created_at: string }>(
-        `SELECT points_cost, created_at FROM exchanges
-     WHERE item_type IN ('game', 'games') AND status = 'active'
-     AND user_id = ? AND created_at >= ? AND created_at <= ?`,
-        [userId, start, end],
-    )
     const dayDurationMap = new Map<string, number>()
     let totalDuration = 0
     for (const ex of gameExchanges) {
@@ -63,30 +81,6 @@ export async function computeShareStats(userId: number, month: string): Promise<
         }
     }
 
-    const earnExcl = await query<{ total: number }>(
-        `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
-     WHERE user_id = ? AND type = 'earn' AND related_type <> 'exchange'
-     AND related_type <> 'revoked' AND reason NOT LIKE ? AND created_at >= ? AND created_at <= ?`,
-        [userId, '积分预支 - %', start, end],
-    )
-    const deductExcl = await query<{ total: number }>(
-        `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
-     WHERE user_id = ? AND type = 'deduct' AND related_type <> 'exchange'
-     AND related_type <> 'revoked' AND reason NOT LIKE ? AND created_at >= ? AND created_at <= ?`,
-        [userId, '积分预支 - %', start, end],
-    )
-    const submissionEarn = await query<{ total: number }>(
-        `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
-     WHERE user_id = ? AND type = 'earn' AND related_type = 'submission'
-     AND created_at >= ? AND created_at <= ?`,
-        [userId, start, end],
-    )
-    const examEarn = await query<{ total: number }>(
-        `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
-     WHERE user_id = ? AND type = 'earn' AND related_type = 'exam'
-     AND created_at >= ? AND created_at <= ?`,
-        [userId, start, end],
-    )
     const summary = await recomputeMonthSummary(userId, month)
     return {
         month,

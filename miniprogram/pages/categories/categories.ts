@@ -8,26 +8,34 @@ interface Category {
     sample: string
 }
 
-interface ICategoryData {
+interface CategoryData {
     list: Category[]
     loading: boolean
     isParent: boolean
+    isWide: boolean
     showForm: boolean
     editingId: string | null
     form: { name: string; icon: string; sample: string }
 }
 
-Page<ICategoryData>({
+Page<CategoryData>({
     data: {
         list: [],
         loading: true,
         isParent: false,
+        isWide: false,
         showForm: false,
         editingId: null,
         form: { name: '', icon: 'discount', sample: '' },
     },
     onShow() {
-        this.setData({ isParent: getCurrentRole() === 'parent' })
+        const app = getApp<AppOption>()
+        this.setData({
+            isParent: getCurrentRole() === 'parent',
+            isWide: app.globalData.platform.isWide,
+            user: app.globalData.user,
+            children: app.globalData.children,
+        })
         this.loadList()
     },
     async loadList() {
@@ -61,6 +69,9 @@ Page<ICategoryData>({
     },
     onCancel() {
         this.setData({ showForm: false })
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
     onNameChange(e: WechatMiniprogram.CustomEvent) {
         this.setData({ 'form.name': e.detail.value })

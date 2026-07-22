@@ -11,7 +11,7 @@ import {
 
 const GRADES = ['一年级', '二年级', '三年级', '四年级', '五年级', '六年级']
 
-interface IMyData {
+interface MyData {
     user: UserInfo | null
     children: ChildItem[]
     currentChildId: number | null
@@ -21,9 +21,10 @@ interface IMyData {
     newGrade: string
     loading: boolean
     isParent: boolean
+    isWide: boolean
 }
 
-Page<IMyData>({
+Page<MyData>({
     data: {
         user: null,
         children: [],
@@ -34,18 +35,20 @@ Page<IMyData>({
         newGrade: '一年级',
         loading: false,
         isParent: false,
+        isWide: false,
     },
     onShow() {
         if (!getToken()) {
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         this.setData({
             user: app.globalData.user,
             children: app.globalData.children,
             currentChildId: getCurrentChildId(),
             isParent: getCurrentRole() === 'parent',
+            isWide: app.globalData.platform.isWide,
         })
     },
     goCategories() {
@@ -57,7 +60,7 @@ Page<IMyData>({
     onSelectChild(e: WechatMiniprogram.CustomEvent) {
         const id = Number(e.detail.childId)
         setCurrentChildId(id)
-        getApp<IAppOption>().globalData.currentChildId = id
+        getApp<AppOption>().globalData.currentChildId = id
         this.setData({ currentChildId: id })
         wx.showToast({ title: '已切换', icon: 'none' })
     },
@@ -86,7 +89,7 @@ Page<IMyData>({
                 nickname: name,
                 grade: this.data.newGrade,
             })
-            const app = getApp<IAppOption>()
+            const app = getApp<AppOption>()
             const children = [...this.data.children, res.child]
             app.globalData.children = children
             this.setData({ children, addVisible: false })
@@ -108,7 +111,7 @@ Page<IMyData>({
         try {
             await callCloudFunction('family', { action: 'remove', childId: id })
             const children = this.data.children.filter((c) => c.childId !== id)
-            getApp<IAppOption>().globalData.children = children
+            getApp<AppOption>().globalData.children = children
             if (getCurrentChildId() === id) {
                 setCurrentChildId(children[0]?.childId ?? null)
             }

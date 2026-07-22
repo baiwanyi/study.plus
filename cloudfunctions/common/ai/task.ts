@@ -1,11 +1,3 @@
-import type { AIScoreResult, ChatMessage, TaskGrade, TaskType } from '../types'
-import {
-    defaultGradeValues,
-    defaultTaskTitle,
-    taskClassLabels,
-    taskTypeDefaultTitles,
-    taskTypeLabels,
-} from '../constants'
 import { callAi, logAiUsage, safeJsonParse, type AiMessage } from './client'
 import {
     defaultPromptGenerateTitle,
@@ -15,6 +7,14 @@ import {
     defaultPromptTaskTitleMindmap,
     defaultPromptTaskTitleNotes,
 } from './prompts'
+import type { AIScoreResult, ChatMessage, TaskGrade, TaskType } from '../types'
+import {
+    defaultGradeValues,
+    defaultTaskTitle,
+    taskClassLabels,
+    taskTypeDefaultTitles,
+    taskTypeLabels,
+} from '../constants'
 
 interface DeepSeekParsedResult {
     grade: string

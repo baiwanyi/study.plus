@@ -1,4 +1,3 @@
-import { studynotesSubjectLabels } from '../constants'
 import { callAi, logAiUsage } from './client'
 import {
     defaultPromptEvaluateStudynotes,
@@ -7,6 +6,7 @@ import {
     promptStudynotesFollowUpRound1,
     promptStudynotesFollowUpSummary,
 } from './prompts'
+import { studynotesSubjectLabels } from '../constants'
 
 export async function evaluateStudynotesReflection(
     subject: string,

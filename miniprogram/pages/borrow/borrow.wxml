@@ -1,5 +1,14 @@
+<pc-layout
+  isWide="{{isWide}}"
+  user="{{user}}"
+  children="{{children}}"
+  currentChildId="{{currentChildId}}"
+  currentPage="borrow"
+  bind:childchange="onSelectChild"
+  bind:logout="onLogout"
+>
 <view class="page">
-  <child-selector wx:if="{{children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
+  <child-selector wx:if="{{!isWide && children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
 
   <view class="summary-card" wx:if="{{summary}}">
     <view class="summary-row">
@@ -65,3 +74,4 @@
     </view>
   </t-popup>
 </view>
+</pc-layout>

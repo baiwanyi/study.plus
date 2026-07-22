@@ -1,7 +1,7 @@
-import { run } from '../common/entry'
-import { query, execute } from '../common/db'
-import { getAuthContext } from '../common/db-query'
 import { listChildren } from '../common/children'
+import { query, execute, withTransaction } from '../common/db'
+import { getAuthContext } from '../common/db-query'
+import { run } from '../common/entry'
 import { HttpError } from '../common/errors'
 
 interface PrivacyEvent {
@@ -27,15 +27,16 @@ async function collectForUser(userId: number): Promise<Record<string, unknown[]>
         'studynotes',
         'studynote_conversations',
     ]
-    const result: Record<string, unknown[]> = {}
-    for (const table of tables) {
-        const rows = await query<Record<string, unknown>>(
-            `SELECT * FROM ${table} WHERE user_id = ?`,
-            [userId],
-        )
-        result[table] = rows
-    }
-    return result
+    const entries = await Promise.all(
+        tables.map(async (table) => {
+            const rows = await query<Record<string, unknown>>(
+                `SELECT * FROM ${table} WHERE user_id = ?`,
+                [userId],
+            )
+            return [table, rows] as const
+        }),
+    )
+    return Object.fromEntries(entries)
 }
 
 export async function main(event: PrivacyEvent): Promise<unknown> {
@@ -71,25 +72,33 @@ export async function main(event: PrivacyEvent): Promise<unknown> {
                     ? [ctx.auth.userId, ...(await listChildren(ctx.auth.userId)).map((c) => c.childId)]
                     : [ctx.auth.userId]
             const placeholders = targetIds.map(() => '?').join(',')
-            const tables = [
-                'tasks',
-                'submissions',
-                'point_records',
-                'exchanges',
-                'point_advances',
-                'month_summary',
-                'ai_score_logs',
-                'ai_usage_logs',
-                'weekly_reports',
-                'studynotes',
-                'login_tokens',
-            ]
-            for (const table of tables) {
-                await execute(`DELETE FROM ${table} WHERE user_id IN (${placeholders})`, targetIds)
-            }
-            // 删除用户与家庭绑定（级联清理会话等子表）
-            await execute(`DELETE FROM users WHERE id IN (${placeholders})`, targetIds)
-            return { success: true, deleted: targetIds.length }
+            return withTransaction(async (tx) => {
+                const tables = [
+                    'tasks',
+                    'submissions',
+                    'task_conversations',
+                    'task_messages',
+                    'point_records',
+                    'exchanges',
+                    'point_advances',
+                    'month_summary',
+                    'ai_score_logs',
+                    'ai_usage_logs',
+                    'weekly_reports',
+                    'weekly_conversations',
+                    'weekly_messages',
+                    'studynotes',
+                    'studynote_conversations',
+                    'studynote_messages',
+                    'login_tokens',
+                    'family_bindings',
+                ]
+                for (const table of tables) {
+                    await tx.execute(`DELETE FROM ${table} WHERE user_id IN (${placeholders})`, targetIds)
+                }
+                await tx.execute(`DELETE FROM users WHERE id IN (${placeholders})`, targetIds)
+                return { success: true, deleted: targetIds.length }
+            })
         }
 
         throw new HttpError(400, '未知的 action')

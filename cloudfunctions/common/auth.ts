@@ -1,5 +1,6 @@
 import jwt, { type JwtPayload as JwtLibPayload } from 'jsonwebtoken'
 import { assertJwtSecret, JWT_EXPIRES_IN, JWT_SECRET } from './config'
+import { HttpError } from './errors'
 
 export type Role = 'parent' | 'child'
 
@@ -30,6 +31,6 @@ export function verifyToken(token: string): JwtClaims {
             exp: decoded.exp,
         }
     } catch {
-        throw new Error('令牌无效或已过期')
+        throw new HttpError(401, '令牌无效或已过期')
     }
 }

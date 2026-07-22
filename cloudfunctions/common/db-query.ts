@@ -1,6 +1,6 @@
-import { HttpError } from './errors'
 import { verifyToken, type JwtClaims, type Role } from './auth'
 import { queryOne } from './db'
+import { HttpError } from './errors'
 
 /** 云函数事件通用字段 */
 export interface BaseEvent {

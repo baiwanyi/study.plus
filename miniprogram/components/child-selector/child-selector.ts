@@ -1,4 +1,4 @@
-interface IChild {
+interface ChildData {
     childId: number
     nickname: string
     grade: string
@@ -8,7 +8,7 @@ interface IChild {
 Component({
     properties: {
         children: {
-            type: Array<IChild>,
+            type: Array<ChildData>,
             value: [],
         },
         value: {

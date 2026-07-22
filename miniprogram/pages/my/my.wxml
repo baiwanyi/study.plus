@@ -1,5 +1,14 @@
+<pc-layout
+  isWide="{{isWide}}"
+  user="{{user}}"
+  children="{{children}}"
+  currentChildId="{{currentChildId}}"
+  currentPage="my"
+  bind:childchange="onSelectChild"
+  bind:logout="onLogout"
+>
 <view class="page">
-  <view class="hero">
+  <view class="hero" wx:if="{{!isWide}}">
     <view class="hero-title">{{user.nickname || '家长'}}</view>
     <view class="hero-sub">家庭学习积分管理 · 家长视角</view>
   </view>
@@ -56,3 +65,4 @@
     </view>
   </t-popup>
 </view>
+</pc-layout>

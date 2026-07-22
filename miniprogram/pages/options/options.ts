@@ -8,10 +8,11 @@ interface OptionItem {
     valueText: string
 }
 
-interface IOptionData {
+interface OptionData {
     list: OptionItem[]
     loading: boolean
     isParent: boolean
+    isWide: boolean
     showForm: boolean
     editingId: string | null
     form: { key: string; valueText: string }
@@ -36,17 +37,24 @@ function parseValue(text: string): unknown {
     }
 }
 
-Page<IOptionData>({
+Page<OptionData>({
     data: {
         list: [],
         loading: true,
         isParent: false,
+        isWide: false,
         showForm: false,
         editingId: null,
         form: { key: '', valueText: '' },
     },
     onShow() {
-        this.setData({ isParent: getCurrentRole() === 'parent' })
+        const app = getApp<AppOption>()
+        this.setData({
+            isParent: getCurrentRole() === 'parent',
+            isWide: app.globalData.platform.isWide,
+            user: app.globalData.user,
+            children: app.globalData.children,
+        })
         this.loadList()
     },
     async loadList() {
@@ -78,6 +86,9 @@ Page<IOptionData>({
     },
     onCancel() {
         this.setData({ showForm: false })
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
     onKeyChange(e: WechatMiniprogram.CustomEvent) {
         this.setData({ 'form.key': e.detail.value })

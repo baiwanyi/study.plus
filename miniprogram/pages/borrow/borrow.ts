@@ -1,5 +1,5 @@
-import { getToken, getCurrentChildId } from '../../utils/auth'
 import { callCloudFunction } from '../../utils/api'
+import { getToken, getCurrentChildId } from '../../utils/auth'
 
 interface Advance {
     id: number
@@ -44,9 +44,12 @@ function decorate(a: Advance): DisplayAdvance {
     }
 }
 
-interface IBorrowData {
+interface BorrowData {
     children: Array<{ childId: number; nickname: string; grade: string }>
     currentChildId: number | null
+    user: { nickname: string } | null
+    isWide: boolean
+    isParent: boolean
     list: DisplayAdvance[]
     summary: AdvanceSummary | null
     loading: boolean
@@ -57,7 +60,7 @@ interface IBorrowData {
     termLabel: string
 }
 
-Page<IBorrowData>({
+Page<BorrowData>({
     data: {
         children: [],
         currentChildId: null,
@@ -66,6 +69,9 @@ Page<IBorrowData>({
         loading: false,
         showCreate: false,
         showTermSheet: false,
+        user: null,
+        isWide: false,
+        isParent: false,
         amount: 50,
         installments: 3,
         termLabel: '3 期',
@@ -75,16 +81,19 @@ Page<IBorrowData>({
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         this.setData({
             children: app.globalData.children,
             currentChildId: getCurrentChildId(),
+            user: app.globalData.user,
+            isWide: app.globalData.platform.isWide,
+            isParent: app.globalData.user?.role === 'parent',
         })
         this.loadAll()
     },
     onSelectChild(e: WechatMiniprogram.CustomEvent) {
         const id = Number(e.detail.childId)
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         app.globalData.currentChildId = id
         wx.setStorageSync('currentChildId', id)
         this.setData({ currentChildId: id })
@@ -146,5 +155,8 @@ Page<IBorrowData>({
             const msg = err instanceof Error ? err.message : '预支失败'
             wx.showToast({ title: msg, icon: 'none' })
         }
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
 })

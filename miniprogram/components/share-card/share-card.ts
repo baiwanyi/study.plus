@@ -39,15 +39,15 @@ Component({
         render(
             ctx: WechatMiniprogram.CanvasRenderingContext.CanvasRenderingContext2D,
             width: number,
-            _height: number,
+            height: number,
             stats: ShareStats,
         ) {
             ctx.fillStyle = '#F7F8FA'
-            ctx.fillRect(0, 0, width, _height)
+            ctx.fillRect(0, 0, width, height)
             const pad = 40
             const cardW = width - pad * 2
             ctx.fillStyle = '#FFFFFF'
-            this.roundRect(ctx, pad, pad, cardW, _height - pad * 2, 24)
+            this.roundRect(ctx, pad, pad, cardW, height - pad * 2, 24)
             ctx.fill()
 
             ctx.fillStyle = '#07C160'

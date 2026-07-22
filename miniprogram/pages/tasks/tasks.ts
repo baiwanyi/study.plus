@@ -1,5 +1,5 @@
-import { getToken, getCurrentChildId } from '../../utils/auth'
 import { callCloudFunction } from '../../utils/api'
+import { getToken, getCurrentChildId } from '../../utils/auth'
 import { taskTypeLabels, taskStatusLabels, gradeColors } from '../../utils/constants'
 
 interface TaskItem {
@@ -44,9 +44,12 @@ function decorate(task: TaskItem): DisplayTask {
     }
 }
 
-interface ITasksData {
+interface TasksData {
     children: Array<{ childId: number; nickname: string; grade: string }>
     currentChildId: number | null
+    user: { nickname: string } | null
+    isWide: boolean
+    isParent: boolean
     list: TaskItem[]
     loading: boolean
     showCreate: boolean
@@ -71,7 +74,7 @@ const TYPE_OPTIONS = [
     { label: '读书笔记', value: 'notes' },
 ]
 
-Page<ITasksData>({
+Page<TasksData>({
     data: {
         children: [],
         currentChildId: null,
@@ -86,6 +89,9 @@ Page<ITasksData>({
         detail: null,
         scoring: false,
         scoreResult: null,
+        user: null,
+        isWide: false,
+        isParent: false,
         showFilter: false,
         filterType: '',
         filterStatus: '',
@@ -97,16 +103,19 @@ Page<ITasksData>({
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         this.setData({
+            user: app.globalData.user,
             children: app.globalData.children,
             currentChildId: getCurrentChildId(),
+            isWide: app.globalData.platform.isWide,
+            isParent: app.globalData.user?.role === 'parent',
         })
         this.loadTasks()
     },
     onSelectChild(e: WechatMiniprogram.CustomEvent) {
         const id = Number(e.detail.childId)
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         app.globalData.currentChildId = id
         wx.setStorageSync('currentChildId', id)
         this.setData({ currentChildId: id })
@@ -256,5 +265,8 @@ Page<ITasksData>({
         wx.navigateTo({
             url: `/pages/mindmap/mindmap?taskId=${task.id}&title=${encodeURIComponent(task.title)}`,
         })
+    },
+    onLogout() {
+        wx.switchTab({ url: '/pages/my/my' })
     },
 })

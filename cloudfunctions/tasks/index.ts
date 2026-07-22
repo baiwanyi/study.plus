@@ -1,17 +1,3 @@
-import { run } from '../common/entry'
-import { query, execute, insertAndGetId, queryOne } from '../common/db'
-import { getAuthContext, requireTargetUser } from '../common/db-query'
-import { HttpError } from '../common/errors'
-import { pointsForHomeworkGrade, loadRules } from '../common/rules'
-import { recomputeMonthSummary } from '../common/summary-helper'
-import { safeJsonParse } from '../common/ai/client'
-import {
-    generateTaskTitle,
-    generateTitle,
-    scoreComposition,
-    generateDemoSubmission,
-    chatAboutTask,
-} from '../common/ai/task'
 import type {
     AIScoreResult,
     ChatMessage,
@@ -21,7 +7,21 @@ import type {
     TaskStatus,
     TaskType,
 } from '../common/types'
-import { defaultGradeValues, taskStatus, taskTypeValues } from '../common/constants'
+import { safeJsonParse } from '../common/ai/client'
+import {
+    generateTaskTitle,
+    generateTitle,
+    scoreComposition,
+    generateDemoSubmission,
+    chatAboutTask,
+} from '../common/ai/task'
+import { taskStatus, taskTypeValues } from '../common/constants'
+import { query, execute, insertAndGetId, queryOne, withTransaction } from '../common/db'
+import { getAuthContext, requireTargetUser } from '../common/db-query'
+import { run } from '../common/entry'
+import { HttpError } from '../common/errors'
+import { pointsForHomeworkGrade, loadRules } from '../common/rules'
+import { recomputeMonthSummary } from '../common/summary-helper'
 
 interface TasksEvent {
     token?: string
@@ -34,6 +34,8 @@ interface TasksEvent {
     content?: string
     message?: string
     grade?: number
+    page?: number
+    pageSize?: number
 }
 
 function parseTaskId(id: unknown): number | null {
@@ -153,14 +155,17 @@ export async function main(event: TasksEvent): Promise<unknown> {
                 where.push('type = ?')
                 params.push(type)
             }
+            const { page, pageSize } = event
+            const limit = Math.min(200, Math.max(1, Number(pageSize) || 50))
+            const offset = Math.max(0, (Math.max(1, Number(page) || 1) - 1) * limit)
 
             const taskRows = await query<TaskRow>(
-                `SELECT * FROM tasks WHERE ${where.join(' AND ')} ORDER BY created_at DESC`,
-                params,
+                `SELECT * FROM tasks WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+                [...params, limit, offset],
             )
             const taskIds = taskRows.map((t) => t.id)
             if (taskIds.length === 0) {
-                return []
+                return { items: [], page: offset / limit + 1, pageSize: limit }
             }
 
             const subs = await query<SubmissionRow>(
@@ -188,7 +193,7 @@ export async function main(event: TasksEvent): Promise<unknown> {
                 pointMap.set(p.related_id, { type: p.type, amount: p.amount })
             }
 
-            return taskRows.map((task) => {
+            return { items: taskRows.map((task) => {
                 const sub = subMap.get(task.id) ?? undefined
                 let pointsEarned: number | null = null
                 if (sub) {
@@ -222,7 +227,7 @@ export async function main(event: TasksEvent): Promise<unknown> {
                     pointsEarned,
                     aiSuggestions: aiScoreData.suggestions ?? [],
                 }
-            })
+            }), page: offset / limit + 1, pageSize: limit }
         }
 
         if (action === 'create') {
@@ -269,28 +274,32 @@ export async function main(event: TasksEvent): Promise<unknown> {
         }
 
         if (action === 'delete') {
-            const taskId = parseTaskId(event.id)
-            if (taskId === null) throw new HttpError(400, '无效的作业 id')
-            await fetchOwnedTask(taskId, userId)
-            const subs = await query<{ id: number }>(
-                'SELECT id FROM submissions WHERE task_id = ?',
-                [taskId],
-            )
-            const subIds = subs.map((s) => s.id)
-            if (subIds.length > 0) {
-                await execute(
-                    `DELETE FROM point_records
-           WHERE related_type = 'submission' AND related_id IN (?) AND user_id = ?`,
-                    [subIds, userId],
+            return withTransaction(async (tx) => {
+                const taskId = parseTaskId(event.id)
+                if (taskId === null) throw new HttpError(400, '无效的作业 id')
+                await fetchOwnedTask(taskId, userId)
+                const subs = await query<{ id: number }>(
+                    'SELECT id FROM submissions WHERE task_id = ?',
+                    [taskId],
                 )
-            }
-            await execute('DELETE FROM ai_score_logs WHERE task_id = ?', [taskId])
-            await execute('DELETE FROM submissions WHERE task_id = ?', [taskId])
-            await execute(
-                'DELETE FROM tasks WHERE id = ? AND user_id = ?',
-                [taskId, userId],
-            )
-            return { success: true }
+                const subIds = subs.map((s) => s.id)
+                if (subIds.length > 0) {
+                    await tx.execute(
+                        `DELETE FROM point_records
+                   WHERE related_type = 'submission' AND related_id IN (?) AND user_id = ?`,
+                        [subIds, userId],
+                    )
+                }
+                await tx.execute('DELETE FROM ai_score_logs WHERE task_id = ?', [taskId])
+                await tx.execute('DELETE FROM task_messages WHERE conversation_id IN (SELECT id FROM task_conversations WHERE task_id = ?)', [taskId])
+                await tx.execute('DELETE FROM task_conversations WHERE task_id = ?', [taskId])
+                await tx.execute('DELETE FROM submissions WHERE task_id = ?', [taskId])
+                await tx.execute(
+                    'DELETE FROM tasks WHERE id = ? AND user_id = ?',
+                    [taskId, userId],
+                )
+                return { success: true }
+            })
         }
 
         if (action === 'submit') {

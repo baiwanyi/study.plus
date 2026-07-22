@@ -1,0 +1,57 @@
+<view class="sidebar">
+  <!-- 品牌区 -->
+  <view class="sidebar-brand">
+    <text class="sidebar-logo">📚</text>
+    <text class="sidebar-title">学迹Plus</text>
+  </view>
+
+  <!-- 孩子选择器 -->
+  <view class="sidebar-selector" wx:if="{{children.length > 1}}">
+    <child-selector
+      children="{{children}}"
+      value="{{currentChildId}}"
+      bind:change="onChildChange"
+    />
+  </view>
+  <view class="sidebar-selector sidebar-single" wx:elif="{{children.length === 1}}">
+    <text class="sidebar-single__name">{{children[0].nickname}}</text>
+  </view>
+
+  <!-- 分隔线 -->
+  <view class="sidebar-divider" />
+
+  <!-- 导航菜单 -->
+  <scroll-view class="sidebar-nav" scroll-y>
+    <view
+      wx:for="{{navItems}}"
+      wx:key="key"
+      class="nav-item {{item.key === currentPage ? 'nav-item--active' : ''}}"
+      data-url="{{item.url}}"
+      data-tab="{{item.tab}}"
+      bind:tap="onNav"
+    >
+      <text class="nav-icon">{{item.icon}}</text>
+      <text class="nav-label">{{item.label}}</text>
+    </view>
+
+    <!-- 我的页面 -->
+    <view
+      class="nav-item {{currentPage === 'my' ? 'nav-item--active' : ''}}"
+      data-url="/pages/my/my"
+      data-tab="true"
+      bind:tap="onNav"
+    >
+      <text class="nav-icon">👤</text>
+      <text class="nav-label">我的</text>
+    </view>
+  </scroll-view>
+
+  <!-- 底部用户区 -->
+  <view class="sidebar-footer">
+    <view class="sidebar-user">
+      <text class="sidebar-user__name">{{user.nickname || '用户'}}</text>
+      <text class="sidebar-user__role">{{user.role === 'parent' ? '家长' : '孩子'}}</text>
+    </view>
+    <view class="sidebar-logout" bind:tap="onLogout">退出</view>
+  </view>
+</view>

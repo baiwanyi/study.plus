@@ -1,12 +1,13 @@
 import { login as doLogin, setCurrentChildId } from '../../utils/auth'
+import { prefetchOnStart } from '../../utils/prefetch'
 
-interface ILoginData {
+interface LoginData {
     privacyAgreed: boolean
     privacyVisible: boolean
     loading: boolean
 }
 
-Page<ILoginData>({
+Page<LoginData>({
     data: {
         privacyAgreed: false,
         privacyVisible: false,
@@ -47,12 +48,14 @@ Page<ILoginData>({
                 // 用户拒绝或基础库不支持时，使用默认信息
             }
             const res = await doLogin(nickname, avatar, true)
-            const app = getApp<IAppOption>()
+            const app = getApp<AppOption>()
             app.globalData.user = res.user
             app.globalData.children = res.children
             if (res.children.length > 0) {
                 setCurrentChildId(res.children[0].childId)
             }
+            // 预缓存：登录后立即静默拉取关键数据
+            prefetchOnStart()
             wx.reLaunch({ url: '/pages/dashboard/dashboard' })
         } catch (err) {
             const msg = err instanceof Error ? err.message : '登录失败'

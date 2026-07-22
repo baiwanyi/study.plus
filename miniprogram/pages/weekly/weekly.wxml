@@ -1,3 +1,11 @@
+<pc-layout
+  isWide="{{isWide}}"
+  user="{{user}}"
+  children="{{children}}"
+  currentChildId="{{currentChildId}}"
+  currentPage="weekly"
+  bind:logout="onLogout"
+>
 <view class="page">
     <view wx:if="{{loading}}" class="page__loading">
         <t-loading theme="circular" size="48rpx" text="加载中" />
@@ -93,3 +101,4 @@
         </view>
     </view>
 </t-popup>
+</pc-layout>

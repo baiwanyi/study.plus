@@ -1,3 +1,11 @@
+<pc-layout
+  isWide="{{isWide}}"
+  user="{{user}}"
+  children="{{children}}"
+  currentChildId="{{currentChildId}}"
+  currentPage="categories"
+  bind:logout="onLogout"
+>
 <view class="page">
   <t-loading wx:if="{{loading}}" class="center" />
   <block wx:else>
@@ -43,3 +51,4 @@
     </view>
   </t-dialog>
 </view>
+</pc-layout>

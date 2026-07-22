@@ -1,7 +1,8 @@
-import { run } from '../common/entry'
-import { COLLECTION_OPTIONS, nosql } from '../common/nosql'
 import { assertRole, getAuthContext } from '../common/db-query'
+import { run } from '../common/entry'
+import { invalidateRulesCache, invalidateSettingsCache } from '../common/rules'
 import { HttpError } from '../common/errors'
+import { COLLECTION_OPTIONS, nosql } from '../common/nosql'
 
 interface OptionsEvent {
     token?: string
@@ -42,11 +43,23 @@ export async function main(event: OptionsEvent): Promise<unknown> {
                     .collection(COLLECTION_OPTIONS)
                     .doc(existing._id)
                     .update({ value: event.value })
+                if (event.key === 'rules') {
+                    invalidateRulesCache()
+                }
+                if (event.key === 'systemSettings') {
+                    invalidateSettingsCache()
+                }
                 return { success: true, updated: true }
             }
             await nosql
                 .collection(COLLECTION_OPTIONS)
                 .add({ key: event.key, value: event.value })
+            if (event.key === 'rules') {
+                invalidateRulesCache()
+            }
+            if (event.key === 'systemSettings') {
+                invalidateSettingsCache()
+            }
             return { success: true, created: true }
         }
 

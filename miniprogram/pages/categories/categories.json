@@ -5,7 +5,8 @@
     "t-button": "tdesign-miniprogram/button/button",
     "t-dialog": "tdesign-miniprogram/dialog/dialog",
     "t-input": "tdesign-miniprogram/input/input",
-    "t-loading": "tdesign-miniprogram/loading/loading"
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "pc-layout": "/components/pc-layout/pc-layout"
   },
   "navigationBarTitleText": "评语分类"
 }

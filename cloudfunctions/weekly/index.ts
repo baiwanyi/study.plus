@@ -1,11 +1,11 @@
-import { run } from '../common/entry'
+import type { ChatMessage, WeeklyReportRow } from '../common/types'
+import { analyzeWeeklyReport, chatAboutWeeklyReport } from '../common/ai/weekly'
+import { DEFAULT_WEEKLY_AI_HELPER } from '../common/constants'
 import { query, execute, insertAndGetId, queryOne } from '../common/db'
 import { getAuthContext, requireTargetUser } from '../common/db-query'
+import { run } from '../common/entry'
 import { HttpError } from '../common/errors'
-import { DEFAULT_WEEKLY_AI_HELPER } from '../common/constants'
 import { parseContent, stringifyContent } from '../common/weekly-content'
-import { analyzeWeeklyReport, chatAboutWeeklyReport } from '../common/ai/weekly'
-import type { ChatMessage, WeeklyReportRow } from '../common/types'
 
 interface WeeklyEvent {
     token?: string
@@ -16,6 +16,8 @@ interface WeeklyEvent {
     weekNumber?: number
     content?: Record<string, string>
     message?: string
+    page?: number
+    pageSize?: number
 }
 
 async function loadStudentGrade(userId: number): Promise<string> {
@@ -32,18 +34,20 @@ export async function main(event: WeeklyEvent): Promise<unknown> {
         const { action } = event
 
         if (action === 'list') {
-            const { year } = event
+            const { year, page, pageSize } = event
             const where: string[] = [`(${ctx.userFilter})`]
             const params: unknown[] = []
             if (year) {
                 where.push('year = ?')
                 params.push(year)
             }
+            const limit = Math.min(200, Math.max(1, Number(pageSize) || 50))
+            const offset = Math.max(0, (Math.max(1, Number(page) || 1) - 1) * limit)
             const reports = await query<WeeklyReportRow>(
-                `SELECT * FROM weekly_reports WHERE ${where.join(' AND ')} ORDER BY year DESC, week_number DESC`,
-                params,
+                `SELECT * FROM weekly_reports WHERE ${where.join(' AND ')} ORDER BY year DESC, week_number DESC LIMIT ? OFFSET ?`,
+                [...params, limit, offset],
             )
-            return reports
+            return { items: reports, page: offset / limit + 1, pageSize: limit }
         }
 
         if (action === 'create') {
@@ -119,7 +123,7 @@ export async function main(event: WeeklyEvent): Promise<unknown> {
                 'UPDATE weekly_reports SET analysis = ?, updated_at = ? WHERE id = ?',
                 [JSON.stringify(analysis), new Date().toISOString(), id],
             )
-            let conv = await queryOne<{ id: number }>(
+            const conv = await queryOne<{ id: number }>(
                 'SELECT id FROM weekly_conversations WHERE weekly_report_id = ?',
                 [id],
             )
@@ -137,7 +141,6 @@ export async function main(event: WeeklyEvent): Promise<unknown> {
         }
 
         if (action === 'conversation') {
-            const userId = requireTargetUser(ctx)
             const id = Number(event.id)
             if (!Number.isInteger(id) || id <= 0) {
                 throw new HttpError(400, '无效的周报 id')

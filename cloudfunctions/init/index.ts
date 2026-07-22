@@ -1,13 +1,13 @@
-import { run } from '../common/entry'
-import { COLLECTION_OPTIONS, nosql } from '../common/nosql'
-import { getAuthContext, assertRole } from '../common/db-query'
+import type { Category } from '../common/categories-store'
 import {
     defaultExamRules,
     defaultExchangeRules,
     defaultHomeworkRules,
     defaultSystemSettings,
 } from '../common/constants'
-import type { Category } from '../common/categories-store'
+import { getAuthContext, assertRole } from '../common/db-query'
+import { run } from '../common/entry'
+import { COLLECTION_OPTIONS, nosql } from '../common/nosql'
 
 interface InitEvent {
     token?: string

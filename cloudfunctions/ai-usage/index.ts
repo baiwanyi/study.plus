@@ -1,8 +1,8 @@
-import { run } from '../common/entry'
+import type { AiUsageLogRow } from '../common/types'
 import { query } from '../common/db'
 import { getAuthContext } from '../common/db-query'
+import { run } from '../common/entry'
 import { HttpError } from '../common/errors'
-import type { AiUsageLogRow } from '../common/types'
 
 interface AiUsageEvent {
     token?: string
@@ -10,6 +10,7 @@ interface AiUsageEvent {
     action: 'list' | 'summary'
     project?: string
     limit?: number
+    page?: number
 }
 
 export async function main(event: AiUsageEvent): Promise<unknown> {
@@ -24,15 +25,16 @@ export async function main(event: AiUsageEvent): Promise<unknown> {
                 where.push('project = ?')
                 params.push(event.project)
             }
-            const limit = Number(event.limit) || 50
+            const limit = Math.min(200, Math.max(1, Number(event.limit) || 50))
+            const offset = Math.max(0, (Math.max(1, Number(event.page) || 1) - 1) * limit)
             const logs = await query<AiUsageLogRow>(
                 `SELECT id, user_id, project, task_id, task_title, prompt_tokens,
                     completion_tokens, total_tokens, created_at
                  FROM ai_usage_logs WHERE ${where.join(' AND ')}
-                 ORDER BY created_at DESC LIMIT ?`,
-                [...params, limit],
+                 ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+                [...params, limit, offset],
             )
-            return logs
+            return { items: logs, page: offset / limit + 1, pageSize: limit }
         }
 
         if (action === 'summary') {

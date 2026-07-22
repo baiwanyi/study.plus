@@ -1,6 +1,6 @@
+import { callWithStaleRefresh, callCloudFunction } from '../../utils/api'
 import { getToken, getCurrentChildId } from '../../utils/auth'
-import { callCloudFunction } from '../../utils/api'
-import { pointTypeLabels, relatedTypeLabels, gradeColors, defaultGradeValues } from '../../utils/constants'
+import { pointTypeLabels, relatedTypeLabels, defaultGradeValues } from '../../utils/constants'
 
 interface PointRecord {
     id: number
@@ -39,9 +39,12 @@ interface Stats {
     net: number
 }
 
-interface IPointsData {
+interface PointsData {
     children: Array<{ childId: number; nickname: string; grade: string }>
     currentChildId: number | null
+    user: { nickname: string } | null
+    isWide: boolean
+    isParent: boolean
     list: DisplayRecord[]
     loading: boolean
     summary: Summary | null
@@ -68,7 +71,7 @@ function decorate(r: PointRecord): DisplayRecord {
     }
 }
 
-Page<IPointsData>({
+Page<PointsData>({
     data: {
         children: [],
         currentChildId: null,
@@ -84,46 +87,62 @@ Page<IPointsData>({
         showExam: false,
         examScore: '',
         examRemark: '',
+        user: null,
+        isWide: false,
+        isParent: false,
     },
     onShow() {
         if (!getToken()) {
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         this.setData({
             children: app.globalData.children,
             currentChildId: getCurrentChildId(),
+            user: app.globalData.user,
+            isWide: app.globalData.platform.isWide,
+            isParent: app.globalData.user?.role === 'parent',
         })
         this.loadAll()
     },
     onSelectChild(e: WechatMiniprogram.CustomEvent) {
         const id = Number(e.detail.childId)
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         app.globalData.currentChildId = id
         wx.setStorageSync('currentChildId', id)
         this.setData({ currentChildId: id })
         this.loadAll()
     },
     async loadAll() {
-        this.setData({ loading: true })
+        const childId = getCurrentChildId()
+        const suffix = childId ? `uid_${childId}` : undefined
+
+        // 并行 stale-refresh：先展示缓存，后台拉取最新
+        const promises = [
+            callWithStaleRefresh<PointRecord[]>('points', { action: 'list' }, (list) => {
+                this.setData({ list: (list || []).map(decorate) })
+            }, { keySuffix: suffix }),
+            callWithStaleRefresh<Summary>('points', { action: 'summary' }, (summary) => {
+                this.setData({ summary })
+            }, { keySuffix: suffix }),
+            callWithStaleRefresh<Stats>('points', { action: 'stats' }, (stats) => {
+                this.setData({ stats })
+            }, { keySuffix: suffix }),
+        ]
+
         try {
-            const [list, summary, stats] = await Promise.all([
-                callCloudFunction<PointRecord[]>('points', { action: 'list' }),
-                callCloudFunction<Summary>('points', { action: 'summary' }),
-                callCloudFunction<Stats>('points', { action: 'stats' }),
-            ])
-            this.setData({
-                list: (list || []).map(decorate),
-                summary,
-                stats,
-            })
+            await Promise.all(promises)
         } catch (err) {
-            const msg = err instanceof Error ? err.message : '加载失败'
-            wx.showToast({ title: msg, icon: 'none' })
-        } finally {
-            this.setData({ loading: false })
+            // 所有调用都失败时（含无缓存）才提示
+            if (!this.data.summary && !this.data.stats) {
+                const msg = err instanceof Error ? err.message : '加载失败'
+                wx.showToast({ title: msg, icon: 'none' })
+            }
         }
+    },
+    onLogout() {
+        wx.switchTab({ url: '/pages/my/my' })
     },
     goExchange() {
         wx.navigateTo({ url: '/pages/exchanges/exchanges' })

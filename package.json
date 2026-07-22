@@ -3,12 +3,21 @@
   "version": "1.0.0",
   "description": "学迹Plus — CloudBase 云函数后端 + 微信小程序前端（TDesign）",
   "private": true,
-  "workspaces": [
-    "cloudfunctions/*"
-  ],
   "scripts": {
     "deploy:common": "echo '请将 cloudfunctions/common 作为 CloudBase Layer 发布，版本号见控制台'",
-    "lint": "echo 'run eslint per function'"
+    "typecheck": "tsc --noEmit",
+    "lint:cf": "eslint 'cloudfunctions/**/*.ts' --max-warnings 0",
+    "lint:mp": "eslint 'miniprogram/**/*.ts' --max-warnings 0",
+    "lint": "eslint 'cloudfunctions/**/*.ts' 'miniprogram/**/*.ts' --max-warnings 0"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.0.0",
+    "@types/node": "^26.0.0",
+    "eslint": "^9.0.0",
+    "eslint-plugin-import-x": "^4.0.0",
+    "globals": "^16.0.0",
+    "typescript": "^6.0.0",
+    "typescript-eslint": "^8.0.0"
   },
   "license": "UNLICENSED"
 }

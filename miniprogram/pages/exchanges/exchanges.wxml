@@ -1,5 +1,14 @@
+<pc-layout
+  isWide="{{isWide}}"
+  user="{{user}}"
+  children="{{children}}"
+  currentChildId="{{currentChildId}}"
+  currentPage="exchanges"
+  bind:childchange="onSelectChild"
+  bind:logout="onLogout"
+>
 <view class="page">
-  <child-selector wx:if="{{children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
+  <child-selector wx:if="{{!isWide && children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
 
   <view wx:if="{{loading}}" class="center-wrap">
     <t-loading theme="circular" size="48rpx" text="加载中" />
@@ -58,3 +67,4 @@
     </view>
   </t-popup>
 </view>
+</pc-layout>

@@ -1,5 +1,5 @@
-import { getToken, getCurrentChildId } from '../../utils/auth'
 import { callCloudFunction } from '../../utils/api'
+import { getToken, getCurrentChildId } from '../../utils/auth'
 import { exchangeStatusLabels } from '../../utils/constants'
 
 interface Exchange {
@@ -40,9 +40,12 @@ function decorate(e: Exchange): DisplayExchange {
     }
 }
 
-interface IExchangesData {
+interface ExchangesData {
     children: Array<{ childId: number; nickname: string; grade: string }>
     currentChildId: number | null
+    user: { nickname: string } | null
+    isWide: boolean
+    isParent: boolean
     list: DisplayExchange[]
     loading: boolean
     showCreate: boolean
@@ -52,7 +55,7 @@ interface IExchangesData {
     pointsCost: number
 }
 
-Page<IExchangesData>({
+Page<ExchangesData>({
     data: {
         children: [],
         currentChildId: null,
@@ -60,6 +63,9 @@ Page<IExchangesData>({
         loading: false,
         showCreate: false,
         showTypeSheet: false,
+        user: null,
+        isWide: false,
+        isParent: false,
         newType: 'game',
         newTypeLabel: '娱乐时间',
         pointsCost: 10,
@@ -69,16 +75,19 @@ Page<IExchangesData>({
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         this.setData({
             children: app.globalData.children,
             currentChildId: getCurrentChildId(),
+            user: app.globalData.user,
+            isWide: app.globalData.platform.isWide,
+            isParent: app.globalData.user?.role === 'parent',
         })
         this.loadList()
     },
     onSelectChild(e: WechatMiniprogram.CustomEvent) {
         const id = Number(e.detail.childId)
-        const app = getApp<IAppOption>()
+        const app = getApp<AppOption>()
         app.globalData.currentChildId = id
         wx.setStorageSync('currentChildId', id)
         this.setData({ currentChildId: id })
@@ -158,5 +167,8 @@ Page<IExchangesData>({
             const msg = err instanceof Error ? err.message : '撤销失败'
             wx.showToast({ title: msg, icon: 'none' })
         }
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
 })

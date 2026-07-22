@@ -27,6 +27,7 @@ Page({
         showForm: false,
         evaluating: false,
         showDetail: false,
+        isWide: false,
         subjectIndex: 0,
         subjectValues: studynotesSubjectValues as unknown as string[],
         subjectLabels: studynotesSubjectValues.map((s) => studynotesSubjectLabels[s]),
@@ -45,6 +46,13 @@ Page({
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
+        const app = getApp<AppOption>()
+        this.setData({
+            isWide: app.globalData.platform.isWide,
+            children: app.globalData.children,
+            currentChildId: getCurrentChildId(),
+            user: app.globalData.user,
+        })
         this.loadList()
     },
     async loadList() {
@@ -135,7 +143,7 @@ Page({
     onDetailVisible(e: WechatMiniprogram.CustomEvent) {
         this.setData({ showDetail: e.detail.visible })
     },
-    async onEvaluate() {
+    async     onEvaluate() {
         if (!this.data.detail) return
         this.setData({ evaluating: true })
         try {
@@ -154,5 +162,8 @@ Page({
             wx.showToast({ title: msg, icon: 'none' })
             this.setData({ evaluating: false })
         }
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
 })

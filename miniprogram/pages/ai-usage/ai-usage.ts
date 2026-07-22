@@ -23,13 +23,24 @@ Page({
         summary: [] as UsageSummary[],
         list: [] as UsageLog[],
         totalTokens: 0,
+        isWide: false,
     },
     onShow() {
         if (!getToken()) {
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
+        const app = getApp<AppOption>()
+        this.setData({
+            isWide: app.globalData.platform.isWide,
+            user: app.globalData.user,
+            children: app.globalData.children,
+            currentChildId: app.globalData.currentChildId,
+        })
         this.loadAll()
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
     async loadAll() {
         this.setData({ loading: true })

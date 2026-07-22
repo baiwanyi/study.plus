@@ -1,16 +1,17 @@
-import { run } from '../common/entry'
-import { query, execute, insertAndGetId } from '../common/db'
-import { getAuthContext, requireTargetUser } from '../common/db-query'
-import { listChildren } from '../common/children'
-import { HttpError } from '../common/errors'
-import { loadRules, pointsForHomeworkGrade, pointsForExamScore } from '../common/rules'
-import { recomputeMonthSummary } from '../common/summary-helper'
-import { aggregateShareStats, computeShareStats } from '../common/share-stats'
 import type {
     PointRecordRow,
     PointRecordType,
     RelatedType,
 } from '../common/types'
+import { listChildren } from '../common/children'
+import { query, execute } from '../common/db'
+import { getAuthContext, requireTargetUser } from '../common/db-query'
+import { run } from '../common/entry'
+import { HttpError } from '../common/errors'
+import { loadRules, pointsForHomeworkGrade, pointsForExamScore } from '../common/rules'
+import { aggregateShareStats, computeShareStats } from '../common/share-stats'
+import { recomputeMonthSummary } from '../common/summary-helper'
+import { monthRange } from '../common/date-utils'
 
 interface PointsEvent {
     token?: string
@@ -39,15 +40,8 @@ interface PointsEvent {
     ruleId?: string
     status?: string
     installments?: number
-}
-
-function monthRange(month: string): { start: string; end: string } {
-    const start = new Date(`${month}-01T00:00:00.000Z`)
-    const end = new Date(start)
-    end.setUTCMonth(end.getUTCMonth() + 1)
-    end.setUTCDate(0)
-    end.setUTCHours(23, 59, 59, 999)
-    return { start: start.toISOString(), end: end.toISOString() }
+    page?: number
+    pageSize?: number
 }
 
 async function aggregateSummary(
@@ -78,7 +72,7 @@ export async function main(event: PointsEvent): Promise<unknown> {
         const { action } = event
 
         if (action === 'list') {
-            const { type, month, relatedType } = event
+            const { type, month, relatedType, page, pageSize } = event
             const where: string[] = [`(${ctx.userFilter})`, "related_type <> 'exchange'"]
             const params: unknown[] = []
             if (type) {
@@ -94,11 +88,13 @@ export async function main(event: PointsEvent): Promise<unknown> {
                 where.push('created_at >= ? AND created_at <= ?')
                 params.push(start, end)
             }
+            const limit = Math.min(200, Math.max(1, Number(pageSize) || 50))
+            const offset = Math.max(0, (Math.max(1, Number(page) || 1) - 1) * limit)
             const records = await query<PointRecordRow>(
-                `SELECT * FROM point_records WHERE ${where.join(' AND ')} ORDER BY created_at DESC`,
-                params,
+                `SELECT * FROM point_records WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+                [...params, limit, offset],
             )
-            return records
+            return { items: records, page: offset / limit + 1, pageSize: limit }
         }
 
         if (action === 'create') {
@@ -252,24 +248,26 @@ export async function main(event: PointsEvent): Promise<unknown> {
         if (action === 'stats') {
             const month = event.month || new Date().toISOString().slice(0, 7)
             const { start, end } = monthRange(month)
-            const earn = await query<{ total: number }>(
-                `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
-         WHERE (${ctx.userFilter}) AND type = 'earn' AND related_type <> 'revoked'
-         AND created_at >= ? AND created_at <= ?`,
-                [start, end],
-            )
-            const deduct = await query<{ total: number }>(
-                `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
-         WHERE (${ctx.userFilter}) AND type = 'deduct' AND related_type <> 'revoked'
-         AND created_at >= ? AND created_at <= ?`,
-                [start, end],
-            )
-            const exchanges = await query<{ total: number }>(
-                `SELECT COALESCE(SUM(points_cost),0) AS total FROM exchanges
-         WHERE (${ctx.userFilter}) AND status = 'active'
-         AND created_at >= ? AND created_at <= ?`,
-                [start, end],
-            )
+            const [earn, deduct, exchanges] = await Promise.all([
+                query<{ total: number }>(
+                    `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
+             WHERE (${ctx.userFilter}) AND type = 'earn' AND related_type <> 'revoked'
+             AND created_at >= ? AND created_at <= ?`,
+                    [start, end],
+                ),
+                query<{ total: number }>(
+                    `SELECT COALESCE(SUM(amount),0) AS total FROM point_records
+             WHERE (${ctx.userFilter}) AND type = 'deduct' AND related_type <> 'revoked'
+             AND created_at >= ? AND created_at <= ?`,
+                    [start, end],
+                ),
+                query<{ total: number }>(
+                    `SELECT COALESCE(SUM(points_cost),0) AS total FROM exchanges
+             WHERE (${ctx.userFilter}) AND status = 'active'
+             AND created_at >= ? AND created_at <= ?`,
+                    [start, end],
+                ),
+            ])
             const totalEarn = Number(earn[0]?.total) || 0
             const totalDeduct = Number(deduct[0]?.total) || 0
             return {

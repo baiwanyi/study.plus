@@ -1,14 +1,14 @@
-import { run } from '../common/entry'
-import { query, execute, insertAndGetId, queryOne } from '../common/db'
-import { getAuthContext, requireTargetUser } from '../common/db-query'
-import { HttpError } from '../common/errors'
-import { studynotesSubjectValues } from '../common/constants'
+import type { ChatMessage, StudynotesRow } from '../common/types'
 import { safeJsonParse } from '../common/ai/client'
 import {
     evaluateStudynotesReflection,
     studynotesFollowUpChat,
 } from '../common/ai/studynotes'
-import type { ChatMessage, StudynotesRow } from '../common/types'
+import { studynotesSubjectValues } from '../common/constants'
+import { query, execute, insertAndGetId, queryOne } from '../common/db'
+import { getAuthContext, requireTargetUser } from '../common/db-query'
+import { run } from '../common/entry'
+import { HttpError } from '../common/errors'
 
 interface StudynotesEvent {
     token?: string
@@ -46,45 +46,42 @@ export async function main(event: StudynotesEvent): Promise<unknown> {
         const { action } = event
 
         if (action === 'list') {
-            const { subject, search } = event
+            const { subject, search, page, pageSize } = event
             const where: string[] = [`(${ctx.userFilter})`]
             const params: unknown[] = []
             if (subject && VALID_SUBJECTS.has(subject)) {
                 where.push('subject = ?')
                 params.push(subject)
             }
+            if (search && search.trim()) {
+                const kw = `%${search.trim()}%`
+                where.push('(topic LIKE ? OR summary LIKE ? OR example LIKE ? OR stuck_points LIKE ?)')
+                params.push(kw, kw, kw, kw)
+            }
+            const limit = Math.min(200, Math.max(1, Number(pageSize) || 50))
+            const offset = Math.max(0, (Math.max(1, Number(page) || 1) - 1) * limit)
             const cards = await query<StudynotesRow>(
-                `SELECT * FROM studynotes WHERE ${where.join(' AND ')} ORDER BY created_at DESC`,
-                params,
+                `SELECT * FROM studynotes WHERE ${where.join(' AND ')} ORDER BY created_at DESC LIMIT ? OFFSET ?`,
+                [...params, limit, offset],
             )
 
             const convCounts = await query<{ cardId: number; count: number }>(
                 `SELECT sc.studynote_id AS cardId, COUNT(*) AS count
          FROM studynote_conversations sc
          INNER JOIN studynote_messages sm ON sm.conversation_id = sc.id
-         WHERE sm.role = 'assistant' AND (${ctx.userFilter})
+         WHERE sm.role = 'assistant' AND sc.user_id = ?
          GROUP BY sc.studynote_id`,
-                [],
+                [ctx.targetUserId ?? ctx.auth.userId],
             )
             const countMap = new Map<number, number>()
             for (const c of convCounts) countMap.set(c.cardId, c.count)
 
-            let result = cards.map((card) => ({
+            const result = cards.map((card) => ({
                 ...card,
                 followUpCount: countMap.get(card.id) ?? 0,
             }))
 
-            if (search) {
-                const keyword = search.toLowerCase()
-                result = result.filter(
-                    (r) =>
-                        r.topic.toLowerCase().includes(keyword) ||
-                        r.summary.toLowerCase().includes(keyword) ||
-                        r.example.toLowerCase().includes(keyword) ||
-                        r.stuck_points.toLowerCase().includes(keyword),
-                )
-            }
-            return result
+            return { items: result, page: offset / limit + 1, pageSize: limit }
         }
 
         if (action === 'get') {
@@ -193,11 +190,11 @@ export async function main(event: StudynotesEvent): Promise<unknown> {
             const userId = requireTargetUser(ctx)
             const id = parseCardId(event.id)
             if (id === -1) throw new HttpError(400, '无效的心得 ID')
-            const rows = await query<StudynotesRow>(
+            const result = await execute(
                 'DELETE FROM studynotes WHERE id = ? AND user_id = ?',
                 [id, userId],
             )
-            if (!rows) throw new HttpError(404, '学习心得未找到')
+            if (result.affectedRows === 0) throw new HttpError(404, '学习心得未找到')
             return { success: true }
         }
 

@@ -1,7 +1,7 @@
-import { run } from '../common/entry'
-import { getAuthContext, assertRole } from '../common/db-query'
-import { HttpError } from '../common/errors'
 import { readCategories, saveCategories } from '../common/categories-store'
+import { getAuthContext, assertRole } from '../common/db-query'
+import { run } from '../common/entry'
+import { HttpError } from '../common/errors'
 
 interface Category {
     id: string

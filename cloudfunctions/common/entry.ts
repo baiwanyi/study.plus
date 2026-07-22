@@ -15,6 +15,7 @@ export async function run<R>(
         }
         const msg = err instanceof Error ? err.message : '服务器内部错误'
         console.error('[Function Error]', msg, err)
-        return fail(500, msg)
+        // 【安全设计说明】不向客户端暴露内部错误详情，防止 SQL 语法/表结构/路径等信息泄露
+        return fail(500, '服务器内部错误')
     }
 }

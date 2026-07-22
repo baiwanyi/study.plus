@@ -1,10 +1,10 @@
-import { COLLECTION_OPTIONS, nosql } from './nosql'
 import {
     defaultExchangeRules,
     defaultExamRules,
     defaultHomeworkRules,
     defaultSystemSettings,
 } from './constants'
+import { COLLECTION_OPTIONS, nosql } from './nosql'
 
 export interface HomeworkGradeRule {
     grade: string
@@ -62,31 +62,57 @@ async function readOption<T>(key: string, fallback: T): Promise<T> {
     return fallback
 }
 
-/** 读取全部积分规则（运行时以 NoSQL 为准，缺失则用默认值） */
+// 内存缓存：30 秒过期，减少频繁的 NoSQL 读取
+let rulesCache: { data: AllRules; expiresAt: number } | null = null
+const RULES_CACHE_TTL_MS = 30_000
+
+/** 读取全部积分规则（带 30s 内存缓存，运行时以 NoSQL 为准，缺失则用默认值） */
 export async function loadRules(): Promise<AllRules> {
+    if (rulesCache && Date.now() < rulesCache.expiresAt) {
+        return rulesCache.data
+    }
     const stored = await readOption<Partial<AllRules> | null>(RULES_KEY, null)
-    if (!stored) {
-        return {
-            homework: defaultHomeworkRules,
-            exam: defaultExamRules,
-            exchange: defaultExchangeRules,
-            custom: [],
-        }
-    }
-    return {
-        homework: stored.homework ?? defaultHomeworkRules,
-        exam: stored.exam ?? defaultExamRules,
-        exchange: stored.exchange ?? defaultExchangeRules,
-        custom: stored.custom ?? [],
-    }
+    const data = stored
+        ? {
+              homework: stored.homework ?? defaultHomeworkRules,
+              exam: stored.exam ?? defaultExamRules,
+              exchange: stored.exchange ?? defaultExchangeRules,
+              custom: stored.custom ?? [],
+          }
+        : {
+              homework: defaultHomeworkRules,
+              exam: defaultExamRules,
+              exchange: defaultExchangeRules,
+              custom: [],
+          }
+    rulesCache = { data, expiresAt: Date.now() + RULES_CACHE_TTL_MS }
+    return data
 }
 
+/** 规则更新后清除缓存，下次 loadRules 将重新从 NoSQL 读取 */
+export function invalidateRulesCache(): void {
+    rulesCache = null
+}
+
+// settings 内存缓存：60 秒过期
+let settingsCache: { data: SystemSettings; expiresAt: number } | null = null
+const SETTINGS_CACHE_TTL_MS = 60_000
+
 export async function loadSystemSettings(): Promise<SystemSettings> {
+    if (settingsCache && Date.now() < settingsCache.expiresAt) {
+        return settingsCache.data
+    }
     const stored = await readOption<Partial<SystemSettings> | null>(
         SETTINGS_KEY,
         null,
     )
-    return { ...defaultSystemSettings, ...(stored ?? {}) }
+    const data = { ...defaultSystemSettings, ...(stored ?? {}) }
+    settingsCache = { data, expiresAt: Date.now() + SETTINGS_CACHE_TTL_MS }
+    return data
+}
+
+export function invalidateSettingsCache(): void {
+    settingsCache = null
 }
 
 /** 根据作业评级获取积分 */

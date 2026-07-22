@@ -1,0 +1,25 @@
+<!-- PC 宽屏模式：侧边栏 + 内容区 -->
+<view class="pc-mode" wx:if="{{isWide}}">
+  <view class="pc-body">
+    <view class="pc-sidebar">
+      <pc-sidebar
+        user="{{user}}"
+        children="{{children}}"
+        currentChildId="{{currentChildId}}"
+        currentPage="{{currentPage}}"
+        bind:childchange="onChildChange"
+        bind:logout="onLogout"
+      />
+    </view>
+    <view class="pc-content">
+      <view class="page page--wide">
+        <slot />
+      </view>
+    </view>
+  </view>
+</view>
+
+<!-- 移动端：直接透传内容 -->
+<view wx:else>
+  <slot />
+</view>

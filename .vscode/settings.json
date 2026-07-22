@@ -1,0 +1,15 @@
+{
+    "eslint.enable": true,
+    "eslint.experimental.useFlatConfig": true,
+    "eslint.validate": [
+        "typescript",
+        "typescriptreact"
+    ],
+    "eslint.workingDirectories": [
+        { "mode": "auto" }
+    ],
+    "files.exclude": {
+        "**/node_modules": true,
+        "**/dist": true
+    }
+}

@@ -11,6 +11,7 @@
     "t-fab": "tdesign-miniprogram/fab/fab",
     "t-loading": "tdesign-miniprogram/loading/loading",
     "evaluation-report": "/components/evaluation-report/evaluation-report",
-    "ai-chat-panel": "/components/ai-chat-panel/ai-chat-panel"
+    "ai-chat-panel": "/components/ai-chat-panel/ai-chat-panel",
+    "pc-layout": "/components/pc-layout/pc-layout"
   }
 }

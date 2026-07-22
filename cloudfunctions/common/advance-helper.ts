@@ -1,4 +1,4 @@
-import { query, execute, insertAndGetId } from './db'
+import { query, execute, insertAndGetId, withTransaction } from './db'
 import { loadSystemSettings } from './rules'
 import { recomputeMonthSummary } from './summary-helper'
 import type { PointAdvanceRow } from './types'
@@ -76,25 +76,27 @@ export async function createAdvance(
         )
     }
 
-    const id = await insertAndGetId(
-        `INSERT INTO point_advances
-     (user_id, amount, total_repayment, installments, installment_amount)
-     VALUES (?, ?, ?, ?, ?)`,
-        [userId, amount, totalRepayment, installments, installmentAmount],
-    )
-    await execute(
-        `INSERT INTO point_records
-     (user_id, type, amount, reason, related_id, related_type)
-     VALUES (?, 'earn', ?, ?, ?, 'advance')`,
-        [userId, amount, `积分预支 - ${installments}期`, id],
-    )
-    await recomputeMonthSummary(userId, new Date().toISOString().slice(0, 7))
+    return withTransaction(async (tx) => {
+        const id = await tx.insertAndGetId(
+            `INSERT INTO point_advances
+         (user_id, amount, total_repayment, installments, installment_amount)
+         VALUES (?, ?, ?, ?, ?)`,
+            [userId, amount, totalRepayment, installments, installmentAmount],
+        )
+        await tx.execute(
+            `INSERT INTO point_records
+         (user_id, type, amount, reason, related_id, related_type)
+         VALUES (?, 'earn', ?, ?, ?, 'advance')`,
+            [userId, amount, `积分预支 - ${installments}期`, id],
+        )
+        await recomputeMonthSummary(userId, new Date().toISOString().slice(0, 7))
 
-    const rows = await query<PointAdvanceRow>(
-        'SELECT * FROM point_advances WHERE id = ?',
-        [id],
-    )
-    return rows[0]
+        const rows = await query<PointAdvanceRow>(
+            'SELECT * FROM point_advances WHERE id = ?',
+            [id],
+        )
+        return rows[0]
+    })
 }
 
 /** 偿还某用户全部活跃预支的当期一期（由定时触发器逐用户调用） */

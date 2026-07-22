@@ -1,0 +1,124 @@
+.sidebar {
+    display: flex;
+    flex-direction: column;
+    height: 100%;
+    background: #FFFFFF;
+}
+
+/* 品牌区 */
+.sidebar-brand {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid #F3F4F6;
+}
+
+.sidebar-logo {
+    font-size: 24px;
+}
+
+.sidebar-title {
+    font-size: 18px;
+    font-weight: 700;
+    color: #07C160;
+}
+
+/* 孩子选择器 */
+.sidebar-selector {
+    padding: 12px 16px;
+}
+
+.sidebar-single {
+    text-align: center;
+}
+
+.sidebar-single__name {
+    font-size: 15px;
+    font-weight: 600;
+    color: #1A1A1A;
+}
+
+.sidebar-divider {
+    height: 1px;
+    background: #F3F4F6;
+    margin: 0 16px;
+}
+
+/* 导航菜单 */
+.sidebar-nav {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+}
+
+.nav-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 12px 20px;
+    margin: 2px 12px;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    user-select: none;
+}
+
+.nav-item:hover {
+    background: #F3F4F6;
+}
+
+.nav-item--active {
+    background: #E7F8EE;
+    color: #07C160;
+    font-weight: 600;
+}
+
+.nav-item--active:hover {
+    background: #D1FADF;
+}
+
+.nav-icon {
+    font-size: 18px;
+    width: 24px;
+    text-align: center;
+    flex-shrink: 0;
+}
+
+.nav-label {
+    font-size: 14px;
+    line-height: 1.4;
+}
+
+/* 底部用户区 */
+.sidebar-footer {
+    border-top: 1px solid #F3F4F6;
+    padding: 12px 16px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+}
+
+.sidebar-user__name {
+    font-size: 14px;
+    font-weight: 600;
+    display: block;
+}
+
+.sidebar-user__role {
+    font-size: 12px;
+    color: #6B7280;
+    margin-top: 2px;
+}
+
+.sidebar-logout {
+    font-size: 12px;
+    color: #FA5151;
+    cursor: pointer;
+    padding: 4px 10px;
+    border-radius: 4px;
+}
+
+.sidebar-logout:hover {
+    background: #FEF2F2;
+}

@@ -1,3 +1,11 @@
+<pc-layout
+  isWide="{{isWide}}"
+  user="{{user}}"
+  children="{{children}}"
+  currentChildId="{{currentChildId}}"
+  currentPage="share"
+  bind:logout="onLogout"
+>
 <view class="page">
     <view class="picker-bar" wx:if="{{months.length > 0}}">
         <text class="picker-bar__label">统计月份</text>
@@ -37,3 +45,4 @@
         <share-card id="shareCard" stats="{{stats}}" childName="宝贝" />
     </block>
 </view>
+</pc-layout>

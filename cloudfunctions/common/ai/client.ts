@@ -3,8 +3,8 @@ import { ENV_ID } from '../config'
 import { insertAndGetId, query } from '../db'
 import { HttpError } from '../errors'
 
-const app = cloudbase.init({ env: ENV_ID })
-const model = app.ai().createModel('deepseek')
+const APP = cloudbase.init({ env: ENV_ID })
+const MODEL = APP.ai().createModel('deepseek')
 
 /** 单用户每日 AI 调用上限，防止脚本刷爆账单（高成本接口配额控制） */
 const DAILY_AI_CALL_CAP = 200
@@ -78,7 +78,6 @@ export async function callAi(options: CallAiOptions): Promise<CallAiResult> {
         temperature,
         maxTokens,
         responseFormat,
-        timeoutMs,
         quotaUserId,
     } = options
 
@@ -86,7 +85,7 @@ export async function callAi(options: CallAiOptions): Promise<CallAiResult> {
         await assertWithinDailyQuota(quotaUserId)
     }
 
-    const res = await model.generateText({
+    const res = await MODEL.generateText({
         model: 'deepseek-v4-flash',
         messages,
         temperature: temperature ?? 0.7,

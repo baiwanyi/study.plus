@@ -1,6 +1,7 @@
 import { query, execute } from './db'
 import { loadRules } from './rules'
 import type { MonthSummaryRow } from './types'
+import { monthRange } from './date-utils'
 
 export interface ComputedSummary {
     id: number
@@ -17,12 +18,7 @@ export interface ComputedSummary {
 }
 
 function monthDateRange(targetMonth: string): { start: string; end: string } {
-    const startDate = new Date(`${targetMonth}-01T00:00:00.000Z`)
-    const endDate = new Date(startDate)
-    endDate.setUTCMonth(endDate.getUTCMonth() + 1)
-    endDate.setUTCDate(0)
-    endDate.setUTCHours(23, 59, 59, 999)
-    return { start: startDate.toISOString(), end: endDate.toISOString() }
+    return monthRange(targetMonth)
 }
 
 async function ensureMonthRow(

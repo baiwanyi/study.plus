@@ -83,8 +83,11 @@ export async function login(
     return res
 }
 
+import { clearAll } from './cache'
+
 export function logout(): void {
     wx.removeStorageSync(TOKEN_KEY)
     wx.removeStorageSync(CHILD_KEY)
     wx.removeStorageSync(USER_KEY)
+    clearAll()
 }

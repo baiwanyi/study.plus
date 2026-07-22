@@ -24,6 +24,7 @@ Page({
         showForm: false,
         showDetail: false,
         analyzing: false,
+        isWide: false,
         formYear: new Date().getFullYear(),
         formWeek: 1,
         content: {} as Record<string, string>,
@@ -48,6 +49,13 @@ Page({
             wx.reLaunch({ url: '/pages/login/login' })
             return
         }
+        const app = getApp<AppOption>()
+        this.setData({
+            isWide: app.globalData.platform.isWide,
+            children: app.globalData.children,
+            currentChildId: getCurrentChildId(),
+            user: app.globalData.user,
+        })
         this.loadList()
     },
     async loadList() {
@@ -150,7 +158,7 @@ Page({
     onDetailVisible(e: WechatMiniprogram.CustomEvent) {
         this.setData({ showDetail: e.detail.visible })
     },
-    async onAnalyze() {
+    async     onAnalyze() {
         if (!this.data.detail) return
         this.setData({ analyzing: true })
         try {
@@ -166,5 +174,8 @@ Page({
             wx.showToast({ title: msg, icon: 'none' })
             this.setData({ analyzing: false })
         }
+    },
+    onLogout() {
+        wx.reLaunch({ url: '/pages/my/my' })
     },
 })

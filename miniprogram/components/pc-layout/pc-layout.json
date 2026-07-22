@@ -1,0 +1,6 @@
+{
+  "component": true,
+  "usingComponents": {
+    "pc-sidebar": "/components/pc-sidebar/pc-sidebar"
+  }
+}

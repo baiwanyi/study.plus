@@ -1,6 +1,6 @@
+import { callAi, logAiUsage, safeJsonParse, type AiMessage } from './client'
 import type { ChatMessage, WeeklyAnalysis } from '../types'
 import type { WeeklyReportContent } from '../weekly-content'
-import { callAi, logAiUsage, safeJsonParse, type AiMessage } from './client'
 
 export async function analyzeWeeklyReport(
     content: WeeklyReportContent,
