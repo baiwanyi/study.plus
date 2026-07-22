@@ -3,6 +3,10 @@
 > 智能学习管理，让成长有迹可循，使每一分都闪闪发光。
 > Smart learning management makes growth traceable and every point shine.
 
+## 注意
+
+本地部署版本不再进行功能开发，仅做 Bug 修复。
+
 ## 项目概述
 
 ### 项目背景
