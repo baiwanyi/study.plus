@@ -5,7 +5,7 @@
 
 ## 注意
 
-本地部署版本不再进行功能开发，仅做 Bug 修复。
+本地部署版本已停止功能开发，仅做 Bug 修复。全新功能开发将集中于 [**CloudBase**](https://github.com/baiwanyi/study.plus/blob/cloudbase/README.md) 版本。
 
 ## 项目概述
 
