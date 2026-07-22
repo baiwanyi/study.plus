@@ -1,0 +1,43 @@
+<view class="page">
+  <t-loading wx:if="{{loading}}" class="center" />
+  <block wx:else>
+    <view wx:if="{{list.length === 0}}" class="empty">暂无配置项</view>
+    <t-cell-group theme="card" wx:else>
+      <t-cell
+        wx:for="{{list}}"
+        wx:key="_id"
+        title="{{item.key}}"
+        description="{{item.valueText}}"
+        data-id="{{item._id}}"
+        bind:click="openEdit"
+      />
+    </t-cell-group>
+  </block>
+
+  <view wx:if="{{isParent}}" class="footer">
+    <t-button theme="primary" block bind:tap="openAdd">+ 新增配置</t-button>
+  </view>
+
+  <t-dialog
+    visible="{{showForm}}"
+    title="{{editingId ? '编辑配置' : '新增配置'}}"
+    bind:confirm="onConfirm"
+    bind:cancel="onCancel"
+  >
+    <view class="form">
+      <t-input
+        label="Key"
+        value="{{form.key}}"
+        placeholder="配置键名"
+        disabled="{{!!editingId}}"
+        bind:change="onKeyChange"
+      />
+      <t-input
+        label="Value"
+        value="{{form.valueText}}"
+        placeholder="字符串/数字/JSON"
+        bind:change="onValueChange"
+      />
+    </view>
+  </t-dialog>
+</view>

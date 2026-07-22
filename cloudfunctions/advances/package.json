@@ -1,0 +1,7 @@
+{
+  "name": "study-advances",
+  "version": "1.0.0",
+  "description": "学迹Plus 积分预支与还款云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

@@ -1,0 +1,7 @@
+{
+  "name": "study-share-stats",
+  "version": "1.0.0",
+  "description": "学迹Plus 分享统计云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

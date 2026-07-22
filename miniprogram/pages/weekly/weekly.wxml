@@ -1,0 +1,95 @@
+<view class="page">
+    <view wx:if="{{loading}}" class="page__loading">
+        <t-loading theme="circular" size="48rpx" text="加载中" />
+    </view>
+
+    <t-empty wx:elif="{{list.length === 0}}" description="还没有周报，点击下方按钮记录第一周" />
+
+    <view wx:else class="report-list">
+        <view
+            wx:for="{{list}}"
+            wx:key="id"
+            class="report-card"
+            data-id="{{item.id}}"
+            bind:tap="openDetail"
+        >
+            <view class="report-card__head">
+                <text class="report-card__title">{{item.label}}</text>
+                <t-tag wx:if="{{item.hasAnalysis}}" theme="success" size="small">已分析</t-tag>
+            </view>
+            <view class="report-card__preview">
+                {{item.content.learned || '暂无内容'}}
+            </view>
+        </view>
+    </view>
+
+    <t-fab icon="edit" bind:click="openCreate" aria-label="新建周报" />
+</view>
+
+<t-popup visible="{{showForm}}" bind:visible-change="onFormVisible" placement="bottom">
+    <view class="form-sheet">
+        <view class="form-sheet__title">新建周报</view>
+        <view class="form-sheet__row">
+            <text class="form-sheet__label">年份</text>
+            <t-input value="{{formYear}}" type="number" bind:change="onYearInput" />
+        </view>
+        <view class="form-sheet__row">
+            <text class="form-sheet__label">周次</text>
+            <t-input value="{{formWeek}}" type="number" bind:change="onWeekInput" />
+        </view>
+        <view class="form-sheet__fields">
+            <view wx:for="{{formFields}}" wx:key="key" class="form-field">
+                <text class="form-field__label">{{item.label}}</text>
+                <t-textarea
+                    value="{{content[item.key]}}"
+                    placeholder="{{item.placeholder}}"
+                    disableDefaultPadding="{{true}}"
+                    bind:change="onFieldInput"
+                    data-field="{{item.key}}"
+                />
+            </view>
+        </view>
+        <view class="form-sheet__actions">
+            <t-button theme="light" bind:tap="closeForm">取消</t-button>
+            <t-button theme="primary" bind:tap="onSubmit">保存</t-button>
+        </view>
+    </view>
+</t-popup>
+
+<t-popup visible="{{showDetail}}" bind:visible-change="onDetailVisible" placement="bottom">
+    <view class="detail-sheet">
+        <view class="detail-sheet__title">{{detail.label}}</view>
+
+        <view class="detail-section">
+            <view class="detail-section__head">
+                <text>AI 分析</text>
+                <t-button
+                    wx:if="{{!analysisObj}}"
+                    size="small"
+                    theme="primary"
+                    loading="{{analyzing}}"
+                    bind:tap="onAnalyze"
+                >生成分析</t-button>
+            </view>
+            <view wx:if="{{analysisObj}}" class="analysis">
+                <view wx:for="{{analysisObj}}" wx:key="k" wx:for-item="val" wx:for-index="k" class="analysis__item">
+                    <view class="analysis__label">{{k}}</view>
+                    <view class="analysis__value">{{val}}</view>
+                </view>
+            </view>
+            <view wx:else class="detail-empty">点击「生成分析」让 AI 老师点评本周表现</view>
+        </view>
+
+        <view class="detail-section">
+            <view class="detail-section__head"><text>和 AI 老师聊聊</text></view>
+            <view class="chat-wrap">
+                <ai-chat-panel
+                    cloudFunction="weekly"
+                    fetchAction="conversation"
+                    sendAction="chat"
+                    refId="{{detail.id}}"
+                />
+            </view>
+        </view>
+    </view>
+</t-popup>

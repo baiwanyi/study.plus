@@ -1,0 +1,20 @@
+{
+  "miniprogramRoot": "./",
+  "projectname": "study-cloudbase",
+  "description": "学迹Plus 微信小程序（TDesign）",
+  "appid": "touristappid",
+  "setting": {
+    "urlCheck": false,
+    "es6": true,
+    "enhance": true,
+    "postcss": true,
+    "minified": true,
+    "newFeature": true,
+    "nodeModules": true
+  },
+  "compileType": "miniprogram",
+  "libVersion": "latest",
+  "packOptions": {
+    "ignore": []
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "study-tasks",
+  "version": "1.0.0",
+  "description": "学迹Plus 作业管理云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

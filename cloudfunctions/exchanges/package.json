@@ -1,0 +1,7 @@
+{
+  "name": "study-exchanges",
+  "version": "1.0.0",
+  "description": "学迹Plus 积分兑换云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

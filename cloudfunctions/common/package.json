@@ -1,0 +1,12 @@
+{
+  "name": "study-common",
+  "version": "1.0.0",
+  "description": "学迹Plus 云函数公共层（作为 CloudBase Layer 发布）",
+  "main": "index.js",
+  "dependencies": {
+    "@cloudbase/node-sdk": "^2.7.0",
+    "jsonwebtoken": "^9.0.2",
+    "mysql2": "^3.11.0"
+  },
+  "license": "UNLICENSED"
+}

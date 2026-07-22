@@ -1,0 +1,37 @@
+.popup-body {
+    padding: 36rpx 32rpx calc(48rpx + env(safe-area-inset-bottom));
+    background: #fff;
+    border-radius: 28rpx 28rpx 0 0;
+}
+
+.popup-title {
+    font-size: 32rpx;
+    font-weight: 600;
+    margin-bottom: 24rpx;
+}
+
+.grade-label {
+    margin: 24rpx 0 12rpx;
+    color: #6B7280;
+    font-size: 26rpx;
+}
+
+.grade-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16rpx;
+    margin-bottom: 32rpx;
+}
+
+.grade-item {
+    padding: 12rpx 28rpx;
+    border-radius: 16rpx;
+    background: #F2F4F7;
+    font-size: 26rpx;
+}
+
+.grade-item--active {
+    background: #E7F8EE;
+    color: #07C160;
+    font-weight: 600;
+}

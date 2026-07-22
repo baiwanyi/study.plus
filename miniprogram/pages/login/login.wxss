@@ -1,0 +1,46 @@
+.login-page {
+    min-height: 100vh;
+    padding: 160rpx 56rpx 80rpx;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: linear-gradient(180deg, #E7F8EE 0%, #F7F8FA 40%);
+}
+
+.logo {
+    font-size: 64rpx;
+    font-weight: 700;
+    color: #07C160;
+    letter-spacing: 4rpx;
+}
+
+.slogan {
+    margin-top: 16rpx;
+    margin-bottom: 64rpx;
+    color: #6B7280;
+    font-size: 28rpx;
+}
+
+.login-card {
+    width: 100%;
+    margin-bottom: 56rpx;
+}
+
+.privacy {
+    margin-top: 40rpx;
+    display: flex;
+    align-items: center;
+    font-size: 24rpx;
+    color: #6B7280;
+}
+
+.link {
+    color: #07C160;
+    margin-left: 8rpx;
+}
+
+.privacy-content {
+    font-size: 26rpx;
+    line-height: 1.7;
+    color: #1A1A1A;
+}

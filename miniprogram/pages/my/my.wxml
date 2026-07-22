@@ -1,0 +1,58 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">{{user.nickname || '家长'}}</view>
+    <view class="hero-sub">家庭学习积分管理 · 家长视角</view>
+  </view>
+
+  <view class="card">
+    <view class="card-title">当前查看孩子</view>
+    <child-selector
+      children="{{children}}"
+      value="{{currentChildId}}"
+      bind:change="onSelectChild"
+    />
+  </view>
+
+  <t-cell-group theme="card" title="孩子管理">
+    <t-cell
+      wx:for="{{children}}"
+      wx:key="childId"
+      title="{{item.nickname}}"
+      description="{{item.grade}}"
+      arrow
+      bind:click="onRemove"
+      data-id="{{item.childId}}"
+    />
+    <t-cell title="添加孩子" left-icon="add" bind:click="openAdd" />
+  </t-cell-group>
+
+  <t-cell-group wx:if="{{isParent}}" theme="card" title="家长管理">
+    <t-cell title="评语分类" left-icon="root-list" bind:click="goCategories" />
+    <t-cell title="系统配置" left-icon="setting" bind:click="goOptions" />
+  </t-cell-group>
+
+  <t-cell-group theme="card" title="设置">
+    <t-cell title="隐私协议" left-icon="security" bind:click="onPrivacy" />
+    <t-cell title="导出我的数据" left-icon="download" bind:click="onExport" />
+    <t-cell title="删除账户" left-icon="delete" bind:click="onDeleteAccount" />
+    <t-cell title="退出登录" left-icon="logout" bind:click="onLogout" />
+  </t-cell-group>
+
+  <t-popup visible="{{addVisible}}" placement="bottom" bind:visible-change="closeAdd">
+    <view class="popup-body">
+      <view class="popup-title">添加孩子</view>
+      <t-input label="昵称" placeholder="请输入孩子昵称" value="{{newName}}" bind:change="onName" />
+      <view class="grade-label">年级</view>
+      <view class="grade-list">
+        <view
+          wx:for="{{grades}}"
+          wx:key="*this"
+          class="grade-item {{newGrade === item ? 'grade-item--active' : ''}}"
+          data-g="{{item}}"
+          bind:tap="onGrade"
+        >{{item}}</view>
+      </view>
+      <t-button theme="primary" block loading="{{loading}}" bind:tap="confirmAdd">确认添加</t-button>
+    </view>
+  </t-popup>
+</view>

@@ -1,0 +1,2 @@
+<web-view wx:if="{{src}}" src="{{src}}" bind:message="onMessage" />
+<view wx:else class="placeholder">未配置思维导图资源地址</view>

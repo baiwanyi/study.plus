@@ -1,0 +1,33 @@
+<view class="login-page">
+  <view class="logo">学迹Plus</view>
+  <view class="slogan">用积分陪伴孩子成长</view>
+
+  <view class="card login-card">
+    <view class="card-title">欢迎使用</view>
+    <view class="muted">登录后为孩子建立学习积分档案，开启科学陪伴。</view>
+  </view>
+
+  <t-button
+    theme="primary"
+    size="large"
+    block
+    loading="{{loading}}"
+    bind:tap="onLogin"
+  >微信一键登录</t-button>
+
+  <view class="privacy">
+    <t-checkbox checked="{{privacyAgreed}}" bind:change="onAgreeChange">我已阅读并同意</t-checkbox>
+    <text class="link" bind:tap="openPrivacy">《隐私协议》</text>
+  </view>
+
+  <t-dialog
+    visible="{{privacyVisible}}"
+    title="隐私协议"
+    confirm-btn="我已知晓"
+    bind:confirm="closePrivacy"
+  >
+    <view slot="content" class="privacy-content">
+      我们仅收集必要的微信公开信息（昵称、头像）用于学习档案展示；所有学习数据均按最小化原则存储，并严格隔离于您的家庭账户。您可随时在「我的」页导出或删除数据。详细条款以官方公示为准。
+    </view>
+  </t-dialog>
+</view>

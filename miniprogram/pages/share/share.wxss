@@ -1,0 +1,59 @@
+.page {
+    min-height: 100vh;
+    padding: 24rpx;
+    background: #F7F8FA;
+}
+.picker-bar {
+    display: flex;
+    align-items: center;
+    margin-bottom: 20rpx;
+}
+.picker-bar__label {
+    font-size: 28rpx;
+    color: #1A1A1A;
+    margin-right: 16rpx;
+}
+.picker {
+    padding: 12rpx 28rpx;
+    background: #fff;
+    border-radius: 14rpx;
+    font-size: 28rpx;
+    color: #07C160;
+    font-weight: 600;
+}
+.page__loading {
+    padding-top: 120rpx;
+    text-align: center;
+}
+.stat-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20rpx;
+    margin-bottom: 24rpx;
+}
+.stat-card {
+    border-radius: 24rpx;
+    padding: 32rpx;
+    color: #fff;
+}
+.stat-card--earn {
+    background: linear-gradient(135deg, #07C160, #3AC97A);
+}
+.stat-card--deduct {
+    background: linear-gradient(135deg, #FA5151, #FF8C00);
+}
+.stat-card--blue {
+    background: linear-gradient(135deg, #3A7AFE, #5B8DEF);
+}
+.stat-card--orange {
+    background: linear-gradient(135deg, #FF8C00, #FFB44D);
+}
+.stat-card__num {
+    font-size: 48rpx;
+    font-weight: 700;
+}
+.stat-card__label {
+    font-size: 24rpx;
+    opacity: 0.92;
+    margin-top: 8rpx;
+}

@@ -1,0 +1,39 @@
+<view class="page">
+    <view class="picker-bar" wx:if="{{months.length > 0}}">
+        <text class="picker-bar__label">统计月份</text>
+        <t-picker
+            value="{{monthIndex}}"
+            data="{{[months]}}"
+            bind:change="onMonthChange"
+        >
+            <view class="picker">{{month}} ›</view>
+        </t-picker>
+    </view>
+
+    <view wx:if="{{loading}}" class="page__loading">
+        <t-loading theme="circular" size="48rpx" text="加载中" />
+    </view>
+
+    <block wx:else>
+        <view class="stat-grid">
+            <view class="stat-card stat-card--earn">
+                <view class="stat-card__num">+{{stats.totalEarn}}</view>
+                <view class="stat-card__label">赚取</view>
+            </view>
+            <view class="stat-card stat-card--deduct">
+                <view class="stat-card__num">-{{stats.totalDeduct}}</view>
+                <view class="stat-card__label">消耗</view>
+            </view>
+            <view class="stat-card stat-card--blue">
+                <view class="stat-card__num">{{stats.availableBalance}}</view>
+                <view class="stat-card__label">可用余额</view>
+            </view>
+            <view class="stat-card stat-card--orange">
+                <view class="stat-card__num">{{stats.totalExchanges}}</view>
+                <view class="stat-card__label">兑换次数</view>
+            </view>
+        </view>
+
+        <share-card id="shareCard" stats="{{stats}}" childName="宝贝" />
+    </block>
+</view>

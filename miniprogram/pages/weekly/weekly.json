@@ -1,0 +1,16 @@
+{
+  "navigationBarTitleText": "学习周报",
+  "usingComponents": {
+    "t-cell": "tdesign-miniprogram/cell/cell",
+    "t-cell-group": "tdesign-miniprogram/cell-group/cell-group",
+    "t-button": "tdesign-miniprogram/button/button",
+    "t-popup": "tdesign-miniprogram/popup/popup",
+    "t-textarea": "tdesign-miniprogram/textarea/textarea",
+    "t-input": "tdesign-miniprogram/input/input",
+    "t-tag": "tdesign-miniprogram/tag/tag",
+    "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-fab": "tdesign-miniprogram/fab/fab",
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "ai-chat-panel": "/components/ai-chat-panel/ai-chat-panel"
+  }
+}

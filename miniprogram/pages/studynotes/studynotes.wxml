@@ -1,0 +1,99 @@
+<view class="page">
+    <view wx:if="{{loading}}" class="page__loading">
+        <t-loading theme="circular" size="48rpx" text="加载中" />
+    </view>
+
+    <t-empty wx:elif="{{list.length === 0}}" description="用费曼学习法记录第一篇心得吧" />
+
+    <view wx:else class="note-list">
+        <view
+            wx:for="{{list}}"
+            wx:key="id"
+            class="note-card"
+            data-id="{{item.id}}"
+            bind:tap="openDetail"
+        >
+            <view class="note-card__head">
+                <t-tag theme="primary" size="small">{{item.subjectLabel}}</t-tag>
+                <text wx:if="{{item.hasEvaluation}}" class="note-card__score">掌握 {{item.follow_up_score || '?'}}</text>
+            </view>
+            <view class="note-card__topic">{{item.topic || '未命名主题'}}</view>
+            <view class="note-card__summary">{{item.summary}}</view>
+        </view>
+    </view>
+
+    <t-fab icon="edit" bind:click="openCreate" aria-label="新建心得" />
+</view>
+
+<t-popup visible="{{showForm}}" bind:visible-change="onFormVisible" placement="bottom">
+    <view class="form-sheet">
+        <view class="form-sheet__title">新建学习心得</view>
+        <view class="form-sheet__row">
+            <text class="form-sheet__label">学科</text>
+            <picker
+                mode="selector"
+                range="{{subjectLabels}}"
+                value="{{subjectIndex}}"
+                bind:change="onSubjectChange"
+            >
+                <view class="picker">{{subjectLabels[subjectIndex]}} ›</view>
+            </picker>
+        </view>
+        <view class="form-field">
+            <text class="form-field__label">主题</text>
+            <t-textarea value="{{form.topic}}" placeholder="例如：圆的面积公式" disableDefaultPadding="{{true}}" bind:change="onFormInput" data-field="topic" />
+        </view>
+        <view class="form-field">
+            <text class="form-field__label">用自己的话概括 *</text>
+            <t-textarea value="{{form.summary}}" placeholder="假如讲给同学听，你会怎么说" disableDefaultPadding="{{true}}" bind:change="onFormInput" data-field="summary" />
+        </view>
+        <view class="form-field">
+            <text class="form-field__label">举一个例子 *</text>
+            <t-textarea value="{{form.example}}" placeholder="生活或题目中能印证它的例子" disableDefaultPadding="{{true}}" bind:change="onFormInput" data-field="example" />
+        </view>
+        <view class="form-field">
+            <text class="form-field__label">卡住的地方</text>
+            <t-textarea value="{{form.stuckPoints}}" placeholder="哪里还讲不清楚" disableDefaultPadding="{{true}}" bind:change="onFormInput" data-field="stuckPoints" />
+        </view>
+        <view class="form-field">
+            <text class="form-field__label">记忆挂钩</text>
+            <t-textarea value="{{form.memoryHook}}" placeholder="帮你记住它的小窍门" disableDefaultPadding="{{true}}" bind:change="onFormInput" data-field="memoryHook" />
+        </view>
+        <view class="form-sheet__actions">
+            <t-button theme="light" bind:tap="closeForm">取消</t-button>
+            <t-button theme="primary" bind:tap="onSubmit">保存</t-button>
+        </view>
+    </view>
+</t-popup>
+
+<t-popup visible="{{showDetail}}" bind:visible-change="onDetailVisible" placement="bottom">
+    <view class="detail-sheet">
+        <view class="detail-sheet__title">{{detail.subjectLabel}} · {{detail.topic}}</view>
+
+        <view class="detail-section">
+            <view class="detail-section__head">
+                <text>AI 评估</text>
+                <t-button
+                    wx:if="{{!evaluationObj}}"
+                    size="small"
+                    theme="primary"
+                    loading="{{evaluating}}"
+                    bind:tap="onEvaluate"
+                >开始评估</t-button>
+            </view>
+            <evaluation-report evaluation="{{evaluationObj}}" score="{{detail.follow_up_score}}" />
+        </view>
+
+        <view class="detail-section">
+            <view class="detail-section__head"><text>智能测验（费曼追问）</text></view>
+            <view class="chat-wrap">
+                <ai-chat-panel
+                    cloudFunction="studynotes"
+                    fetchAction="messages"
+                    sendAction="follow-up"
+                    refId="{{detail.id}}"
+                />
+            </view>
+        </view>
+    </view>
+</t-popup>

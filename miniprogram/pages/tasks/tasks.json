@@ -1,0 +1,16 @@
+{
+  "navigationBarTitleText": "作业",
+  "usingComponents": {
+    "t-cell": "tdesign-miniprogram/cell/cell",
+    "t-cell-group": "tdesign-miniprogram/cell-group/cell-group",
+    "t-button": "tdesign-miniprogram/button/button",
+    "t-popup": "tdesign-miniprogram/popup/popup",
+    "t-input": "tdesign-miniprogram/input/input",
+    "t-tag": "tdesign-miniprogram/tag/tag",
+    "t-loading": "tdesign-miniprogram/loading/loading",
+    "t-empty": "tdesign-miniprogram/empty/empty",
+    "t-action-sheet": "tdesign-miniprogram/action-sheet/action-sheet",
+    "t-icon": "tdesign-miniprogram/icon/icon",
+    "child-selector": "/components/child-selector/child-selector"
+  }
+}

@@ -1,0 +1,14 @@
+<view class="eval-report" wx:if="{{evaluation}}">
+    <view wx:if="{{scoreText}}" class="eval-report__score">
+        <view class="eval-report__score-num">{{scoreText}}</view>
+        <view class="eval-report__score-label">掌握程度评分</view>
+    </view>
+    <view wx:for="{{sections}}" wx:key="label" class="eval-report__section">
+        <view class="eval-report__section-title">{{item.label}}</view>
+        <view class="eval-report__section-body">{{item.value}}</view>
+    </view>
+    <view wx:if="{{sections.length === 0 && !scoreText}}" class="eval-report__empty">
+        暂无可展示的评估内容
+    </view>
+</view>
+<view wx:else class="eval-report__empty">尚未进行评估</view>

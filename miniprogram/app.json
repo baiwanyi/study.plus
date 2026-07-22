@@ -1,0 +1,43 @@
+{
+  "pages": [
+    "pages/login/login",
+    "pages/dashboard/dashboard",
+    "pages/tasks/tasks",
+    "pages/mindmap/mindmap",
+    "pages/weekly/weekly",
+    "pages/studynotes/studynotes",
+    "pages/points/points",
+    "pages/exchanges/exchanges",
+    "pages/borrow/borrow",
+    "pages/ai-usage/ai-usage",
+    "pages/share/share",
+    "pages/options/options",
+    "pages/categories/categories",
+    "pages/my/my"
+  ],
+  "window": {
+    "navigationBarBackgroundColor": "#07C160",
+    "navigationBarTitleText": "学迹Plus",
+    "navigationBarTextStyle": "white",
+    "backgroundColor": "#F7F8FA"
+  },
+  "tabBar": {
+    "color": "#6B7280",
+    "selectedColor": "#07C160",
+    "backgroundColor": "#FFFFFF",
+    "borderStyle": "black",
+    "list": [
+      { "pagePath": "pages/dashboard/dashboard", "text": "首页" },
+      { "pagePath": "pages/tasks/tasks", "text": "作业" },
+      { "pagePath": "pages/points/points", "text": "积分" },
+      { "pagePath": "pages/my/my", "text": "我的" }
+    ]
+  },
+  "style": "v2",
+  "sitemapLocation": "sitemap.json",
+  "lazyCodeLoading": "requiredComponents",
+  "componentFramework": "glass-easel",
+  "useExtendedLib": {
+    "weui": true
+  }
+}

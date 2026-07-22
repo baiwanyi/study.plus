@@ -1,0 +1,7 @@
+{
+  "name": "study-init",
+  "version": "1.0.0",
+  "description": "学迹Plus 初始化默认配置云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

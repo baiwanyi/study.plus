@@ -1,0 +1,14 @@
+{
+  "name": "study-cloudbase",
+  "version": "1.0.0",
+  "description": "学迹Plus — CloudBase 云函数后端 + 微信小程序前端（TDesign）",
+  "private": true,
+  "workspaces": [
+    "cloudfunctions/*"
+  ],
+  "scripts": {
+    "deploy:common": "echo '请将 cloudfunctions/common 作为 CloudBase Layer 发布，版本号见控制台'",
+    "lint": "echo 'run eslint per function'"
+  },
+  "license": "UNLICENSED"
+}

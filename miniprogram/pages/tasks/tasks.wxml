@@ -1,0 +1,96 @@
+<view class="page">
+  <view class="header">
+    <view class="header-title">作业管理</view>
+    <view class="header-actions">
+      <t-button theme="light" size="small" variant="text" bind:tap="openFilter">
+        {{filterTypeLabel ? filterTypeLabel : '全部类型'}}
+      </t-button>
+      <t-button theme="primary" size="small" bind:tap="openCreate">新建</t-button>
+    </view>
+  </view>
+
+  <child-selector wx:if="{{children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
+
+  <view wx:if="{{loading}}" class="center-wrap">
+    <t-loading theme="circular" size="48rpx" text="加载中" />
+  </view>
+
+  <t-empty wx:elif="{{list.length === 0}}" icon="root-list" description="还没有作业，点击右上角新建" />
+
+  <t-cell-group wx:else theme="card">
+    <t-cell
+      wx:for="{{list}}"
+      wx:key="id"
+      title="{{item.title}}"
+      description="{{item.typeLabel}} · {{item.statusLabel}}"
+      hover
+      arrow
+      data-id="{{item.id}}"
+      bind:click="openDetail"
+    >
+      <t-tag
+        wx:if="{{item.grade}}"
+        slot="note"
+        theme="success"
+        variant="light"
+        style="color: {{item.gradeColor}}"
+      >{{item.grade}}</t-tag>
+      <t-tag wx:elif="{{item.pointsEarned}}" slot="note" theme="primary" variant="light">
+        {{item.pointsEarned > 0 ? '+' : ''}}{{item.pointsEarned}}
+      </t-tag>
+    </t-cell>
+  </t-cell-group>
+
+  <t-action-sheet
+    visible="{{showTypePicker}}"
+    items="{{typeOptions}}"
+    show-cancel
+    bind:selected="onPickType"
+    bind:close="closeTypePicker"
+  />
+
+  <t-action-sheet
+    visible="{{showFilter}}"
+    items="{{typeOptions}}"
+    cancel-text="清除筛选"
+    bind:selected="setFilterType"
+    bind:cancel="clearFilter"
+    bind:close="closeFilter"
+  />
+
+  <t-popup visible="{{showCreate}}" placement="bottom" bind:visible-change="closeCreate" close-btn>
+    <view class="form">
+      <view class="form-title">新建作业</view>
+      <t-input label="标题" placeholder="请输入作业标题" value="{{newTitle}}" bind:change="onTitleInput" />
+      <view class="form-row">
+        <text class="form-label">类型</text>
+        <t-button theme="light" size="small" variant="outline" bind:tap="openTypePicker">
+          {{newTypeLabel}}
+        </t-button>
+      </view>
+      <t-button theme="primary" block bind:tap="onCreateConfirm">创建</t-button>
+    </view>
+  </t-popup>
+
+  <t-popup visible="{{showDetail}}" placement="bottom" bind:visible-change="closeDetail" close-btn>
+    <view class="form" wx:if="{{detail}}">
+      <view class="form-title">{{detail.title}}</view>
+      <view class="meta">{{detail.typeLabel}} · {{detail.statusLabel}}</view>
+
+      <view wx:if="{{scoreResult}}" class="score-card">
+        <t-tag theme="success" variant="light" style="color: {{detail.gradeColor}}">{{scoreResult.grade}}</t-tag>
+        <view class="score-comment">{{scoreResult.comment}}</view>
+        <view wx:if="{{scoreResult.suggestions.length > 0}}" class="suggestions">
+          <view wx:for="{{scoreResult.suggestions}}" wx:key="*this" class="suggestion">· {{item}}</view>
+        </view>
+      </view>
+
+      <view class="detail-actions">
+        <t-button wx:if="{{detail.type === 'mindmap'}}" theme="light" size="small" variant="outline" bind:tap="openMindmap">思维导图</t-button>
+        <t-button theme="light" size="small" variant="outline" bind:tap="onAiTitle">AI 起名</t-button>
+        <t-button theme="primary" size="small" loading="{{scoring}}" bind:tap="onAiScore">AI 评分</t-button>
+        <t-button theme="danger" size="small" variant="outline" bind:tap="onDelete">删除</t-button>
+      </view>
+    </view>
+  </t-popup>
+</view>

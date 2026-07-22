@@ -1,0 +1,60 @@
+<view class="page">
+  <child-selector wx:if="{{children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
+
+  <view wx:if="{{loading}}" class="center-wrap">
+    <t-loading theme="circular" size="48rpx" text="加载中" />
+  </view>
+
+  <t-cell-group wx:elif="{{list.length > 0}}" theme="card" class="records">
+    <t-cell
+      wx:for="{{list}}"
+      wx:key="id"
+      title="{{item.itemLabel}} {{item.detail}}"
+      description="{{item.time}}"
+      hover="{{item.status === 'active'}}"
+      data-id="{{item.id}}"
+      bind:click="onRevoke"
+    >
+      <view slot="note" class="note">
+        <text class="cost">-{{item.points_cost}}</text>
+        <t-tag
+          wx:if="{{item.status === 'revoked'}}"
+          theme="default"
+          variant="light"
+          size="small"
+        >已撤销</t-tag>
+      </view>
+    </t-cell>
+  </t-cell-group>
+
+  <t-empty wx:else icon="root-list" description="还没有兑换记录" />
+
+  <view class="footer">
+    <t-button theme="primary" block bind:tap="openCreate">发起兑换</t-button>
+  </view>
+
+  <t-action-sheet
+    visible="{{showTypeSheet}}"
+    items="{{[{label:'娱乐时间',value:'game'},{label:'现金兑换',value:'cash'}]}}"
+    show-cancel
+    bind:selected="onPickType"
+    bind:close="closeTypeSheet"
+  />
+
+  <t-popup visible="{{showCreate}}" placement="bottom" bind:visible-change="closeCreate" close-btn>
+    <view class="form">
+      <view class="form-title">发起兑换</view>
+      <view class="form-row">
+        <text class="form-label">兑换项</text>
+        <t-button theme="light" size="small" variant="outline" bind:tap="openTypeSheet">
+          {{newTypeLabel}}
+        </t-button>
+      </view>
+      <view class="form-row">
+        <text class="form-label">消耗积分</text>
+        <t-stepper value="{{pointsCost}}" min="{{1}}" max="{{9999}}" bind:change="onCostChange" />
+      </view>
+      <t-button theme="primary" block bind:tap="onCreateConfirm">确认兑换</t-button>
+    </view>
+  </t-popup>
+</view>

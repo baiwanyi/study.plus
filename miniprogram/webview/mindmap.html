@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>思维导图</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/simple-mind-map/dist/style.css" />
+    <style>
+        html, body { margin: 0; padding: 0; height: 100%; overflow: hidden; background: #f7f8fa; }
+        #map { width: 100vw; height: 100vh; }
+        .toolbar {
+            position: fixed; left: 0; right: 0; bottom: 0;
+            display: flex; gap: 16rpx; padding: 24rpx; background: #fff;
+            box-shadow: 0 -2rpx 12rpx rgba(0,0,0,.06); z-index: 10;
+        }
+        .btn {
+            flex: 1; text-align: center; padding: 20rpx 0; border-radius: 16rpx;
+            background: #07C160; color: #fff; font-size: 28rpx; border: none;
+        }
+        .btn--ghost { background: #eef0f3; color: #1a1a1a; }
+        .hint {
+            position: fixed; top: 0; left: 0; right: 0; padding: 16rpx 24rpx;
+            background: rgba(255,255,255,.9); color: #6b7280; font-size: 24rpx; z-index: 10;
+        }
+    </style>
+</head>
+<body>
+    <div class="hint">双击节点可编辑；工具栏可新增/保存导图</div>
+    <div id="map"></div>
+    <div class="toolbar">
+        <button class="btn btn--ghost" id="addBtn">新增子节点</button>
+        <button class="btn" id="saveBtn">保存到小程序</button>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/simple-mind-map/dist/SimpleMindMap.umd.min.js"></script>
+    <script>
+        (function () {
+            var params = new URLSearchParams(location.search)
+            var title = params.get('title') || '中心主题'
+
+            var mindmap = new SimpleMindMap({
+                el: document.getElementById('map'),
+                data: {
+                    data: { text: title, expand: true, isActive: false },
+                    children: [
+                        { data: { text: '分支一', expand: true }, children: [] },
+                        { data: { text: '分支二', expand: true }, children: [] }
+                    ]
+                },
+                theme: {
+                    root: { color: '#fff', fillColor: '#07C160', fontSize: 18 },
+                    main: { color: '#1a1a1a', fillColor: '#e8f3ff' }
+                },
+                layout: 'logicalStructure',
+                draggable: true,
+                editable: true
+            })
+
+            document.getElementById('addBtn').addEventListener('click', function () {
+                var node = mindmap.renderer.root
+                mindmap.execCommand('INSERT_CHILD_NODE', false, node)
+            })
+
+            document.getElementById('saveBtn').addEventListener('click', function () {
+                var data = mindmap.getData()
+                if (window.wx && window.wx.miniProgram) {
+                    window.wx.miniProgram.postMessage({
+                        data: { action: 'save', mindmap: JSON.stringify(data) }
+                    })
+                    window.wx.miniProgram.navigateBack()
+                }
+            })
+        })()
+    </script>
+</body>
+</html>

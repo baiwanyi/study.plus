@@ -1,0 +1,3 @@
+<view class="grade-badge grade-badge--{{size}}" style="background-color: {{color}}1A; color: {{color}};">
+    {{grade || '未评'}}
+</view>

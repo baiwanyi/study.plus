@@ -1,0 +1,7 @@
+{
+  "name": "study-ai-usage",
+  "version": "1.0.0",
+  "description": "学迹Plus AI 用量统计云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

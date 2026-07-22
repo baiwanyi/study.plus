@@ -1,0 +1,36 @@
+<view class="page">
+  <view class="hero">
+    <view class="hero-title">你好，{{user.nickname || '家长'}}</view>
+    <view class="hero-sub">和孩子一起，用积分记录成长</view>
+  </view>
+
+  <view class="card" wx:if="{{children.length > 0}}">
+    <view class="card-title">当前孩子</view>
+    <child-selector
+      children="{{children}}"
+      value="{{currentChildId}}"
+      bind:change="onSelectChild"
+    />
+  </view>
+
+  <view class="card entry-card" bind:tap="goTasks">
+    <view>
+      <view class="entry-title">作业与学习</view>
+      <view class="muted">布置作业、AI 评分、周报与心得</view>
+    </view>
+    <t-icon name="chevron-right" size="40rpx" color="#6B7280" />
+  </view>
+
+  <view class="card entry-card" bind:tap="goPoints">
+    <view>
+      <view class="entry-title">积分与奖励</view>
+      <view class="muted">查看积分流水、兑换与预支</view>
+    </view>
+    <t-icon name="chevron-right" size="40rpx" color="#6B7280" />
+  </view>
+
+  <view class="card">
+    <view class="card-title">成长小贴士</view>
+    <view class="muted">完成每日作业、保持阅读，积分会稳步增长。家长可在「我的」切换不同孩子查看独立数据。</view>
+  </view>
+</view>

@@ -1,0 +1,12 @@
+<view class="selector">
+  <view
+    wx:for="{{children}}"
+    wx:key="childId"
+    class="chip {{item.childId === value ? 'chip--active' : ''}}"
+    data-id="{{item.childId}}"
+    bind:tap="onSelect"
+  >
+    <text class="chip-name">{{item.nickname}}</text>
+    <text class="chip-grade">{{item.grade}}</text>
+  </view>
+</view>

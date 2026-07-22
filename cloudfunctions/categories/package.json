@@ -1,0 +1,7 @@
+{
+  "name": "study-categories",
+  "version": "1.0.0",
+  "description": "学迹Plus 评语分类管理云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

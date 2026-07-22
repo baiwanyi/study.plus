@@ -1,0 +1,28 @@
+<view class="page">
+    <view wx:if="{{loading}}" class="page__loading">
+        <t-loading theme="circular" size="48rpx" text="加载中" />
+    </view>
+    <block wx:else>
+        <view class="summary-card">
+            <view class="summary-card__title">本月 AI 用量</view>
+            <view class="summary-card__total">{{totalTokens}} <text class="summary-card__unit">tokens</text></view>
+            <view class="summary-card__rows">
+                <view wx:for="{{summary}}" wx:key="project" class="summary-row">
+                    <text class="summary-row__name">{{item.project}}</text>
+                    <text class="summary-row__val">{{item.totalTokens}} · {{item.count}}次</text>
+                </view>
+            </view>
+        </view>
+
+        <t-cell-group title="最近调用">
+            <t-empty wx:if="{{list.length === 0}}" description="暂无调用记录" />
+            <t-cell
+                wx:for="{{list}}"
+                wx:key="id"
+                title="{{item.task_title || item.project}}"
+                description="{{item.project}} · {{item.created_at}}"
+                note="{{item.total_tokens}}"
+            />
+        </t-cell-group>
+    </block>
+</view>

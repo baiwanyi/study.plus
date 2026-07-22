@@ -1,0 +1,81 @@
+page {
+    --brand-color: #07C160;
+    --brand-color-light: #E7F8EE;
+    --accent-color: #FF8C00;
+    --bg-color: #F7F8FA;
+    background-color: var(--bg-color);
+    font-family: -apple-system, 'PingFang SC', 'Helvetica Neue', Helvetica, sans-serif;
+    color: #1A1A1A;
+    font-size: 28rpx;
+}
+
+view, text, scroll-view {
+    box-sizing: border-box;
+}
+
+.page {
+    min-height: 100vh;
+    padding: 24rpx 24rpx calc(40rpx + env(safe-area-inset-bottom));
+}
+
+/* 卡片 */
+.card {
+    background: #FFFFFF;
+    border-radius: 24rpx;
+    padding: 28rpx;
+    margin-bottom: 24rpx;
+    box-shadow: 0 6rpx 24rpx rgba(0, 0, 0, 0.04);
+}
+
+.card-title {
+    font-size: 30rpx;
+    font-weight: 600;
+    margin-bottom: 16rpx;
+}
+
+/* 主按钮色 */
+.btn-primary {
+    background: var(--brand-color);
+    color: #fff;
+}
+
+.muted {
+    color: #6B7280;
+}
+
+.text-accent {
+    color: var(--accent-color);
+}
+
+.row {
+    display: flex;
+    align-items: center;
+}
+
+.between {
+    justify-content: space-between;
+}
+
+.grow {
+    flex: 1;
+}
+
+/* 顶部问候 */
+.hero {
+    background: linear-gradient(135deg, #07C160 0%, #3AC97A 100%);
+    border-radius: 28rpx;
+    padding: 36rpx 32rpx;
+    color: #fff;
+    margin-bottom: 24rpx;
+}
+
+.hero-title {
+    font-size: 38rpx;
+    font-weight: 600;
+}
+
+.hero-sub {
+    margin-top: 8rpx;
+    opacity: 0.9;
+    font-size: 26rpx;
+}

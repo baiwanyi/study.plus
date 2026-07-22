@@ -1,0 +1,32 @@
+<view class="chat-panel">
+    <view class="chat-panel__list">
+        <view wx:if="{{loading}}" class="chat-panel__loading">加载对话中…</view>
+        <view wx:elif="{{messages.length === 0}}" class="chat-panel__empty">{{emptyHint}}</view>
+        <block wx:else>
+            <view
+                wx:for="{{messages}}"
+                wx:key="index"
+                class="bubble bubble--{{item.role}}"
+            >
+                <view class="bubble__avatar">{{item.role === 'user' ? '我' : '师'}}</view>
+                <view class="bubble__content">{{item.content}}</view>
+            </view>
+        </block>
+    </view>
+    <view class="chat-panel__input">
+        <input
+            class="chat-panel__field"
+            value="{{inputValue}}"
+            placeholder="{{placeholder}}"
+            confirm-type="send"
+            bindinput="onInput"
+            bindconfirm="onSend"
+        />
+        <t-button
+            theme="primary"
+            size="small"
+            loading="{{sending}}"
+            bind:tap="onSend"
+        >发送</t-button>
+    </view>
+</view>

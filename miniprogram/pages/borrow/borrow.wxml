@@ -1,0 +1,67 @@
+<view class="page">
+  <child-selector wx:if="{{children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
+
+  <view class="summary-card" wx:if="{{summary}}">
+    <view class="summary-row">
+      <view class="summary-item">
+        <text class="item-num" style="color:#FF8C00">{{summary.totalPendingRepayment}}</text>
+        <text class="item-label">待还积分</text>
+      </view>
+      <view class="summary-item">
+        <text class="item-num" style="color:#FA5151">{{summary.currentInstallmentDue}}</text>
+        <text class="item-label">本期应还</text>
+      </view>
+      <view class="summary-item">
+        <text class="item-num" style="color:#07C160">{{summary.remainingCredit}}</text>
+        <text class="item-label">可用额度</text>
+      </view>
+    </view>
+    <view class="tip">每月 1 日系统自动从积分余额扣还当期，风控上限 {{summary.maxPendingAmount}} 积分</view>
+  </view>
+
+  <view wx:if="{{loading}}" class="center-wrap">
+    <t-loading theme="circular" size="48rpx" text="加载中" />
+  </view>
+
+  <t-cell-group wx:elif="{{list.length > 0}}" theme="card" class="records">
+    <t-cell
+      wx:for="{{list}}"
+      wx:key="id"
+      title="预支 {{item.amount}} 积分"
+      description="共还 {{item.total_repayment}} · {{item.progress}}"
+    >
+      <t-tag slot="note" theme="warning" variant="light">{{item.statusLabel}}</t-tag>
+    </t-cell>
+  </t-cell-group>
+
+  <t-empty wx:else icon="root-list" description="还没有预支记录" />
+
+  <view class="footer">
+    <t-button theme="primary" block bind:tap="openCreate">申请预支</t-button>
+  </view>
+
+  <t-action-sheet
+    visible="{{showTermSheet}}"
+    items="{{[{label:'1 期',value:1},{label:'3 期',value:3},{label:'6 期',value:6},{label:'9 期',value:9},{label:'12 期',value:12}]}}"
+    show-cancel
+    bind:selected="onPickTerm"
+    bind:close="closeTermSheet"
+  />
+
+  <t-popup visible="{{showCreate}}" placement="bottom" bind:visible-change="closeCreate" close-btn>
+    <view class="form">
+      <view class="form-title">申请预支</view>
+      <view class="form-row">
+        <text class="form-label">预支积分</text>
+        <t-stepper value="{{amount}}" min="{{10}}" max="{{9999}}" step="{{10}}" bind:change="onAmountChange" />
+      </view>
+      <view class="form-row">
+        <text class="form-label">分期数</text>
+        <t-button theme="light" size="small" variant="outline" bind:tap="openTermSheet">
+          {{termLabel}}
+        </t-button>
+      </view>
+      <t-button theme="primary" block bind:tap="onCreateConfirm">确认预支</t-button>
+    </view>
+  </t-popup>
+</view>

@@ -1,0 +1,83 @@
+<view class="page">
+  <child-selector wx:if="{{children.length > 0}}" children="{{children}}" value="{{currentChildId}}" bind:change="onSelectChild" />
+
+  <view class="summary-card" wx:if="{{summary}}">
+    <view class="summary-balance">
+      <text class="balance-num">{{summary.balance}}</text>
+      <text class="balance-label">当前积分</text>
+    </view>
+    <view class="summary-row">
+      <view class="summary-item">
+        <text class="item-num" style="color:#07C160">{{summary.availableBalance}}</text>
+        <text class="item-label">可用余额</text>
+      </view>
+      <view class="summary-item">
+        <text class="item-num" style="color:#07C160">+{{summary.totalEarn}}</text>
+        <text class="item-label">本月获得</text>
+      </view>
+      <view class="summary-item">
+        <text class="item-num" style="color:#FA5151">-{{summary.totalDeduct}}</text>
+        <text class="item-label">本月扣除</text>
+      </view>
+    </view>
+    <view class="summary-actions">
+      <t-button theme="light" size="small" variant="outline" bind:tap="openGrade">作业加分</t-button>
+      <t-button theme="light" size="small" variant="outline" bind:tap="openExam">测评加分</t-button>
+    </view>
+  </view>
+
+  <view class="quick-entry">
+    <view class="entry" bind:tap="goExchange">
+      <t-icon name="wallet" size="44rpx" color="#FF8C00" />
+      <text>积分兑换</text>
+    </view>
+    <view class="entry" bind:tap="goBorrow">
+      <t-icon name="creditcard" size="44rpx" color="#3A7AFE" />
+      <text>积分预支</text>
+    </view>
+  </view>
+
+  <view wx:if="{{loading}}" class="center-wrap">
+    <t-loading theme="circular" size="48rpx" text="加载中" />
+  </view>
+
+  <t-cell-group wx:elif="{{list.length > 0}}" theme="card" class="records">
+    <t-cell
+      wx:for="{{list}}"
+      wx:key="id"
+      title="{{item.reason}}"
+      description="{{item.relatedLabel}} · {{item.time}}"
+    >
+      <view slot="note" class="amount" style="color:{{item.color}}">
+        {{item.sign}}{{item.amount}}
+      </view>
+    </t-cell>
+  </t-cell-group>
+
+  <t-empty wx:else icon="root-list" description="暂无积分记录" />
+
+  <t-action-sheet
+    visible="{{showGradeSheet}}"
+    items="{{gradeOptions}}"
+    show-cancel
+    bind:selected="onGradePick"
+    bind:close="closeGradeSheet"
+  />
+
+  <t-popup visible="{{showGradeRemark}}" placement="bottom" bind:visible-change="closeGradeRemark" close-btn>
+    <view class="form">
+      <view class="form-title">作业评分 {{pendingGrade}}</view>
+      <t-input label="备注" placeholder="选填，如：数学同步" value="{{gradeRemark}}" bind:change="onGradeRemark" />
+      <t-button theme="primary" block bind:tap="onGradeConfirm">确认记录</t-button>
+    </view>
+  </t-popup>
+
+  <t-popup visible="{{showExam}}" placement="bottom" bind:visible-change="closeExam" close-btn>
+    <view class="form">
+      <view class="form-title">单元测评加分</view>
+      <t-input label="分数" type="digit" placeholder="0-100" value="{{examScore}}" bind:change="onExamScore" />
+      <t-input label="备注" placeholder="选填，如：语文" value="{{examRemark}}" bind:change="onExamRemark" />
+      <t-button theme="primary" block bind:tap="onExamConfirm">确认记录</t-button>
+    </view>
+  </t-popup>
+</view>

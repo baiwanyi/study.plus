@@ -1,0 +1,7 @@
+{
+  "name": "study-privacy",
+  "version": "1.0.0",
+  "description": "学迹Plus 隐私与数据导出/删除云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}

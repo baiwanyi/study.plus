@@ -1,0 +1,7 @@
+{
+  "name": "study-options",
+  "version": "1.0.0",
+  "description": "学迹Plus 配置读写云函数",
+  "main": "index.js",
+  "license": "UNLICENSED"
+}
