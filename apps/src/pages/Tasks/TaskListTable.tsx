@@ -17,8 +17,6 @@ import {
 import { DataTable, type Column } from '@components/DataTable'
 import type { Task } from '@shared/types'
 
-const TRUNCATE_LENGTH = 16
-
 export interface ListTaskProps {
     tasks: Task[]
     onEdit: (task: Task) => void
@@ -60,14 +58,11 @@ export function ListTask({
                 key: 'title',
                 header: '题目',
                 render: (task) => (
-                    <button
+                    <span
                         onClick={() => isAdminRole && onEdit(task)}
-                        className={`font-medium text-headline truncate max-w-75 ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}
-                        title={task.title}>
-                        {task.title.length > TRUNCATE_LENGTH
-                            ? `${task.title.slice(0, TRUNCATE_LENGTH)}...`
-                            : task.title}
-                    </button>
+                        className={`font-medium text-headline line-clamp-2 max-w-xs ${isAdminRole ? 'hover:text-primary cursor-pointer' : 'cursor-default'}`}>
+                        {task.title}
+                    </span>
                 ),
             },
             {
@@ -93,15 +88,44 @@ export function ListTask({
                     ),
             },
             {
+                key: 'score',
+                header: '分数',
+                render: (task) => {
+                    const raw = task.submission?.aiScore
+                    if (raw == null)
+                        return <span className="text-gray-400">-</span>
+                    let score: number | null = null
+                    try {
+                        const parsed = JSON.parse(raw)
+                        if (typeof parsed.score === 'number')
+                            score = parsed.score
+                    } catch {
+                        /* aiScore 不是 JSON 格式，保持原样显示 */
+                    }
+                    if (score == null)
+                        return <span className="font-mono text-sm">{raw}</span>
+                    const color =
+                        score >= 90
+                            ? 'text-yellow-500'
+                            : score >= 80
+                              ? 'text-green-600'
+                              : 'text-red-500'
+                    return (
+                        <span
+                            className={`font-mono text-sm font-bold ${color}`}>
+                            {score}
+                        </span>
+                    )
+                },
+            },
+            {
                 key: 'aiComment',
                 header: '评语',
                 render: (task) =>
                     task.aiComment ? (
-                        task.aiComment.length > TRUNCATE_LENGTH ? (
-                            task.aiComment.slice(0, TRUNCATE_LENGTH) + '...'
-                        ) : (
-                            task.aiComment
-                        )
+                        <span className="text-sm text-gray-600 line-clamp-2 max-w-xs">
+                            {task.aiComment}
+                        </span>
                     ) : (
                         <span className="text-gray-400">-</span>
                     ),
@@ -141,15 +165,6 @@ export function ListTask({
                 render: (task) => (
                     <span className="text-gray-600 text-xs">
                         {formatDate(task.submittedAt)}
-                    </span>
-                ),
-            },
-            {
-                key: 'gradedAt',
-                header: '评分时间',
-                render: (task) => (
-                    <span className="text-gray-600 text-xs">
-                        {formatDate(task.gradedAt)}
                     </span>
                 ),
             },

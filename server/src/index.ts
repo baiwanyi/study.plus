@@ -19,7 +19,7 @@ import { videosRouter } from './routes/videos'
 import { weeklyRouter } from './routes/weekly'
 
 const app = express()
-const PORT = Number(process.env.PORT) || 3001
+const PORT = Number(process.env.PORT) || 3006
 
 // Security headers via helmet (covers CSP, X-Content-Type-Options,
 // X-Frame-Options, Referrer-Policy). HSTS is NOT managed by helmet here —
