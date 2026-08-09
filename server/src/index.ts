@@ -1,4 +1,5 @@
 import cors from 'cors'
+import helmet from 'helmet'
 import { eq } from 'drizzle-orm'
 import express from 'express'
 import rateLimit from 'express-rate-limit'
@@ -19,6 +20,10 @@ import { tasksRouter } from './routes/tasks'
 import { videosRouter } from './routes/videos'
 import { weeklyRouter } from './routes/weekly'
 
+// 安全默认：未显式声明 NODE_ENV=development 时，按生产环境处理
+// （生产环境禁止向客户端返回错误堆栈，见全局错误处理器）。
+process.env.NODE_ENV ||= 'production'
+
 const app = express()
 const PORT = Number(process.env.PORT) || 3006
 
@@ -27,23 +32,26 @@ const PORT = Number(process.env.PORT) || 3006
 // it is set by a dedicated middleware below only when the actual connection
 // is already TLS, so an HTTP/LAN deployment never locks the browser into
 // HTTPS (which would otherwise break frame navigations on plain HTTP).
-// app.use(
-//     helmet({
-//         contentSecurityPolicy: {
-//             directives: {
-//                 // defaultSrc: ["'self'"],
-//                 // imgSrc: ["'self'", 'data:'],
-//                 // styleSrc: ["'self'"],
-//                 // scriptSrc: ["'self'"],
-//             },
-//         },
-//         // strictTransportSecurity: false,
-//         // 禁用 COOP 和 Origin-Agent-Cluster：它们在 HTTP 非 localhost 源上
-//         // 被浏览器直接忽略（不可信源），且会触发控制台警告。
-//         // crossOriginOpenerPolicy: false,
-//         // originAgentCluster: false,
-//     }),
-// )
+app.use(
+    helmet({
+        // 关闭 helmet 自带的 HSTS，改由下方手动中间件条件发送（仅真 TLS 时）。
+        strictTransportSecurity: false,
+        contentSecurityPolicy: {
+            directives: {
+                defaultSrc: ["'self'"],
+                imgSrc: ["'self'", 'data:', 'blob:'],
+                styleSrc: ["'self'", "'unsafe-inline'"],
+                scriptSrc: ["'self'"],
+                connectSrc: ["'self'"],
+                frameAncestors: ["'none'"],
+            },
+        },
+        // 禁用 COOP 和 Origin-Agent-Cluster：它们在 HTTP 非 localhost 源上
+        // 被浏览器直接忽略（不可信源），且会触发控制台警告。
+        crossOriginOpenerPolicy: false,
+        originAgentCluster: false,
+    }),
+)
 
 // HSTS — only emit when the connection is genuinely TLS. On plain HTTP
 // (e.g. LAN access via http://192.168.x.x:3006) we must not send
@@ -83,29 +91,39 @@ const apiLimiter = rateLimit({
 })
 app.use('/api/', apiLimiter)
 
-// Stricter limit for AI endpoints (protect against billing burn)
-const aiLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (_req: Request, res: Response) => {
-        res.status(429).json({ error: 'AI 调用过于频繁，请稍后再试' })
-    },
-})
-app.use('/api/studynotes/evaluate', aiLimiter)
+// API key authentication — fail-fast if API_KEY is not configured at startup.
+// Every non-public API endpoint must present a matching X-API-Key header.
+const API_KEY = process.env.API_KEY
+if (!API_KEY) {
+    console.error(
+        'FATAL: 环境变量 API_KEY 未设置。出于安全考虑，服务器拒绝在无认证的情况下启动。',
+    )
+    process.exit(1)
+}
 
-// API routes
-app.use('/api/tasks', tasksRouter)
-app.use('/api/points', pointsRouter)
-app.use('/api/exchanges', exchangesRouter)
-app.use('/api/lessons', lessonsRouter)
-app.use('/api/ai-usage', aiUsageRouter)
-app.use('/api/options', rulesRouter)
-app.use('/api/videos', videosRouter)
-app.use('/api/rss', rssRouter)
-app.use('/api/weekly', weeklyRouter)
-app.use('/api/studynotes', studynotesRouter)
+function requireApiKey(req: Request, res: Response, next: NextFunction): void {
+    const provided =
+        req.header('X-API-Key') ||
+        req.header('Authorization')?.replace(/^Bearer\s+/i, '') ||
+        ''
+    if (!provided || provided !== API_KEY) {
+        res.status(401).json({ error: '未授权：缺少或无效的 API Key' })
+        return
+    }
+    next()
+}
+
+// API routes — protected by API key (except the public read-only config endpoints)
+app.use('/api/tasks', requireApiKey, tasksRouter)
+app.use('/api/points', requireApiKey, pointsRouter)
+app.use('/api/exchanges', requireApiKey, exchangesRouter)
+app.use('/api/lessons', requireApiKey, lessonsRouter)
+app.use('/api/ai-usage', requireApiKey, aiUsageRouter)
+app.use('/api/options', requireApiKey, rulesRouter)
+app.use('/api/videos', requireApiKey, videosRouter)
+app.use('/api/rss', requireApiKey, rssRouter)
+app.use('/api/weekly', requireApiKey, weeklyRouter)
+app.use('/api/studynotes', requireApiKey, studynotesRouter)
 
 // List images in public/images/ directory for share background picker
 app.get('/api/images', async (_req: Request, res: Response) => {
@@ -167,8 +185,12 @@ app.all('/api/{*path}', (_req: Request, res: Response) => {
 })
 
 // SPA fallback — serve index.html for all other routes
-app.get('/{*path}', (_req: Request, res: Response) => {
-    res.sendFile(path.join(clientDist, 'index.html'))
+app.get('/{*path}', (_req: Request, res: Response, next: NextFunction) => {
+    res.sendFile(path.join(clientDist, 'index.html'), (err) => {
+        if (err) {
+            next(err)
+        }
+    })
 })
 
 // Global error handler

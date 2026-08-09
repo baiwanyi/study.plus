@@ -83,7 +83,7 @@ export const Modal: FC<ModalProps> = ({
                         {typeof footer === 'object' ? (
                             footer
                         ) : (
-                            <>
+                            <div className="flex gap-3">
                                 <button
                                     onClick={onCancel}
                                     className="btn btn-outline">
@@ -101,7 +101,7 @@ export const Modal: FC<ModalProps> = ({
                                         {isLoading ? confirmIcon : confirmLabel}
                                     </button>
                                 )}
-                            </>
+                            </div>
                         )}
                     </footer>
                 )}

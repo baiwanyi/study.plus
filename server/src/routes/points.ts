@@ -36,6 +36,14 @@ router.get(
                 month?: string
                 relatedType?: RelatedType
             }
+            const rawLimit = Number(req.query.limit)
+            const rawOffset = Number(req.query.offset)
+            const limit = Number.isFinite(rawLimit) && rawLimit > 0
+                ? Math.min(Math.trunc(rawLimit), 200)
+                : 20
+            const offset = Number.isFinite(rawOffset) && rawOffset > 0
+                ? Math.trunc(rawOffset)
+                : 0
             const conditions = []
 
             if (type) conditions.push(eq(pointRecords.type, type))
@@ -59,13 +67,15 @@ router.get(
                 .select()
                 .from(pointRecords)
                 .where(and(...conditions))
-                .orderBy(desc(pointRecords.createdAt))) as PointRecord[]
+                .orderBy(desc(pointRecords.createdAt))
+                .limit(limit)
+                .offset(offset)) as PointRecord[]
 
             res.json(records)
         } catch (err) {
             console.error('Error in GET /points:', err)
             res.status(500).json({
-                error: 'Internal server error',
+                error: '服务器内部错误',
             } as ApiErrorResponse)
         }
     },
@@ -100,11 +110,24 @@ router.post(
                 res.status(400).json({ error: 'amount 必须为有效数字' })
                 return
             }
-            const result = await db
-                .insert(pointRecords)
-                .values({ type, amount, reason, ruleName, relatedId, relatedType })
-                .returning()
-            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            const result = await db.transaction(async (tx) => {
+                const inserted = await tx
+                    .insert(pointRecords)
+                    .values({
+                        type,
+                        amount,
+                        reason,
+                        ruleName,
+                        relatedId,
+                        relatedType,
+                    })
+                    .returning()
+                await recomputeMonthSummary(
+                    new Date().toISOString().slice(0, 7),
+                    tx,
+                )
+                return inserted
+            })
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points:', err)
@@ -144,15 +167,14 @@ router.post(
             }
 
             const rules = await loadRules()
-            const points = getPointsForGrade(rules, grade)
-            if (points === 0) {
-                const validGrades =
-                    rules.gradingScale.homework.map((g) => g.grade)
+            const validGrades = rules.gradingScale.homework.map((g) => g.grade)
+            if (!validGrades.includes(grade)) {
                 res.status(400).json({
                     error: `无效的等级 "${grade}"，有效值为: ${validGrades.join(', ')}`,
                 })
                 return
             }
+            const points = getPointsForGrade(rules, grade)
 
             const categoryLabel =
                 category === 'submission'
@@ -164,18 +186,24 @@ router.post(
             const recordType = points >= 0 ? 'earn' : 'deduct'
             const reason = `${categoryLabel} - ${grade}${remark ? `（${remark}）` : ''}`
 
-            const result = await db
-                .insert(pointRecords)
-                .values({
-                    type: recordType,
-                    amount: Math.abs(points),
-                    reason,
-                    ruleName: `${categoryLabel}-${grade}`,
-                    relatedType: category as RelatedType,
-                    relatedId: relatedId ? Number(relatedId) : null,
-                })
-                .returning()
-            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            const result = await db.transaction(async (tx) => {
+                const inserted = await tx
+                    .insert(pointRecords)
+                    .values({
+                        type: recordType,
+                        amount: Math.abs(points),
+                        reason,
+                        ruleName: `${categoryLabel}-${grade}`,
+                        relatedType: category as RelatedType,
+                        relatedId: relatedId ? Number(relatedId) : null,
+                    })
+                    .returning()
+                await recomputeMonthSummary(
+                    new Date().toISOString().slice(0, 7),
+                    tx,
+                )
+                return inserted
+            })
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points/by-grade:', err)
@@ -235,18 +263,24 @@ router.post(
             const reason = `单元测评 - ${numScore}分${remark ? `（${remark}）` : ''}`
             const ruleName = `${matched.min}-${matched.max}分`
 
-            const result = await db
-                .insert(pointRecords)
-                .values({
-                    type: recordType,
-                    amount: Math.abs(points),
-                    reason,
-                    ruleName,
-                    relatedType: 'exam' as RelatedType,
-                    relatedId: relatedId ? Number(relatedId) : null,
-                })
-                .returning()
-            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            const result = await db.transaction(async (tx) => {
+                const inserted = await tx
+                    .insert(pointRecords)
+                    .values({
+                        type: recordType,
+                        amount: Math.abs(points),
+                        reason,
+                        ruleName,
+                        relatedType: 'exam' as RelatedType,
+                        relatedId: relatedId ? Number(relatedId) : null,
+                    })
+                    .returning()
+                await recomputeMonthSummary(
+                    new Date().toISOString().slice(0, 7),
+                    tx,
+                )
+                return inserted
+            })
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points/by-exam-score:', err)
@@ -301,18 +335,24 @@ router.post(
                 ? `${customRule.name} - ${customRule.description}${remark ? `（${remark}）` : ''}`
                 : `${customRule.name}${remark ? `（${remark}）` : ''}`
 
-            const result = await db
-                .insert(pointRecords)
-                .values({
-                    type: recordType,
-                    amount: customRule.points,
-                    reason,
-                    ruleName: customRule.name,
-                    relatedType: 'custom' as RelatedType,
-                    relatedId: relatedId ? Number(relatedId) : null,
-                })
-                .returning()
-            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
+            const result = await db.transaction(async (tx) => {
+                const inserted = await tx
+                    .insert(pointRecords)
+                    .values({
+                        type: recordType,
+                        amount: customRule.points,
+                        reason,
+                        ruleName: customRule.name,
+                        relatedType: 'custom' as RelatedType,
+                        relatedId: relatedId ? Number(relatedId) : null,
+                    })
+                    .returning()
+                await recomputeMonthSummary(
+                    new Date().toISOString().slice(0, 7),
+                    tx,
+                )
+                return inserted
+            })
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points/by-custom-rule:', err)
@@ -598,11 +638,21 @@ router.get(
             const whereClause = rawStatus
                 ? eq(pointAdvances.status, rawStatus as 'active' | 'completed')
                 : undefined
+            const rawLimit = Number(req.query.limit)
+            const rawOffset = Number(req.query.offset)
+            const limit = Number.isFinite(rawLimit) && rawLimit > 0
+                ? Math.min(Math.trunc(rawLimit), 200)
+                : 20
+            const offset = Number.isFinite(rawOffset) && rawOffset > 0
+                ? Math.trunc(rawOffset)
+                : 0
             const records = (await db
                 .select()
                 .from(pointAdvances)
                 .where(whereClause)
-                .orderBy(desc(pointAdvances.createdAt))) as PointAdvance[]
+                .orderBy(desc(pointAdvances.createdAt))
+                .limit(limit)
+                .offset(offset)) as PointAdvance[]
             res.json(records)
         } catch (err) {
             console.error('Error in GET /points/advances:', err)
@@ -713,25 +763,32 @@ router.post(
                 return
             }
 
-            const result = await db
-                .insert(pointAdvances)
-                .values({
-                    amount,
-                    totalRepayment,
-                    installments,
-                    installmentAmount,
-                })
-                .returning()
+            let advance!: PointAdvance
+            await db.transaction(async (tx) => {
+                const result = await tx
+                    .insert(pointAdvances)
+                    .values({
+                        amount,
+                        totalRepayment,
+                        installments,
+                        installmentAmount,
+                    })
+                    .returning()
 
-            await db.insert(pointRecords).values({
-                type: 'earn',
-                amount,
-                reason: `积分预支 - ${installments}期`,
-                relatedId: result[0].id,
+                await tx.insert(pointRecords).values({
+                    type: 'earn',
+                    amount,
+                    reason: `积分预支 - ${installments}期`,
+                    relatedId: result[0].id,
+                })
+                advance = result[0] as PointAdvance
+                await recomputeMonthSummary(
+                    new Date().toISOString().slice(0, 7),
+                    tx,
+                )
             })
 
-            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
-            res.status(201).json(result[0] as PointAdvance)
+            res.status(201).json(advance as PointAdvance)
         } catch (err) {
             console.error('Error in POST /points/advances:', err)
             res.status(500).json({ error: '服务器内部错误' })

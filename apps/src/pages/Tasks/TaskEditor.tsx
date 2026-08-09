@@ -14,6 +14,7 @@ import {
 import AiChatPanel from '@components/AiChatPanel'
 import { ScoreResultPanel } from '@apps/pages/Tasks/ScoreResultPanel'
 import { useSnackbar } from '@components/Snackbar'
+import { sanitizeSvg } from '@apps/utils/sanitize'
 import type {
     AiScoreLog,
     AIScoreResult,
@@ -459,29 +460,6 @@ mermaid.initialize({
 
 // Monotonic counter for unique mermaid render IDs
 let mermaidRenderCounter = 0
-
-// Sanitize SVG: strip event handlers and dangerous elements to prevent XSS
-function sanitizeSvg(svg: string): string {
-    return (
-        svg
-            // Remove event handler attributes
-            .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-            // Remove dangerous elements
-            .replace(
-                /<(script|iframe|embed|object|form|input|textarea|button|select)[\s\S]*?<\/\1>/gi,
-                '',
-            )
-            .replace(
-                /<(script|iframe|embed|object|form|input|textarea|button|select)\b[^>]*\/?>/gi,
-                '',
-            )
-            // Remove javascript:/data: protocol in href/src/xlink:href
-            .replace(
-                /((?:href|src|xlink:href)\s*=\s*)(?:"(?:javascript|data):[^"]*"|'(?:javascript|data):[^']*')/gi,
-                '$1""',
-            )
-    )
-}
 
 // Mermaid code block renderer for MDEditor preview (memoized to avoid re-renders)
 const MermaidCodeBlock = memo(function MermaidCodeBlock({

@@ -6,11 +6,10 @@ import { lessonsApi, studynotesApi } from '@apps/utils/api'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { useLessons } from './hooks/useLessons'
-import { LessonModalCreate } from './LessonModalCreate'
-import { LessonModalEdit } from './LessonModalEdit'
+import { LessonModalEditor } from './LessonModalEditor'
 import { LessonsListTable } from './LessonsListTable'
 import { PreviewModalEditor } from './PreviewModalEditor'
-import { QuizModal } from './QuizModal'
+import { QuizModalEditor } from './QuizModalEditor'
 import { StudynotesModalEditor } from './StudynotesModalEditor'
 import { StudynotesModalShare } from './StudynotesModalShare'
 import { StudynotesSubjectFilter } from './StudynotesSubjectFilter'
@@ -40,8 +39,9 @@ export const Studynotes: FC = () => {
     const [reflectionCardId, setReflectionCardId] = useState<number | null>(
         null,
     )
-    const [quizLesson, setQuizLesson] =
-        useState<StudyLessonWithStatus | null>(null)
+    const [quizLesson, setQuizLesson] = useState<StudyLessonWithStatus | null>(
+        null,
+    )
     const [shareCard, setShareCard] = useState<StudynotesItem | null>(null)
     const [deleteTarget, setDeleteTarget] =
         useState<StudyLessonWithStatus | null>(null)
@@ -51,7 +51,10 @@ export const Studynotes: FC = () => {
         if (value) {
             setSearchParams({ subject: value })
         } else {
-            setSearchParams({})
+            setSearchParams((prev) => {
+                prev.delete('subject')
+                return prev
+            })
         }
     }
 
@@ -63,8 +66,7 @@ export const Studynotes: FC = () => {
                 setShowCreate(false)
                 refetch()
             } catch (err) {
-                const message =
-                    err instanceof Error ? err.message : '创建失败'
+                const message = err instanceof Error ? err.message : '创建失败'
                 showSnackbar(message, 'error')
             }
         },
@@ -81,8 +83,7 @@ export const Studynotes: FC = () => {
                 setEditLesson(null)
                 refetch()
             } catch (err) {
-                const message =
-                    err instanceof Error ? err.message : '保存失败'
+                const message = err instanceof Error ? err.message : '保存失败'
                 showSnackbar(message, 'error')
             } finally {
                 setEditSaving(false)
@@ -93,6 +94,7 @@ export const Studynotes: FC = () => {
 
     const handleOpenReflection = useCallback(
         (lesson: StudyLessonWithStatus) => {
+            if (lesson.studynoteId == null) return
             setReflectionLesson(lesson)
             setReflectionCardId(lesson.studynoteId)
         },
@@ -102,11 +104,11 @@ export const Studynotes: FC = () => {
     const handleOpenShare = useCallback(
         async (lesson: StudyLessonWithStatus) => {
             if (lesson.studynoteId == null) return
-            setShareCard(null)
             try {
                 const card = await studynotesApi.get(lesson.studynoteId)
                 setShareCard(card)
             } catch {
+                setShareCard(null)
                 showSnackbar('加载心得失败，请重试', 'error')
             }
         },
@@ -160,13 +162,14 @@ export const Studynotes: FC = () => {
                 onDelete={setDeleteTarget}
             />
 
-            <LessonModalCreate
+            <LessonModalEditor
                 open={showCreate}
+                lesson={null}
                 onCancel={() => setShowCreate(false)}
                 onConfirm={handleCreate}
             />
 
-            <LessonModalEdit
+            <LessonModalEditor
                 open={editLesson != null}
                 lesson={editLesson}
                 onCancel={() => setEditLesson(null)}
@@ -185,6 +188,8 @@ export const Studynotes: FC = () => {
                 open={reflectionLesson != null}
                 cardId={reflectionCardId}
                 lessonId={reflectionLesson?.id ?? null}
+                lessonSubject={reflectionLesson?.subject ?? ''}
+                lessonTopic={reflectionLesson?.topic ?? ''}
                 onClose={() => {
                     setReflectionLesson(null)
                     setReflectionCardId(null)
@@ -193,15 +198,19 @@ export const Studynotes: FC = () => {
                 onSaved={() => refetch()}
             />
 
-            <QuizModal
+            <QuizModalEditor
                 open={quizLesson != null}
                 cardId={activeQuizLesson?.studynoteId ?? null}
+                lessonTopic={activeQuizLesson?.topic ?? ''}
                 canQuiz={
                     activeQuizLesson?.studynoteId != null &&
                     activeQuizLesson.studynoteScore != null &&
                     activeQuizLesson.studynoteScore >= 80
                 }
-                onClose={() => setQuizLesson(null)}
+                onClose={() => {
+                    setQuizLesson(null)
+                    refetch()
+                }}
             />
 
             <StudynotesModalShare

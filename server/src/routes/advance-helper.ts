@@ -101,15 +101,14 @@ export async function repayActiveAdvances(): Promise<number> {
 
             totalRepaid += adv.installmentAmount
         }
-    })
 
-    if (totalRepaid > 0) {
-        try {
-            await recomputeMonthSummary(new Date().toISOString().slice(0, 7))
-        } catch (error) {
-            console.error('月度摘要重算失败，还款数据已提交，请手动刷新摘要', error)
+        if (totalRepaid > 0) {
+            await recomputeMonthSummary(
+                new Date().toISOString().slice(0, 7),
+                tx,
+            )
         }
-    }
+    })
 
     return totalRepaid
 }

@@ -260,7 +260,8 @@ export const previewStudyQuestions: Array<{
         key: 'content',
         title: '问题一：预习笔记',
         hint: '先浏览课本的标题、小标题、图表和例题，再用自己的话写下：这节课会讲什么？（不能用课本原话）',
-        placeholder: '如：这节课要学分数的约分，就是把一个分数变成更简单但大小不变的分数',
+        placeholder:
+            '如：这节课要学分数的约分，就是把一个分数变成更简单但大小不变的分数',
     },
     {
         key: 'oldKnowledge',

@@ -108,7 +108,10 @@ router.get('/feed', async (req: Request, res: Response) => {
         const url =
             cat && CAT_FEEDS[cat] ? CAT_FEEDS[cat] : `${FEED_BASE}/?feed=rss2`
 
-        const response = await fetch(url)
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(10_000),
+            redirect: 'error',
+        })
         if (!response.ok) {
             res.status(502).json({ error: 'RSS 源请求失败' })
             return
@@ -123,9 +126,16 @@ router.get('/feed', async (req: Request, res: Response) => {
 
 router.get('/post/:id', async (req: Request, res: Response) => {
     try {
-        const { id } = req.params
+        const id = Number(req.params.id)
+        if (!Number.isInteger(id) || id <= 0) {
+            res.status(400).json({ error: '无效的文章 ID' })
+            return
+        }
         const url = `${FEED_BASE}/index.php?rest_route=/wp/v2/posts/${id}`
-        const response = await fetch(url)
+        const response = await fetch(url, {
+            signal: AbortSignal.timeout(10_000),
+            redirect: 'error',
+        })
         if (!response.ok) {
             res.status(404).json({ error: '文章不存在' })
             return

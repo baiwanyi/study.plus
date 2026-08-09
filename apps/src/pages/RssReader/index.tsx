@@ -7,6 +7,7 @@ import { rssApi } from '@apps/utils/api'
 import { Loading } from '@components/Loading'
 import { Tabs } from '@components/Tabs'
 import type { RssFeedItem, RssPostDetail } from '@apps/utils/api'
+import { sanitizeHtml } from '@apps/utils/sanitize'
 
 const CATEGORIES = [
     { key: '', label: '首页' },
@@ -92,17 +93,20 @@ export function RssReader() {
                     返回列表
                 </button>
                 <article className="bg-white rounded-lg p-6 shadow-sm">
-                    <h1
-                        className="text-2xl font-bold text-gray-900 mb-4"
-                        dangerouslySetInnerHTML={{ __html: post.title }}
-                    />
+                    {/* 标题为纯文本，无需 HTML 渲染 */}
+                    <h1 className="text-2xl font-bold text-gray-900 mb-4">
+                        {post.title}
+                    </h1>
                     <div className="flex items-center gap-2 text-sm text-gray-500 mb-6">
                         <Calendar className="size-4" />
                         <span>{post.date?.slice(0, 10)}</span>
                     </div>
+                    {/* 内容为第三方 RSS 富文本，必须经 DOMPurify 清洗后渲染，防止存储型 XSS */}
                     <div
                         className="p-10 prose prose-gray max-w-none text-lg [&_img]:max-w-full [&_img]:rounded-xl [&_a]:text-blue-600 [&_a]:underline [&_p]:mb-3"
-                        dangerouslySetInnerHTML={{ __html: post.content }}
+                        dangerouslySetInnerHTML={{
+                            __html: sanitizeHtml(post.content),
+                        }}
                     />
                 </article>
             </div>

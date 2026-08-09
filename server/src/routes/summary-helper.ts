@@ -1,4 +1,5 @@
 import { eq, and, gte, lte, sql, ne, like } from 'drizzle-orm'
+import type { Transaction } from 'drizzle-orm/libsql'
 import { db } from '../db/index'
 import { pointRecords, monthSummary, exchanges } from '../db/schema'
 import { loadRules } from './rules-loader'
@@ -13,8 +14,11 @@ interface ComputedSummary extends MonthSummary {
     minimumPointsForPrivileges: number
 }
 
-async function ensureMonthRow(targetMonth: string): Promise<MonthSummary> {
-    const rows = (await db
+async function ensureMonthRow(
+    targetMonth: string,
+    tx: Transaction = db,
+): Promise<MonthSummary> {
+    const rows = (await tx
         .select()
         .from(monthSummary)
         .where(eq(monthSummary.month, targetMonth))) as MonthSummary[]
@@ -28,7 +32,7 @@ async function ensureMonthRow(targetMonth: string): Promise<MonthSummary> {
     const prevMonth = prevMonthDate.toISOString().slice(0, 7)
 
     let basePoints = defaultBasePoints
-    const prevRows = (await db
+    const prevRows = (await tx
         .select()
         .from(monthSummary)
         .where(eq(monthSummary.month, prevMonth))) as MonthSummary[]
@@ -41,7 +45,7 @@ async function ensureMonthRow(targetMonth: string): Promise<MonthSummary> {
         prevEndDate.setUTCHours(23, 59, 59, 999)
         const prevStart = prevStartDate.toISOString()
         const prevEnd = prevEndDate.toISOString()
-        const prevEarn = await db
+        const prevEarn = await tx
             .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
             .from(pointRecords)
             .where(
@@ -52,7 +56,7 @@ async function ensureMonthRow(targetMonth: string): Promise<MonthSummary> {
                     lte(pointRecords.createdAt, prevEnd),
                 ),
             )
-        const prevDeduct = await db
+        const prevDeduct = await tx
             .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
             .from(pointRecords)
             .where(
@@ -70,7 +74,7 @@ async function ensureMonthRow(targetMonth: string): Promise<MonthSummary> {
             defaultBasePoints
     }
 
-    const inserted = await db
+    const inserted = await tx
         .insert(monthSummary)
         .values({ month: targetMonth, basePoints })
         .returning()
@@ -79,6 +83,7 @@ async function ensureMonthRow(targetMonth: string): Promise<MonthSummary> {
 
 export async function recomputeMonthSummary(
     targetMonth: string,
+    tx: Transaction = db,
 ): Promise<ComputedSummary> {
     const startDate = new Date(`${targetMonth}-01T00:00:00.000Z`)
     const endDate = new Date(startDate)
@@ -88,12 +93,12 @@ export async function recomputeMonthSummary(
     const start = startDate.toISOString()
     const end = endDate.toISOString()
 
-    const summary = await ensureMonthRow(targetMonth)
+    const summary = await ensureMonthRow(targetMonth, tx)
 
     const rules = await loadRules()
     const minimumPointsForPrivileges = rules.minimumPointsForPrivileges
 
-    const earnResult = await db
+    const earnResult = await tx
         .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
         .from(pointRecords)
         .where(
@@ -104,7 +109,7 @@ export async function recomputeMonthSummary(
                 lte(pointRecords.createdAt, end),
             ),
         )
-    const deductResult = await db
+    const deductResult = await tx
         .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
         .from(pointRecords)
         .where(
@@ -119,7 +124,7 @@ export async function recomputeMonthSummary(
     const totalEarn = Number(earnResult[0]?.total) || 0
     const totalDeduct = Number(deductResult[0]?.total) || 0
 
-    const exchangesResult = await db
+    const exchangesResult = await tx
         .select({ total: sql`COALESCE(SUM(${exchanges.pointsCost}), 0)` })
         .from(exchanges)
         .where(
@@ -131,7 +136,7 @@ export async function recomputeMonthSummary(
         )
     const totalExchanges = Number(exchangesResult[0]?.total) || 0
 
-    const advanceEarnResult = await db
+    const advanceEarnResult = await tx
         .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
         .from(pointRecords)
         .where(
@@ -151,7 +156,7 @@ export async function recomputeMonthSummary(
         totalExchanges +
         advanceEarn
 
-    await db
+    await tx
         .update(monthSummary)
         .set({ totalEarn, totalDeduct, totalExchanges, balance })
         .where(eq(monthSummary.month, targetMonth))

@@ -22,6 +22,17 @@ interface LessonsListTableProps {
     onDelete: (lesson: StudyLessonWithStatus) => void
 }
 
+// 分数着色：<80 红，80-89 绿，>=90 金
+function scoreColor(score: number): string {
+    if (score < 80) {
+        return 'text-red-600'
+    }
+    if (score < 90) {
+        return 'text-green-600'
+    }
+    return 'text-amber-500'
+}
+
 const SUBJECT_COLORS: Record<string, string> = {
     math: 'bg-blue-100 text-blue-800',
     chinese: 'bg-red-100 text-red-800',
@@ -56,7 +67,8 @@ function renderReflectionStatus(lesson: StudyLessonWithStatus) {
             <CheckCircle2 className="size-4 shrink-0 text-green-600" />
             <span className="text-xs text-green-600">已写心得</span>
             {lesson.studynoteScore != null && (
-                <span className="text-xs text-gray-500">
+                <span
+                    className={`text-xs font-semibold ${scoreColor(lesson.studynoteScore)}`}>
                     （{lesson.studynoteScore}分）
                 </span>
             )}
@@ -69,7 +81,8 @@ function renderQuizStatus(lesson: StudyLessonWithStatus) {
         return <span className="text-xs text-gray-600">-</span>
     }
     return (
-        <span className="font-semibold text-base text-amber-600">
+        <span
+            className={`font-semibold text-base ${scoreColor(lesson.quizScore)}`}>
             {lesson.quizScore}
         </span>
     )
@@ -100,9 +113,10 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
         () => ({
             current: currentPage,
             total: lessons.length,
-            onChange: setPage,
+            onChange: (next: number) =>
+                setPage(Math.min(Math.max(1, next), totalPages)),
         }),
-        [currentPage, lessons.length, setPage],
+        [currentPage, lessons.length, totalPages],
     )
 
     const columns: Column<StudyLessonWithStatus>[] = [

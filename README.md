@@ -40,10 +40,12 @@
 | 思维导图 | Mermaid.js 11.15                          | Markdown 语法渲染思维导图            |
 | 编译优化 | React Compiler (Babel 插件)               | 自动记忆化编译优化                   |
 | 后端服务 | Express 5 + tsx                           | RESTful API (端口 3001)              |
+| 安全中间件 | helmet + cors + express-rate-limit      | 安全头 / 跨域 / 接口限流（防账单刷爆）|
+| 校验     | Zod 4                                    | 请求体 / 参数校验                    |
 | 数据库   | SQLite + @libsql/client                   | 轻量级本地数据库                     |
 | ORM      | Drizzle ORM + Drizzle Kit                 | 类型安全的 SQL 查询构建器 + 迁移工具 |
-| AI 能力  | DeepSeek API (deepseek-v4-flash)          | 评分/起名/出题/周报分析/智能对话     |
-| 测试     | Vitest 4 + @testing-library/react + jsdom | 单元测试 + 组件测试 + API 集成测试   |
+| AI 能力  | DeepSeek API (deepseek-v4-flash)          | 评分/起名/出题/周报分析/智能对话/预习分析 |
+| 测试     | Vitest + @testing-library/react + jsdom   | 单元测试 + 组件测试 + API 集成测试   |
 | 视频播放 | HTML5 `<video>` + react-player            | 原生视频播放器，支持 Range 请求      |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
 | 项目管理 | pnpm workspace monorepo                   | 3 包隔离：前端/后端/共享层           |
@@ -253,28 +255,45 @@
 - 分享时读书笔记内容自动解析：书籍信息、好词、摘抄赏析、读后感按结构化 Markdown 排版
 - 摘抄赏析每套独立展示，`**摘抄：**` 和 `**赏析：**` 分行加粗标记，各条目间用横线分割
 
+### 7. 学习中心（Studynotes 模块）
+
+以**课程（Lesson）**为主线的费曼学习法闭环，覆盖「课前预习 → 课后心得 → 智能测验 → 分享沉淀」四个环节。课程按「学科 + 课程名称（subject + topic）」唯一标识，支持学科筛选与分页。
+
+课程列表每行展示：学科徽标（数学蓝 / 语文红 / 英语黄 / 科学绿 / 自定义紫）、课程名称、预习状态、心得状态与得分、测验得分。
+
+**分数着色统一规则：< 80 红色，80–89 绿色，≥ 90 金色。**
+
+四个环节：
+
+- **课前预习**：填写导学案三部分——本节课内容、已有旧知识、课前思考题。保存后可一键生成 AI 预习建议与课堂注意事项；内容变更会自动作废旧分析、触发重新分析（接口限流每小时 30 次）。
+- **学习心得**：以费曼四问引导填写——①一句话概括核心知识 ②举自己的例子 ③哪里卡住了（可留空）④复习锚点「记忆钩子」（选填）。保存即生成 AI 完整度评估报告，评估失败可二次重试而不重复保存。
+- **智能测验**：围绕课程自动生成专属测验，作答后由 AI 逐题评分（每题 10 分，含参考答案与解析、总体评语与复习建议）。**权限门控**：心得评估得分 ≥ 80 分方可开始测验，否则锁定提示。成绩精确到小数，支持「重新测试」覆盖。
+- **分享卡片**：将学习心得与 AI 评估报告渲染为卡片，一键导出 PNG 长图用于分享。
+
 ## 数据结构设计
 
 ### 核心数据模型
 
 ```
-tasks               -> id, title, type(composition/mindmap/notes/math/english), status(pending/completed/expired), createdAt
-submissions         -> id, taskId(FK), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt
+tasks               -> id, title, type(composition/mindmap/notes), status(pending/completed/expired), createdAt, updatedAt
+submissions         -> id, taskId(FK, unique), content, grade(A+/A/B/C/D/E), aiScore, scoredAt, createdAt, updatedAt
+ai_score_logs       -> id, taskId(FK), submissionId(FK), content, grade, aiScore, scoredAt, createdAt
 point_records       -> id, type(earn/deduct), amount, reason, ruleName, relatedId, relatedType, createdAt
-exchanges           -> id, itemType, pointsCost, detail, status(active/revoked), createdAt
+exchanges           -> id, itemType, pointsCost, detail, status(active/revoked), createdAt, updatedAt
 options             -> id, key(unique), value
-ai_usage_logs       -> id, project, taskTitle, promptTokens, completionTokens, totalTokens, createdAt
-point_advances      -> id, amount, installments, repaidAmount, status(active/completed/cancelled), createdAt
-month_summary       -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), balance(500), advanceRepayment(0)
+ai_usage_logs       -> id, project, taskId?, taskTitle?, promptTokens, completionTokens, totalTokens, createdAt
+point_advances      -> id, amount, totalRepayment, installments, installmentAmount, paidInstallments, status(active/completed), createdAt, updatedAt
+month_summary       -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), totalExchanges(0), balance(500)
 videos              -> id, path, title, md5(unique), views(0), resumeTime(0), favorite(0), createdAt
 weekly_reports      -> id, weekNumber, year, content(JSON), analysis(JSON), createdAt, updatedAt
-weekly_conversations-> id, reportId(FK), role(ai/student), createdAt
-weekly_messages     -> id, conversationId(FK), role, content, createdAt
-task_conversations  -> id, taskId(FK, CASCADE), createdAt, updatedAt
-task_messages       -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
-studynotes               -> id, subject(math/chinese/english), topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, followUpScore?, createdAt, updatedAt
-studynote_conversations-> id, studynoteId(FK, CASCADE), createdAt, updatedAt
-studynote_messages     -> id, conversationId(FK, CASCADE), role(user/assistant), content, createdAt
+weekly_conversations-> id, weeklyReportId(FK, unique), createdAt, updatedAt
+weekly_messages     -> id, conversationId(FK), role(user/assistant), content, createdAt
+task_conversations  -> id, taskId(FK, unique), createdAt, updatedAt
+task_messages       -> id, conversationId(FK), role(user/assistant), content, createdAt
+study_notes         -> id, subject, topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, quizScore(REAL), lessonId?(FK), createdAt, updatedAt
+study_lessons       -> id, subject,(FK unique-ish), topic, createdAt, updatedAt   # 课程（学科/主题，subject+topic 唯一）
+study_previews      -> id, lessonId(FK, unique), content, oldKnowledge, questions, aiAnalysis?, aiAnalyzedAt?, createdAt, updatedAt   # 课前导学案
+study_quiz          -> id, studynoteId(FK, unique), questionsJson, answersJson?, resultsJson?, score(REAL), correctCount?, comment, suggestionsJson, generatedAt, submittedAt?, createdAt   # 智能测验结果（成绩为小数 REAL）
 ```
 
 ### 积分流转全景
@@ -325,14 +344,18 @@ study.webian.dev/
 │   │   │   ├── VideoPlayer/     # 学迹电台
 │   │   │   ├── TVFav/           # 视频收藏
 │   │   │   ├── RssReader/       # 科普 RSS 阅读器
-│   │   │   ├── Studynotes/      # 学习心得模块
-│   │   │   │   ├── index.tsx               # 学习心得列表页
-│   │   │   │   ├── StudynotesModalEditor.tsx  # 学习心得编辑模态框
-│   │   │   │   ├── StudynotesModalShare.tsx   # 学习心得分享卡片
-│   │   │   │   ├── StudynotesListTable.tsx    # 学习心得表格视图（评分颜色编码）
-│   │   │   │   ├── StudynotesSubjectFilter.tsx # 学科筛选组件
-│   │   │   │   ├── EvaluationReport.tsx       # AI 评估报告组件
-│   │   │   │   └── hooks/                   # 自定义 Hooks
+│   │   │   ├── Studynotes/      # 学习中心：课程主线 + 预习/心得/测验/分享闭环
+│   │   │   │   ├── index.tsx               # 学习中心主页（课程列表 + 各模态框编排）
+│   │   │   │   ├── LessonsListTable.tsx    # 课程列表（预习/心得/测验状态与分数着色）
+│   │   │   │   ├── LessonModalEditor.tsx   # 课程创建/编辑（subject+topic 唯一）
+│   │   │   │   ├── PreviewModalEditor.tsx  # 课前导学编辑 + AI 分析预览
+│   │   │   │   ├── PreviewAnalysisReport.tsx # 课前导学 AI 分析报告
+│   │   │   │   ├── StudynotesModalEditor.tsx  # 学习心得费曼四问编辑 + AI 评估
+│   │   │   │   ├── EvaluationReport.tsx       # AI 评估报告结构化展示
+│   │   │   │   ├── QuizModalEditor.tsx       # 智能测验作答/批改/结果反馈
+│   │   │   │   ├── StudynotesModalShare.tsx   # 心得分享卡片（导出 PNG 长图）
+│   │   │   │   ├── StudynotesSubjectFilter.tsx # 学科筛选（写入 URL query）
+│   │   │   │   └── hooks/                   # useLessons / useStudynotesQuiz
 │   │   │   └── ...                # 每个页面目录均包含 index.tsx 入口及子组件
 │   │   └── styles/              # 全局样式
 │   │       ├── index.css        # Tailwind 4 + 自定义色板
@@ -348,9 +371,9 @@ study.webian.dev/
 │   │   ├── index.ts             # Express 入口（路由注册 + 静态文件服务）
 │   │   ├── db/                  # 数据库层
 │   │   │   ├── index.ts        # 数据库连接（libSQL + Drizzle）
-│   │   │   ├── schema.ts       # Drizzle ORM Schema（13 表）
-│   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据）
-│   │   ├── routes/             # API 路由（12 个模块）
+│   │   │   ├── schema.ts       # Drizzle ORM Schema（18 表）
+│   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据 + 历史成绩重算）
+│   │   ├── routes/             # API 路由（13 个模块）
 │   │   │   ├── tasks.ts        # 作业管理（含 AI 评分/起名/出题/对话）
 │   │   │   ├── points.ts       # 积分流水（含预支/还款/月度结算）
 │   │   │   ├── exchanges.ts    # 积分兑换
@@ -358,7 +381,8 @@ study.webian.dev/
 │   │   │   ├── ai-usage.ts     # AI 使用记录
 │   │   │   ├── videos.ts       # 视频管理（扫描/流播/收藏）
 │   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
-│   │   │   ├── studynotes.ts      # 学习心得（CRUD + AI 评估 + 智能测验对话）
+│   │   │   ├── studynotes.ts   # 学习心得（CRUD + AI 评估 + 智能测验对话）
+│   │   │   ├── lessons.ts      # 课程管理（含课前导学 AI 分析）
 │   │   │   ├── rss.ts          # 科普 RSS 阅读器
 │   │   │   ├── rules-loader.ts # 规则加载与初始化
 │   │   │   ├── summary-helper.ts # 月度汇总计算
@@ -382,10 +406,8 @@ study.webian.dev/
 │   │   └── index.ts             # 统一导出
 │   ├── package.json
 │   └── tsconfig.json
-├── __tests__/                    # 统一测试目录（前后端共用）
-├── data/                         # SQLite 数据库文件
-│   └── study.db
-├── dist/                         # 构建输出目录
+├── server/data/                 # SQLite 数据库文件（study.db，含迁移备份 .bak）
+├── dist/                         # 构建输出目录（前端）
 ├── .env                          # 环境变量（不提交到仓库）
 ├── .gitignore                    # Git 忽略配置
 ├── package.json                  # 根 workspace 编排脚本
@@ -476,6 +498,15 @@ study.webian.dev/
 - [x] 问题三可留空
 - [x] 学习心得分享卡片（html-to-image 截图导出）
 
+### Phase 9 - 课程与课前导学扩展
+
+- [x] 课程（Lesson）管理：按学科+主题创建课程（subject+topic 唯一约束），可编辑/删除
+- [x] 课程列表（LessonsListTable）：展示预习状态与测验分数（<80 红 / 80-89 绿 / ≥90 金 着色）
+- [x] 课前导学（Preview）：为课程编写导学案（内容 / 已有知识 / 思考题），AI 分析生成导学报告（PreviewAnalysisReport）
+- [x] 课前导学 AI 分析接口限流（每小时 30 次，防账单刷爆）
+- [x] 学习心得与课程关联（study_notes.lesson_id 外键，级联删除）
+- [x] 智能测验成绩精度修复：study_quiz.score 与 study_notes.quiz_score 改为 REAL（小数），迁移脚本重算历史成绩并保留一位小数
+
 ## 本地开发
 
 ```bash
@@ -490,11 +521,13 @@ cp .env.example .env
 pnpm db:migrate
 
 # 同时启动前后端开发服务器
+pnpm dev:all
+
+# 或仅启动前端（Vite，端口 5173）
 pnpm dev
 
-# 或分别启动
-pnpm dev:server          # 仅启动后端（端口3001）
-pnpm dev:apps            # 仅启动前端（端口5173）
+# 仅启动后端（在 server 包：tsx watch，端口 3001）
+pnpm --filter server dev
 
 # 构建前端
 pnpm build
@@ -530,17 +563,26 @@ AUTOSAVE_INTERVAL=10
 
 ### 可用脚本
 
-| 脚本               | 说明                                       |
-| ------------------ | ------------------------------------------ |
-| `pnpm dev`         | 同时启动前后端开发服务器（concurrently）   |
-| `pnpm dev:apps`    | 启动前端开发服务器（Vite，端口 5173）      |
-| `pnpm dev:server`  | 启动后端开发服务器（tsx watch，端口 3001） |
-| `pnpm build`       | 构建前端到 `dist/`                         |
-| `pnpm start`       | 启动生产模式 Express 服务器                |
-| `pnpm test`        | 运行所有测试                               |
-| `pnpm db:migrate`  | 数据库迁移与初始化                         |
-| `pnpm db:push`     | Drizzle Kit 直接推送 Schema 到数据库       |
-| `pnpm db:generate` | 生成 Drizzle 迁移文件                      |
+**根 workspace 脚本（在仓库根目录执行）：**
+
+| 脚本              | 说明                                                    |
+| ----------------- | ------------------------------------------------------- |
+| `pnpm dev`        | 仅启动前端开发服务器（Vite，端口 5173）                 |
+| `pnpm dev:all`    | 同时启动前后端开发服务器（concurrently）                |
+| `pnpm build`      | 构建前端到 `dist/`                                      |
+| `pnpm start`      | 启动生产模式 Express 服务器（serve 前端产物 + API）      |
+| `pnpm test`       | 运行所有测试（Vitest）                                  |
+| `pnpm db:migrate` | 数据库迁移与初始化（等价 `pnpm --filter server db:migrate`）|
+
+**server 包脚本（`pnpm --filter server <script>`）：**
+
+| 脚本              | 说明                                  |
+| ----------------- | ------------------------------------- |
+| `dev`             | 启动后端开发服务器（tsx watch，端口 3001）|
+| `start`           | 启动后端生产服务器（tsx）             |
+| `db:migrate`      | 运行迁移脚本（建表 + 默认数据 + 历史成绩重算）|
+| `db:generate`     | 生成 Drizzle 迁移文件                 |
+| `db:push`         | Drizzle Kit 直接推送 Schema 到数据库  |
 
 ## 许可证
 

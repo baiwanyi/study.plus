@@ -20,18 +20,31 @@ const VIDEO_EXTENSIONS = new Set([
     '.webm',
 ])
 
-function scanDirectory(dir: string): string[] {
+const MAX_SCAN_DEPTH = 20
+const MAX_SCAN_FILES = 10000
+
+function scanDirectory(dir: string, depth = 0): string[] {
+    if (depth >= MAX_SCAN_DEPTH) {
+        return []
+    }
     const results: string[] = []
     const entries = fs.readdirSync(dir, { withFileTypes: true })
     for (const entry of entries) {
         const fullPath = path.join(dir, entry.name)
+        // 不跟随符号链接：软链目录/文件一律跳过，防止越权遍历（如 /etc、..）或软链成环导致栈溢出。
+        if (entry.isSymbolicLink()) {
+            continue
+        }
         if (entry.isDirectory()) {
-            results.push(...scanDirectory(fullPath))
-        } else if (entry.isFile()) {
+            results.push(...scanDirectory(fullPath, depth + 1))
+        } else if (entry.isFile() && results.length < MAX_SCAN_FILES) {
             const ext = path.extname(entry.name).toLowerCase()
             if (VIDEO_EXTENSIONS.has(ext)) {
                 results.push(fullPath)
             }
+        }
+        if (results.length >= MAX_SCAN_FILES) {
+            break
         }
     }
     return results
@@ -47,31 +60,34 @@ function computeMD5(filePath: string): Promise<string> {
     })
 }
 
+const MAX_VIDEO_LIMIT = 500
+
 router.get('/', async (req: Request, res: Response) => {
     try {
         const limit = Number(req.query.limit) || 0
         const favorite = Number(req.query.favorite) || 0
-        let query = 'SELECT * FROM videos'
-        const conditions: string[] = []
-        if (favorite === 1) conditions.push('favorite = 1')
-        if (conditions.length) query += ' WHERE ' + conditions.join(' AND ')
-        query += ' ORDER BY created_at'
-        if (limit > 0) query += ` LIMIT ${limit}`
-        const { rows } = await client.execute(query)
+        const rows = await db
+            .select()
+            .from(videos)
+            .where(favorite === 1 ? eq(videos.favorite, 1) : undefined)
+            .orderBy(videos.createdAt)
+            .limit(
+                limit > 0 ? Math.min(limit, MAX_VIDEO_LIMIT) : MAX_VIDEO_LIMIT,
+            )
         const list = rows.map((r) => ({
-            id: r.id as number,
-            path: r.path as string,
-            title: r.title as string,
-            md5: r.md5 as string,
-            views: r.views as number,
-            resumeTime: r.resume_time as number,
-            favorite: r.favorite as number,
-            createdAt: r.created_at as string,
+            id: r.id,
+            path: r.path,
+            title: r.title,
+            md5: r.md5,
+            views: r.views,
+            resumeTime: r.resumeTime,
+            favorite: r.favorite,
+            createdAt: r.createdAt,
         }))
         res.json(list)
     } catch (err) {
         console.error('获取视频列表失败:', err)
-        res.status(500).json({ error: String(err) })
+        res.status(500).json({ error: '获取视频列表失败' })
     }
 })
 
@@ -263,7 +279,31 @@ router.get(
                 return
             }
 
+            const configRow = await client.execute({
+                sql: "SELECT value FROM options WHERE key = 'system'",
+                args: [],
+            })
+            const systemConfig = configRow.rows[0]?.value
+                ? (JSON.parse(configRow.rows[0].value as string) as Record<
+                      string,
+                      unknown
+                  >)
+                : {}
+            const storedVideoRoot =
+                (systemConfig.videoDirectory as string | undefined) || ''
+
             const filePath = rows[0].path
+            const resolvedPath = path.resolve(filePath)
+            if (
+                !storedVideoRoot ||
+                !resolvedPath.startsWith(
+                    path.resolve(storedVideoRoot) + path.sep,
+                )
+            ) {
+                console.error('视频路径越界，已拒绝访问:', resolvedPath)
+                res.status(403).json({ error: '视频路径不合法' })
+                return
+            }
             if (!fs.existsSync(filePath)) {
                 res.status(404).json({ error: '视频文件不存在' })
                 return
@@ -287,8 +327,19 @@ router.get(
             const range = req.headers.range
             if (range) {
                 const parts = range.replace(/bytes=/, '').split('-')
-                const start = parseInt(parts[0], 10)
-                const end = parts[1] ? parseInt(parts[1], 10) : fileSize - 1
+                const start = Number.isNaN(parseInt(parts[0], 10))
+                    ? 0
+                    : parseInt(parts[0], 10)
+                if (start < 0 || start >= fileSize) {
+                    res.writeHead(416, {
+                        'Content-Range': `bytes */${fileSize}`,
+                    })
+                    res.end()
+                    return
+                }
+                const end = parts[1]
+                    ? Math.min(parseInt(parts[1], 10), fileSize - 1)
+                    : fileSize - 1
                 const chunkSize = end - start + 1
 
                 res.writeHead(206, {
@@ -298,13 +349,28 @@ router.get(
                     'Content-Type': contentType,
                 })
                 const stream = fs.createReadStream(filePath, { start, end })
+                stream.on('error', () => {
+                    if (!res.headersSent) {
+                        res.status(500).json({ error: '视频传输失败' })
+                    } else {
+                        res.end()
+                    }
+                })
                 stream.pipe(res)
             } else {
                 res.writeHead(200, {
                     'Content-Length': fileSize,
                     'Content-Type': contentType,
                 })
-                fs.createReadStream(filePath).pipe(res)
+                const stream = fs.createReadStream(filePath)
+                stream.on('error', () => {
+                    if (!res.headersSent) {
+                        res.status(500).json({ error: '视频传输失败' })
+                    } else {
+                        res.end()
+                    }
+                })
+                stream.pipe(res)
             }
         } catch (err) {
             console.error('流式传输视频失败:', err)

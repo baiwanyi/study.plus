@@ -1,11 +1,16 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react'
 import { studynotesApi } from '@apps/utils/api'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
-import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import { EvaluationReport } from './EvaluationReport'
 import type { StudynotesItem, StudynotesEvaluation } from '@shared/types'
 
@@ -14,6 +19,10 @@ interface StudynotesModalEditorProps {
     cardId: number | null
     /** 关联的课程 ID（新建心得时传入） */
     lessonId: number | null
+    /** 课程学科（心得归属课程，表单不再单独填写） */
+    lessonSubject: string
+    /** 课程课题（心得归属课程，表单不再单独填写） */
+    lessonTopic: string
     onClose: () => void
     onSaved: () => void
 }
@@ -22,15 +31,13 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     open,
     cardId,
     lessonId,
+    lessonSubject,
+    lessonTopic,
     onClose,
     onSaved,
 }) => {
     const { showSnackbar } = useSnackbar()
-    const [hasSaved, setHasSaved] = useState(false)
-    const isEditing = cardId != null || hasSaved
 
-    const [subject, setSubject] = useState('math')
-    const [topic, setTopic] = useState('')
     const [summary, setSummary] = useState('')
     const [example, setExample] = useState('')
     const [stuckPoints, setStuckPoints] = useState('')
@@ -46,11 +53,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     )
     const [currentCard, setCurrentCard] = useState<StudynotesItem | null>(null)
 
-    const mountedRef = useRef(false)
+    // 请求序号：每次打开/切换卡片自增，确保只有最新一次加载能写入，避免跨卡片数据串扰
+    const requestIdRef = useRef(0)
     const formContainerRef = useRef<HTMLDivElement>(null)
     const formSnapshotRef = useRef<{
-        subject: string
-        topic: string
         summary: string
         example: string
         stuckPoints: string
@@ -75,8 +81,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         const snap = formSnapshotRef.current
         if (!snap) return true
         return (
-            snap.subject !== subject ||
-            snap.topic !== topic ||
             snap.summary !== summary ||
             snap.example !== example ||
             snap.stuckPoints !== stuckPoints.trim() ||
@@ -86,11 +90,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
 
     useEffect(() => {
         if (!open) return
-        mountedRef.current = true
+        const myReq = ++requestIdRef.current
         setEvaluation(null)
         setEvaluationError(false)
         setCurrentCard(null)
-        setHasSaved(false)
         formSnapshotRef.current = null
 
         if (cardId != null) {
@@ -98,17 +101,14 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             studynotesApi
                 .get(cardId)
                 .then(async (card) => {
-                    if (!mountedRef.current) return
+                    // 仅最新一次请求可写入，丢弃过期响应，避免卡片切换时的数据串扰
+                    if (myReq !== requestIdRef.current) return
                     setCurrentCard(card)
-                    setSubject(card.subject)
-                    setTopic(card.topic)
                     setSummary(card.summary)
                     setExample(card.example)
                     setStuckPoints(card.stuckPoints)
                     setMemoryHook(card.memoryHook || '')
                     formSnapshotRef.current = {
-                        subject: card.subject,
-                        topic: card.topic,
                         summary: card.summary,
                         example: card.example,
                         stuckPoints: card.stuckPoints.trim(),
@@ -122,28 +122,33 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         }
                     }
                 })
-                .catch(() => showSnackbar('加载学习心得失败', 'error'))
+                .catch(() => {
+                    if (myReq !== requestIdRef.current) return
+                    // 加载失败：复位为空白表单，避免显示上一卡片残留内容（含旧评估报告）
+                    setSummary('')
+                    setExample('')
+                    setStuckPoints('')
+                    setMemoryHook('')
+                    setCurrentCard(null)
+                    setEvaluation(null)
+                    setEvaluationError(false)
+                    formSnapshotRef.current = null
+                    showSnackbar('加载学习心得失败', 'error')
+                })
                 .finally(() => {
-                    if (mountedRef.current) setLoadingCard(false)
+                    if (myReq === requestIdRef.current) setLoadingCard(false)
                 })
         } else {
             formSnapshotRef.current = {
-                subject: 'math',
-                topic: '',
                 summary: '',
                 example: '',
                 stuckPoints: '',
                 memoryHook: null,
             }
-            setSubject('math')
-            setTopic('')
             setSummary('')
             setExample('')
             setStuckPoints('')
             setMemoryHook('')
-        }
-        return () => {
-            mountedRef.current = false
         }
     }, [open, cardId, showSnackbar])
 
@@ -153,10 +158,17 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         // 评分失败后点击「保存并评分」属于二次评分：内容未变也允许执行，且仅重评不重复保存
         const isRetry =
             evaluationError && targetId != null && !hasContentChanged()
-        const hasBeenEvaluated = !!(currentCard?.evaluatedAt || currentCard?.evaluation)
+        const hasBeenEvaluated = !!(
+            currentCard?.evaluatedAt || currentCard?.evaluation
+        )
 
         // 从未评估过时，即使内容无变化也执行评估
-        if (!isRetry && targetId != null && !hasContentChanged() && hasBeenEvaluated) {
+        if (
+            !isRetry &&
+            targetId != null &&
+            !hasContentChanged() &&
+            hasBeenEvaluated
+        ) {
             showSnackbar('内容没有变化')
             return
         }
@@ -173,8 +185,8 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                 card = currentCard
             } else {
                 const baseData = {
-                    subject,
-                    topic,
+                    subject: lessonSubject,
+                    topic: lessonTopic,
                     summary,
                     example,
                     stuckPoints: stuckPoints.trim(),
@@ -193,10 +205,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                           })
 
                 setCurrentCard(card)
-                setHasSaved(true)
                 formSnapshotRef.current = {
-                    subject: card.subject,
-                    topic: card.topic,
                     summary: card.summary,
                     example: card.example,
                     stuckPoints: card.stuckPoints.trim(),
@@ -238,7 +247,20 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         } finally {
             setSaving(false)
         }
-    }, [cardId, currentCard, evaluationError, lessonId, subject, topic, summary, example, stuckPoints, memoryHook, showSnackbar, onSaved])
+    }, [
+        cardId,
+        currentCard,
+        evaluationError,
+        lessonId,
+        lessonSubject,
+        lessonTopic,
+        summary,
+        example,
+        stuckPoints,
+        memoryHook,
+        showSnackbar,
+        onSaved,
+    ])
 
     function getConfirmLabel(): string {
         if (evaluating) return '评估中...'
@@ -256,7 +278,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                 saving || evaluating || loadingCard || !summary || !example
             }
             isLoading={saving || evaluating}
-            title={isEditing ? '编辑学习心得' : '新建学习心得'}
+            title={lessonTopic ? `学习心得 · ${lessonTopic}` : '学习心得'}
             size="full">
             {loadingCard ? (
                 <Loading />
@@ -266,37 +288,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                     <div
                         ref={formContainerRef}
                         className="space-y-4 overflow-y-auto max-h-[calc(90vh-9rem)] p-3">
-                        {/* Subject + Topic */}
-                        <div className="grid grid-cols-2 gap-4">
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    学科
-                                </label>
-                                <select
-                                    value={subject}
-                                    onChange={(e) => setSubject(e.target.value)}
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary">
-                                    {studynotesSubjectValues.map((s) => (
-                                        <option key={s} value={s}>
-                                            {studynotesSubjectLabels[s]}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                            <div>
-                                <label className="block text-sm font-medium text-gray-700 mb-1">
-                                    课题/章节
-                                </label>
-                                <input
-                                    type="text"
-                                    value={topic}
-                                    onChange={(e) => setTopic(e.target.value)}
-                                    placeholder="如：分数的加减法"
-                                    className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary"
-                                />
-                            </div>
-                        </div>
-
                         {/* Q1: Summary */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
                             <label className="text-sm font-bold text-gray-800 mb-2 block">

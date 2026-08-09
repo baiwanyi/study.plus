@@ -1,8 +1,13 @@
 'use client'
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useLayoutEffect,
+    useRef,
+    useState,
+} from 'react'
 import { lessonsApi } from '@apps/utils/api'
-import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { previewStudyQuestions } from '@shared/constants'
@@ -29,18 +34,18 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
     const [oldKnowledge, setOldKnowledge] = useState('')
     const [questions, setQuestions] = useState('')
 
-    const [loadingPreview, setLoadingPreview] = useState(false)
     const [saving, setSaving] = useState(false)
     const [analyzing, setAnalyzing] = useState(false)
     const [analysisError, setAnalysisError] = useState(false)
     const [analysis, setAnalysis] = useState<PreviewAnalysis | null>(null)
 
-    const mountedRef = useRef(false)
+    // 请求序号：每次打开/切换课程自增，确保只有最新一次加载能写入，避免跨课程数据串扰
+    const requestIdRef = useRef(0)
     const formContainerRef = useRef<HTMLDivElement>(null)
 
     // Resize all form textareas to fit content immediately after DOM mounts or values change.
     useLayoutEffect(() => {
-        if (!open || loadingPreview) return
+        if (!open) return
         const container = formContainerRef.current
         if (!container) return
         const textareas =
@@ -49,11 +54,11 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
             el.style.height = '1px'
             el.style.height = `${el.scrollHeight + 2}px`
         })
-    }, [open, loadingPreview, content, oldKnowledge, questions])
+    }, [open, content, oldKnowledge, questions])
 
     useEffect(() => {
         if (!open || !lesson) return
-        mountedRef.current = true
+        const myReq = ++requestIdRef.current
         setAnalysis(null)
         setAnalysisError(false)
         setContent('')
@@ -63,7 +68,8 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
         lessonsApi
             .getPreview(lesson.id)
             .then(({ preview }) => {
-                if (!mountedRef.current) return
+                // 仅最新一次请求可写入，丢弃过期响应，避免课程切换时的数据串扰
+                if (myReq !== requestIdRef.current) return
                 setContent(preview?.content ?? '')
                 setOldKnowledge(preview?.oldKnowledge ?? '')
                 setQuestions(preview?.questions ?? '')
@@ -75,11 +81,13 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
                     }
                 }
             })
-            .catch(() => showSnackbar('加载预习内容失败', 'error'))
-
-        return () => {
-            mountedRef.current = false
-        }
+            .catch(() => {
+                if (myReq !== requestIdRef.current) return
+                // 加载失败：复位分析与错误状态，避免残留上一课程报告
+                setAnalysis(null)
+                setAnalysisError(false)
+                showSnackbar('加载预习内容失败', 'error')
+            })
     }, [open, lesson, showSnackbar])
 
     const handleSaveAndAnalyze = useCallback(async () => {
@@ -130,74 +138,67 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
             onCancel={onClose}
             onConfirm={handleSaveAndAnalyze}
             confirmLabel={getConfirmLabel()}
-            isDisabled={
-                saving || analyzing || loadingPreview || !content.trim()
-            }
+            isDisabled={saving || analyzing || !content.trim()}
             isLoading={saving || analyzing}
             title={lesson ? `课前预习 · ${lesson.topic}` : '课前预习'}
             size="full">
-            {loadingPreview ? (
-                <Loading />
-            ) : (
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden -m-6">
-                    {/* ===== Left: 预习表单 ===== */}
-                    <div
-                        ref={formContainerRef}
-                        className="space-y-4 overflow-y-auto max-h-[calc(90vh-9rem)] p-3">
-                        {previewStudyQuestions.map((q) => (
-                            <div
-                                key={q.key}
-                                className="bg-white rounded-xl border border-gray-200 p-5">
-                                <label className="text-sm font-bold text-gray-800 mb-2 block">
-                                    {q.title}
-                                </label>
-                                <p className="text-xs text-gray-600 mb-3">
-                                    {q.hint}
-                                </p>
-                                <textarea
-                                    value={
-                                        q.key === 'content'
-                                            ? content
-                                            : q.key === 'oldKnowledge'
-                                              ? oldKnowledge
-                                              : questions
-                                    }
-                                    onChange={(e) => {
-                                        const value = e.target.value
-                                        if (q.key === 'content')
-                                            setContent(value)
-                                        else if (q.key === 'oldKnowledge')
-                                            setOldKnowledge(value)
-                                        else setQuestions(value)
-                                    }}
-                                    placeholder={q.placeholder}
-                                    rows={1}
-                                    className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
-                                />
-                            </div>
-                        ))}
-                    </div>
-
-                    {/* ===== Right: AI 分析报告 ===== */}
-                    <div className="overflow-y-auto max-h-[calc(90vh-9rem)] border-l border-gray-200 p-5">
-                        {analyzing ? (
-                            <p className="text-sm text-gray-500">
-                                AI 分析生成中...
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden h-full -m-6">
+                {/* ===== Left: 预习表单 ===== */}
+                <div
+                    ref={formContainerRef}
+                    className="space-y-4 overflow-y-auto max-h-[calc(90vh-9rem)] p-3">
+                    {previewStudyQuestions.map((q) => (
+                        <div
+                            key={q.key}
+                            className="bg-white rounded-xl border border-gray-200 p-5">
+                            <label className="text-sm font-bold text-gray-800 mb-2 block">
+                                {q.title}
+                            </label>
+                            <p className="text-xs text-gray-600 mb-3">
+                                {q.hint}
                             </p>
-                        ) : analysis ? (
-                            <PreviewAnalysisReport analysis={analysis} />
-                        ) : (
-                            <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
-                                <p className="text-sm text-gray-600">
-                                    {analysisError
-                                        ? 'AI 分析失败，请点击"保存并分析"重试'
-                                        : '保存并分析后，这里会显示预习建议和课堂注意事项'}
-                                </p>
-                            </div>
-                        )}
-                    </div>
+                            <textarea
+                                value={
+                                    q.key === 'content'
+                                        ? content
+                                        : q.key === 'oldKnowledge'
+                                          ? oldKnowledge
+                                          : questions
+                                }
+                                onChange={(e) => {
+                                    const value = e.target.value
+                                    if (q.key === 'content') setContent(value)
+                                    else if (q.key === 'oldKnowledge')
+                                        setOldKnowledge(value)
+                                    else setQuestions(value)
+                                }}
+                                placeholder={q.placeholder}
+                                rows={1}
+                                className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
+                            />
+                        </div>
+                    ))}
                 </div>
-            )}
+
+                {/* ===== Right: AI 分析报告 ===== */}
+                <div className="overflow-y-auto max-h-[calc(90vh-9rem)] border-l border-gray-200 p-5">
+                    {analyzing ? (
+                        <p className="text-sm text-gray-500">
+                            AI 分析生成中...
+                        </p>
+                    ) : analysis ? (
+                        <PreviewAnalysisReport analysis={analysis} />
+                    ) : (
+                        <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+                            <p className="text-sm text-gray-600">
+                                {analysisError
+                                    ? 'AI 分析失败，请点击"保存并分析"重试'
+                                    : '保存并分析后，这里会显示预习建议和课堂注意事项'}
+                            </p>
+                        </div>
+                    )}
+                </div>
+            </div>
         </Modal>
     )
 }

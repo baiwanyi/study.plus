@@ -1,4 +1,5 @@
 import { and, desc, eq, sql } from 'drizzle-orm'
+import rateLimit from 'express-rate-limit'
 import { Router } from 'express'
 import { studynotesSubjectValues } from '@shared/utils'
 import type {
@@ -7,7 +8,7 @@ import type {
     StudynotesQuizResult,
 } from '@shared/types'
 import { db } from '../db/index'
-import { studynotes, studynoteQuiz } from '../db/schema'
+import { studyNotes, studyQuiz } from '../db/schema'
 import {
     evaluateStudynotesReflection,
     generateStudynotesQuiz,
@@ -18,6 +19,17 @@ import type { Request, Response } from 'express'
 
 export const studynotesRouter = Router()
 
+// Stricter limit for AI evaluation endpoint (protect against billing burn)
+const aiLimiter = rateLimit({
+    windowMs: 60 * 60 * 1000,
+    max: 30,
+    standardHeaders: true,
+    legacyHeaders: false,
+    handler: (_req: Request, res: Response) => {
+        res.status(429).json({ error: 'AI 调用过于频繁，请稍后再试' })
+    },
+})
+
 /** Validate param is a positive integer; returns -1 if invalid */
 function parsePosInt(raw: unknown): number {
     const id = Number(raw)
@@ -27,19 +39,7 @@ function parsePosInt(raw: unknown): number {
 const QUIZ_ANSWER_MAX_LEN = 5000
 const QUIZ_SIZE = 10
 
-// 汇总/回顾类非题目关键词：命中且题干不含问号时，判定为 AI 越界写入的垃圾文本
-const QUIZ_POLLUTED_MARKERS = [
-    '答题统计',
-    '错题回顾',
-    '错题汇总',
-    '答题情况',
-    '正确率',
-    '掌握程度',
-    '学习小结',
-    '分析报告',
-]
-
-// 入库前清洗：剔除 index>10 越界题与「汇总类垃圾文本」，重排 index 为连续 1..N，杜绝脏数据入库
+// 入库前清洗：剔除 index>10 越界题与空题干，重排 index 为连续 1..N，杜绝脏数据入库
 function sanitizeQuizQuestions(
     questions: StudynotesQuizQuestion[],
 ): StudynotesQuizQuestion[] {
@@ -47,10 +47,6 @@ function sanitizeQuizQuestions(
         if (!Number.isInteger(q.index) || q.index > QUIZ_SIZE) return false
         const text = q.question.trim()
         if (!text) return false
-        const isPolluted = QUIZ_POLLUTED_MARKERS.some((m) => text.includes(m))
-        if (isPolluted && !text.includes('？') && !text.includes('?')) {
-            return false
-        }
         return true
     })
     return kept.map((q, i) => ({ ...q, index: i + 1 }))
@@ -64,16 +60,22 @@ function safeJsonParse<T>(raw: string | null, fallback: T | null): T | null {
     try {
         return JSON.parse(raw) as T
     } catch (error) {
-        console.warn('测验记录 JSON 字段解析失败，已回退默认值:', (error as Error).message)
+        console.warn(
+            '测验记录 JSON 字段解析失败，已回退默认值:',
+            (error as Error).message,
+        )
         return fallback as T | null
     }
 }
 
-function mapQuizRow(row: typeof studynoteQuiz.$inferSelect): StudynotesQuiz {
+function mapQuizRow(row: typeof studyQuiz.$inferSelect): StudynotesQuiz {
     return {
         id: row.id,
         studynoteId: row.studynoteId,
-        questions: safeJsonParse<StudynotesQuizQuestion[]>(row.questionsJson, []),
+        questions: safeJsonParse<StudynotesQuizQuestion[]>(
+            row.questionsJson,
+            [],
+        ),
         answers: row.answersJson
             ? safeJsonParse<string[]>(row.answersJson, [])
             : null,
@@ -99,7 +101,7 @@ function validateAnswers(raw: unknown): string[] | null {
 
 const VALID_SUBJECTS = new Set<string>(studynotesSubjectValues)
 
-// List studynotes cards with optional subject filter and search
+// List studyNotes cards with optional subject filter and search
 studynotesRouter.get('/', async (req: Request, res: Response) => {
     try {
         const { subject, search } = req.query
@@ -111,24 +113,24 @@ studynotesRouter.get('/', async (req: Request, res: Response) => {
             typeof subject === 'string' &&
             VALID_SUBJECTS.has(subject)
         ) {
-            filters.push(eq(studynotes.subject, subject))
+            filters.push(eq(studyNotes.subject, subject))
         }
 
         // Fetch cards
         const cards = await db
             .select()
-            .from(studynotes)
+            .from(studyNotes)
             .where(filters.length > 0 ? and(...filters) : undefined)
-            .orderBy(desc(studynotes.createdAt))
+            .orderBy(desc(studyNotes.createdAt))
 
         // Fetch quiz counts per card (GROUP BY avoids N+1 with JS counting).
         const countRows = await db
             .select({
-                cardId: studynoteQuiz.studynoteId,
+                cardId: studyQuiz.studynoteId,
                 count: sql<number>`COUNT(*)`,
             })
-            .from(studynoteQuiz)
-            .groupBy(studynoteQuiz.studynoteId)
+            .from(studyQuiz)
+            .groupBy(studyQuiz.studynoteId)
 
         const countMap = new Map(countRows.map((r) => [r.cardId, r.count]))
 
@@ -154,12 +156,12 @@ studynotesRouter.get('/', async (req: Request, res: Response) => {
         res.json(result)
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error listing studynotes cards:', message)
+        console.error('Error listing studyNotes cards:', message)
         res.status(500).json({ error: '获取学习心得列表失败' })
     }
 })
 
-// Get single studynotes card
+// Get single studyNotes card
 studynotesRouter.get('/:id', async (req: Request, res: Response) => {
     try {
         const id = parsePosInt(req.params.id)
@@ -170,8 +172,8 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
 
         const rows = await db
             .select()
-            .from(studynotes)
-            .where(eq(studynotes.id, id))
+            .from(studyNotes)
+            .where(eq(studyNotes.id, id))
             .limit(1)
 
         if (!rows[0]) {
@@ -182,12 +184,12 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
         res.json(rows[0])
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error getting studynotes card:', message)
+        console.error('Error getting studyNotes card:', message)
         res.status(500).json({ error: '获取学习心得失败' })
     }
 })
 
-// Create studynotes card
+// Create studyNotes card
 studynotesRouter.post('/', async (req: Request, res: Response) => {
     try {
         const {
@@ -220,9 +222,7 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
         }
 
         const normalizedLessonId =
-            lessonId == null || lessonId === ''
-                ? null
-                : Number(lessonId)
+            lessonId == null || lessonId === '' ? null : Number(lessonId)
         if (
             normalizedLessonId !== null &&
             (!Number.isInteger(normalizedLessonId) || normalizedLessonId <= 0)
@@ -232,7 +232,7 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
         }
 
         const rows = await db
-            .insert(studynotes)
+            .insert(studyNotes)
             .values({
                 subject,
                 topic: typeof topic === 'string' ? topic : '',
@@ -247,12 +247,12 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
         res.json(rows[0])
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error creating studynotes card:', message)
+        console.error('Error creating studyNotes card:', message)
         res.status(500).json({ error: '创建学习心得失败' })
     }
 })
 
-// Update studynotes card
+// Update studyNotes card
 studynotesRouter.put('/:id', async (req: Request, res: Response) => {
     try {
         const id = parsePosInt(req.params.id)
@@ -297,7 +297,7 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
         }
 
         const rows = await db
-            .update(studynotes)
+            .update(studyNotes)
             .set({
                 ...(subject !== undefined && { subject }),
                 ...(topic !== undefined && { topic }),
@@ -307,7 +307,7 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
                 ...(memoryHook !== undefined && { memoryHook }),
                 updatedAt: new Date().toISOString(),
             })
-            .where(eq(studynotes.id, id))
+            .where(eq(studyNotes.id, id))
             .returning()
 
         if (!rows[0]) {
@@ -318,12 +318,12 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
         res.json(rows[0])
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error updating studynotes card:', message)
+        console.error('Error updating studyNotes card:', message)
         res.status(500).json({ error: '更新学习心得失败' })
     }
 })
 
-// Delete studynotes card
+// Delete studyNotes card
 studynotesRouter.delete('/:id', async (req: Request, res: Response) => {
     try {
         const id = parsePosInt(req.params.id)
@@ -333,8 +333,8 @@ studynotesRouter.delete('/:id', async (req: Request, res: Response) => {
         }
 
         const rows = await db
-            .delete(studynotes)
-            .where(eq(studynotes.id, id))
+            .delete(studyNotes)
+            .where(eq(studyNotes.id, id))
             .returning()
 
         if (!rows[0]) {
@@ -345,13 +345,13 @@ studynotesRouter.delete('/:id', async (req: Request, res: Response) => {
         res.json({ success: true })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error deleting studynotes card:', message)
+        console.error('Error deleting studyNotes card:', message)
         res.status(500).json({ error: '删除学习心得失败' })
     }
 })
 
-// AI evaluate studynotes card
-studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
+// AI evaluate studyNotes card
+studynotesRouter.post('/:id/evaluate', aiLimiter, async (req: Request, res: Response) => {
     try {
         const id = parsePosInt(req.params.id)
         if (id === -1) {
@@ -361,8 +361,8 @@ studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
 
         const rows = await db
             .select()
-            .from(studynotes)
-            .where(eq(studynotes.id, id))
+            .from(studyNotes)
+            .where(eq(studyNotes.id, id))
             .limit(1)
 
         if (!rows[0]) {
@@ -375,7 +375,10 @@ studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
         const existingEval = card.evaluation
             ? safeJsonParse<Record<string, unknown>>(card.evaluation, null)
             : null
-        if (existingEval && typeof existingEval.completenessScore === 'number') {
+        if (
+            existingEval &&
+            typeof existingEval.completenessScore === 'number'
+        ) {
             res.json({
                 evaluation: existingEval,
                 evaluatedAt: card.evaluatedAt,
@@ -403,13 +406,13 @@ studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
 
         const now = new Date().toISOString()
         await db
-            .update(studynotes)
+            .update(studyNotes)
             .set({
                 evaluation: evaluationRaw,
                 evaluatedAt: now,
                 updatedAt: now,
             })
-            .where(eq(studynotes.id, id))
+            .where(eq(studyNotes.id, id))
 
         res.json({
             evaluation,
@@ -417,7 +420,7 @@ studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
         })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error evaluating studynotes card:', message)
+        console.error('Error evaluating studyNotes card:', message)
         res.status(500).json({ error: 'AI 评估失败' })
     }
 })
@@ -433,8 +436,8 @@ studynotesRouter.post('/:id/quiz', async (req: Request, res: Response) => {
 
         const rows = await db
             .select()
-            .from(studynotes)
-            .where(eq(studynotes.id, id))
+            .from(studyNotes)
+            .where(eq(studyNotes.id, id))
             .limit(1)
 
         if (!rows[0]) {
@@ -457,11 +460,11 @@ studynotesRouter.post('/:id/quiz', async (req: Request, res: Response) => {
         // 幂等：复用已存在但未提交的测验，避免重复生成与孤儿记录
         const pending = await db
             .select()
-            .from(studynoteQuiz)
+            .from(studyQuiz)
             .where(
                 and(
-                    eq(studynoteQuiz.studynoteId, id),
-                    sql`${studynoteQuiz.submittedAt} IS NULL`,
+                    eq(studyQuiz.studynoteId, id),
+                    sql`${studyQuiz.submittedAt} IS NULL`,
                 ),
             )
             .limit(1)
@@ -480,42 +483,52 @@ studynotesRouter.post('/:id/quiz', async (req: Request, res: Response) => {
             memoryHook: card.memoryHook,
         })
 
-        // 入库前清洗：剔除 AI 越界写入的「答题统计/错题回顾」等垃圾题
+        // 入库前清洗：剔除越界题与空题干，重排 index 为连续 1..N
         const sanitized = sanitizeQuizQuestions(questions)
 
         const now = new Date().toISOString()
-        let quizRow = (
-            await db
-                .insert(studynoteQuiz)
-                .values({
-                    studynoteId: id,
-                    questionsJson: JSON.stringify(sanitized),
-                    generatedAt: now,
-                })
-                .returning()
-        )[0]
+        let quizRow: typeof studyQuiz.$inferSelect | undefined
 
-        // 并发竞态下 insert 可能失败（如唯一约束冲突），回退复用已有未提交记录
-        if (!quizRow) {
+        // 并发竞态下 insert 可能因唯一约束冲突抛异常，捕获后回退复用已有未提交记录
+        try {
+            quizRow = (
+                await db
+                    .insert(studyQuiz)
+                    .values({
+                        studynoteId: id,
+                        questionsJson: JSON.stringify(sanitized),
+                        generatedAt: now,
+                    })
+                    .returning()
+            )[0]
+        } catch (insertError: unknown) {
+            const message =
+                insertError instanceof Error
+                    ? insertError.message
+                    : String(insertError)
+            console.warn('并发生成测验冲突，回退复用已有记录:', message)
+            // 回退取该卡片最新一条记录（不限已提交），与幂等查询行为一致，
+            // 避免并发时序极端情况下（首条已被提交）回退查询落空导致 500
             const fallback = await db
                 .select()
-                .from(studynoteQuiz)
-                .where(
-                    and(
-                        eq(studynoteQuiz.studynoteId, id),
-                        sql`${studynoteQuiz.submittedAt} IS NULL`,
-                    ),
-                )
-                .orderBy(desc(studynoteQuiz.id))
+                .from(studyQuiz)
+                .where(eq(studyQuiz.studynoteId, id))
+                .orderBy(desc(studyQuiz.id))
                 .limit(1)
             quizRow = fallback[0]
+        }
+
+        if (!quizRow) {
+            res.status(500).json({ error: '生成测验失败' })
+            return
         }
 
         res.json({ quiz: mapQuizRow(quizRow) })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error generating studynotes quiz:', message)
-        res.status(500).json({ error: message || '生成测验失败' })
+        console.error('Error generating studyNotes quiz:', message)
+        // 不向客户端暴露内部错误详情（可能含 SQL/表名），原始信息仅记日志
+        res.status(500).json({ error: '生成测验失败' })
     }
 })
 
@@ -541,11 +554,11 @@ studynotesRouter.patch(
 
             const existing = await db
                 .select()
-                .from(studynoteQuiz)
+                .from(studyQuiz)
                 .where(
                     and(
-                        eq(studynoteQuiz.id, quizId),
-                        eq(studynoteQuiz.studynoteId, id),
+                        eq(studyQuiz.id, quizId),
+                        eq(studyQuiz.studynoteId, id),
                     ),
                 )
                 .limit(1)
@@ -560,11 +573,11 @@ studynotesRouter.patch(
             }
 
             await db
-                .update(studynoteQuiz)
+                .update(studyQuiz)
                 .set({
                     answersJson: JSON.stringify(answers),
                 })
-                .where(eq(studynoteQuiz.id, quizId))
+                .where(eq(studyQuiz.id, quizId))
 
             res.json({ success: true })
         } catch (error: unknown) {
@@ -598,11 +611,11 @@ studynotesRouter.post(
 
             const existing = await db
                 .select()
-                .from(studynoteQuiz)
+                .from(studyQuiz)
                 .where(
                     and(
-                        eq(studynoteQuiz.id, quizId),
-                        eq(studynoteQuiz.studynoteId, id),
+                        eq(studyQuiz.id, quizId),
+                        eq(studyQuiz.studynoteId, id),
                     ),
                 )
                 .limit(1)
@@ -618,8 +631,8 @@ studynotesRouter.post(
 
             const card = await db
                 .select()
-                .from(studynotes)
-                .where(eq(studynotes.id, id))
+                .from(studyNotes)
+                .where(eq(studyNotes.id, id))
                 .limit(1)
             if (!card[0]) {
                 res.status(404).json({ error: '学习心得未找到' })
@@ -646,7 +659,7 @@ studynotesRouter.post(
 
             const now = new Date().toISOString()
             await db
-                .update(studynoteQuiz)
+                .update(studyQuiz)
                 .set({
                     answersJson: JSON.stringify(answers),
                     resultsJson: JSON.stringify(grade.results),
@@ -656,29 +669,30 @@ studynotesRouter.post(
                     suggestionsJson: JSON.stringify(grade.suggestions),
                     submittedAt: now,
                 })
-                .where(eq(studynoteQuiz.id, quizId))
+                .where(eq(studyQuiz.id, quizId))
 
             // 回写最新分数快照到卡片
             await db
-                .update(studynotes)
+                .update(studyNotes)
                 .set({
                     quizScore: grade.score,
                     updatedAt: now,
                 })
-                .where(eq(studynotes.id, id))
+                .where(eq(studyNotes.id, id))
 
             const updated = await db
                 .select()
-                .from(studynoteQuiz)
-                .where(eq(studynoteQuiz.id, quizId))
+                .from(studyQuiz)
+                .where(eq(studyQuiz.id, quizId))
                 .limit(1)
 
             res.json({ quiz: mapQuizRow(updated[0]) })
         } catch (error: unknown) {
             const message =
                 error instanceof Error ? error.message : String(error)
-            console.error('Error submitting studynotes quiz:', message)
-            res.status(500).json({ error: message || '提交测验失败' })
+            console.error('Error submitting studyNotes quiz:', message)
+            // 不向客户端暴露内部错误详情（可能含 SQL/表名），原始信息仅记日志
+            res.status(500).json({ error: '提交测验失败' })
         }
     },
 )
@@ -697,11 +711,11 @@ studynotesRouter.post(
 
             const existing = await db
                 .select()
-                .from(studynoteQuiz)
+                .from(studyQuiz)
                 .where(
                     and(
-                        eq(studynoteQuiz.id, quizId),
-                        eq(studynoteQuiz.studynoteId, id),
+                        eq(studyQuiz.id, quizId),
+                        eq(studyQuiz.studynoteId, id),
                     ),
                 )
                 .limit(1)
@@ -727,11 +741,16 @@ studynotesRouter.post(
                 res.status(400).json({ error: '该记录无题目，无法批改' })
                 return
             }
+            // 库内答案损坏为空数组时，批改会下标错位，直接拒绝而非静默批改
+            if (answers.length === 0) {
+                res.status(400).json({ error: '该记录无答题内容，无法批改' })
+                return
+            }
 
             const card = await db
                 .select()
-                .from(studynotes)
-                .where(eq(studynotes.id, id))
+                .from(studyNotes)
+                .where(eq(studyNotes.id, id))
                 .limit(1)
             if (!card[0]) {
                 res.status(404).json({ error: '学习心得未找到' })
@@ -753,7 +772,7 @@ studynotesRouter.post(
 
             const now = new Date().toISOString()
             await db
-                .update(studynoteQuiz)
+                .update(studyQuiz)
                 .set({
                     resultsJson: JSON.stringify(grade.results),
                     score: grade.score,
@@ -761,29 +780,30 @@ studynotesRouter.post(
                     comment: grade.comment,
                     suggestionsJson: JSON.stringify(grade.suggestions),
                 })
-                .where(eq(studynoteQuiz.id, quizId))
+                .where(eq(studyQuiz.id, quizId))
 
             // 回写最新分数快照到卡片
             await db
-                .update(studynotes)
+                .update(studyNotes)
                 .set({
                     quizScore: grade.score,
                     updatedAt: now,
                 })
-                .where(eq(studynotes.id, id))
+                .where(eq(studyNotes.id, id))
 
             const updated = await db
                 .select()
-                .from(studynoteQuiz)
-                .where(eq(studynoteQuiz.id, quizId))
+                .from(studyQuiz)
+                .where(eq(studyQuiz.id, quizId))
                 .limit(1)
 
             res.json({ quiz: mapQuizRow(updated[0]) })
         } catch (error: unknown) {
             const message =
                 error instanceof Error ? error.message : String(error)
-            console.error('Error grading old studynotes quiz:', message)
-            res.status(500).json({ error: message || '批改测验失败' })
+            console.error('Error grading old studyNotes quiz:', message)
+            // 不向客户端暴露内部错误详情（可能含 SQL/表名），原始信息仅记日志
+            res.status(500).json({ error: '批改测验失败' })
         }
     },
 )
@@ -801,9 +821,9 @@ studynotesRouter.get(
 
             const rows = await db
                 .select()
-                .from(studynoteQuiz)
-                .where(eq(studynoteQuiz.studynoteId, id))
-                .orderBy(desc(studynoteQuiz.id))
+                .from(studyQuiz)
+                .where(eq(studyQuiz.studynoteId, id))
+                .orderBy(desc(studyQuiz.id))
                 .limit(1)
 
             if (!rows[0]) {

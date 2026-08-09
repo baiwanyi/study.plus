@@ -1,5 +1,7 @@
 import {
+    index,
     integer,
+    real,
     sqliteTable,
     text,
     uniqueIndex,
@@ -203,19 +205,27 @@ export const taskConversations = sqliteTable('task_conversations', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const taskMessages = sqliteTable('task_messages', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    conversationId: integer('conversation_id')
-        .notNull()
-        .references(() => taskConversations.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
-    content: text('content').notNull(),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-})
+export const taskMessages = sqliteTable(
+    'task_messages',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        conversationId: integer('conversation_id')
+            .notNull()
+            .references(() => taskConversations.id, { onDelete: 'cascade' }),
+        role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+        content: text('content').notNull(),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        conversationIdIdx: index('task_messages_conversation_id_idx').on(
+            table.conversationId,
+        ),
+    }),
+)
 
-export const studynotes = sqliteTable('studynotes', {
+export const studyNotes = sqliteTable('study_notes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     subject: text('subject').notNull(),
     topic: text('topic').notNull().default(''),
@@ -225,17 +235,20 @@ export const studynotes = sqliteTable('studynotes', {
     memoryHook: text('memory_hook'),
     evaluation: text('evaluation'),
     evaluatedAt: text('evaluated_at'),
-    quizScore: integer('quiz_score'),
-    lessonId: integer('lesson_id').references(() => studyLessons.id, {
-        onDelete: 'cascade',
-    }),
+    quizScore: real('quiz_score'),
+    lessonId: integer('lesson_id')
+        .references(() => studyLessons.id, {
+            onDelete: 'cascade',
+        }),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
     updatedAt: text('updated_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
-})
+}, (table) => ({
+    lessonIdIdx: index('study_notes_lesson_id_idx').on(table.lessonId),
+}))
 
 export const studyLessons = sqliteTable(
     'study_lessons',
@@ -276,15 +289,16 @@ export const studyPreviews = sqliteTable('study_previews', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const studynoteQuiz = sqliteTable('studynote_quiz', {
+export const studyQuiz = sqliteTable('study_quiz', {
     id: integer('id').primaryKey({ autoIncrement: true }),
     studynoteId: integer('studynote_id')
         .notNull()
-        .references(() => studynotes.id, { onDelete: 'cascade' }),
+        .unique()
+        .references(() => studyNotes.id, { onDelete: 'cascade' }),
     questionsJson: text('questions_json').notNull(),
     answersJson: text('answers_json'),
     resultsJson: text('results_json'),
-    score: integer('score'),
+    score: real('score'),
     correctCount: integer('correct_count'),
     comment: text('comment').notNull().default(''),
     suggestionsJson: text('suggestions_json').notNull().default('[]'),
@@ -295,14 +309,22 @@ export const studynoteQuiz = sqliteTable('studynote_quiz', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const weeklyMessages = sqliteTable('weekly_messages', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    conversationId: integer('conversation_id')
-        .notNull()
-        .references(() => weeklyConversations.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
-    content: text('content').notNull(),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-})
+export const weeklyMessages = sqliteTable(
+    'weekly_messages',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        conversationId: integer('conversation_id')
+            .notNull()
+            .references(() => weeklyConversations.id, { onDelete: 'cascade' }),
+        role: text('role', { enum: ['user', 'assistant'] }).notNull(),
+        content: text('content').notNull(),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        conversationIdIdx: index('weekly_messages_conversation_id_idx').on(
+            table.conversationId,
+        ),
+    }),
+)

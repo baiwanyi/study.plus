@@ -2,12 +2,15 @@
 
 export const BASE = '/api'
 
+const API_KEY = import.meta.env.VITE_API_KEY as string | undefined
+
 export async function request<T>(url: string, options?: RequestInit): Promise<T> {
     const { headers: customHeaders, ...restOptions } = options ?? {}
     const res = await fetch(`${BASE}${url}`, {
         ...restOptions,
         headers: {
             'Content-Type': 'application/json',
+            ...(API_KEY ? { 'X-API-Key': API_KEY } : {}),
             ...customHeaders,
         },
     })

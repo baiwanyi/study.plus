@@ -732,8 +732,29 @@ async function migrate(): Promise<void> {
     )
   `)
 
+    // ===== 表重命名：studynotes → study_notes、studynote_quiz → study_quiz =====
+    // 兼容旧库：仅当旧表存在且目标表不存在时执行 RENAME（SQLite 会自动更新引用旧表的外键）
+    const tableExists = async (name: string): Promise<boolean> => {
+        const result = await client.execute({
+            sql: "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+            args: [name],
+        })
+        return result.rows.length > 0
+    }
+    if ((await tableExists('studynotes')) && !(await tableExists('study_notes'))) {
+        await client.execute('ALTER TABLE studynotes RENAME TO study_notes')
+        console.log('Renamed studynotes to study_notes.')
+    }
+    if (
+        (await tableExists('studynote_quiz')) &&
+        !(await tableExists('study_quiz'))
+    ) {
+        await client.execute('ALTER TABLE studynote_quiz RENAME TO study_quiz')
+        console.log('Renamed studynote_quiz to study_quiz.')
+    }
+
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS studynotes (
+    CREATE TABLE IF NOT EXISTS study_notes (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       subject TEXT NOT NULL,
       topic TEXT NOT NULL DEFAULT '',
@@ -743,21 +764,21 @@ async function migrate(): Promise<void> {
       memory_hook TEXT,
       evaluation TEXT,
       evaluated_at TEXT,
-      quiz_score INTEGER,
+      quiz_score REAL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-    console.log('Created studynotes table.')
+    console.log('Created study_notes table.')
 
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS studynote_quiz (
+    CREATE TABLE IF NOT EXISTS study_quiz (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      studynote_id INTEGER NOT NULL REFERENCES studynotes(id) ON DELETE CASCADE,
+      studynote_id INTEGER NOT NULL REFERENCES study_notes(id) ON DELETE CASCADE,
       questions_json TEXT NOT NULL,
       answers_json TEXT,
       results_json TEXT,
-      score INTEGER,
+      score REAL,
       correct_count INTEGER,
       comment TEXT NOT NULL DEFAULT '',
       suggestions_json TEXT NOT NULL DEFAULT '[]',
@@ -766,7 +787,17 @@ async function migrate(): Promise<void> {
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-    console.log('Created studynote_quiz table.')
+    console.log('Created study_quiz table.')
+
+    // 一条笔记仅对应一套测验：为 studynote_id 补唯一索引（幂等）
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS study_quiz_studynote_id_unique ON study_quiz(studynote_id)',
+        )
+        console.log('Created unique index on study_quiz.studynote_id.')
+    } catch (e) {
+        console.warn('创建 study_quiz 唯一索引跳过:', (e as Error).message)
+    }
 
     // ===== 课程维度学习中心：study_lessons / study_previews =====
     await client.execute(`
@@ -805,14 +836,142 @@ async function migrate(): Promise<void> {
   `)
     console.log('Created study_previews table.')
 
-    // studynotes 表增加 lesson_id（幂等：列已存在时 ALTER 抛错跳过）
+    // study_notes 表增加 lesson_id（幂等：列已存在时 ALTER 抛错跳过）
     try {
         await client.execute(
-            'ALTER TABLE studynotes ADD COLUMN lesson_id INTEGER REFERENCES study_lessons(id) ON DELETE CASCADE',
+            'ALTER TABLE study_notes ADD COLUMN lesson_id INTEGER REFERENCES study_lessons(id) ON DELETE CASCADE',
         )
-        console.log('Added lesson_id column to studynotes table.')
+        console.log('Added lesson_id column to study_notes table.')
     } catch (e) {
         console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
+    // 按课程筛笔记的高频查询：为 lesson_id 补索引（幂等）
+    try {
+        await client.execute(
+            'CREATE INDEX IF NOT EXISTS study_notes_lesson_id_idx ON study_notes(lesson_id)',
+        )
+        console.log('Created index on study_notes.lesson_id.')
+    } catch (e) {
+        console.warn('创建 study_notes 索引跳过:', (e as Error).message)
+    }
+
+    // 按会话拉取消息的高频查询：为消息表 conversation_id 补索引（幂等）
+    try {
+        await client.execute(
+            'CREATE INDEX IF NOT EXISTS task_messages_conversation_id_idx ON task_messages(conversation_id)',
+        )
+        console.log('Created index on task_messages.conversation_id.')
+    } catch (e) {
+        console.warn('创建 task_messages 索引跳过:', (e as Error).message)
+    }
+    try {
+        await client.execute(
+            'CREATE INDEX IF NOT EXISTS weekly_messages_conversation_id_idx ON weekly_messages(conversation_id)',
+        )
+        console.log('Created index on weekly_messages.conversation_id.')
+    } catch (e) {
+        console.warn('创建 weekly_messages 索引跳过:', (e as Error).message)
+    }
+
+    // ===== 成绩精度修复：score/quiz_score 列由 INTEGER 改为 REAL，并重算历史成绩 =====
+    // SQLite 的 INTEGER 列亲和性会把插入的浮点分取整，导致 99.5 存成 100。
+    // 通过 rename → add(REAL) → 回填 → drop 旧列 的方式改变列亲和性（幂等）。
+    const colIsInteger = async (
+        table: string,
+        column: string,
+    ): Promise<boolean> => {
+        const info = await client.execute({
+            sql: `PRAGMA table_info(${table})`,
+            args: [],
+        })
+        const col = info.rows.find(
+            (r) => (r as unknown as { name: string }).name === column,
+        )
+        return !!col && (col as unknown as { type: string }).type === 'INTEGER'
+    }
+
+    const changeColumnToReal = async (
+        table: string,
+        column: string,
+    ): Promise<void> => {
+        if (!(await colIsInteger(table, column))) {
+            console.log(`列 ${table}.${column} 已为 REAL，跳过变更。`)
+            return
+        }
+        console.log(`将 ${table}.${column} 列类型由 INTEGER 改为 REAL...`)
+        const tmp = `${column}_old`
+        await client.execute({
+            sql: `ALTER TABLE ${table} RENAME COLUMN ${column} TO ${tmp}`,
+            args: [],
+        })
+        await client.execute({
+            sql: `ALTER TABLE ${table} ADD COLUMN ${column} REAL`,
+            args: [],
+        })
+        await client.execute({
+            sql: `UPDATE ${table} SET ${column} = ${tmp}`,
+            args: [],
+        })
+        await client.execute({
+            sql: `ALTER TABLE ${table} DROP COLUMN ${tmp}`,
+            args: [],
+        })
+        console.log(`列 ${table}.${column} 已变更为 REAL。`)
+    }
+
+    await changeColumnToReal('study_quiz', 'score')
+    await changeColumnToReal('study_notes', 'quiz_score')
+
+    // 基于已存的 results_json 重新计算百分制成绩（保留一位小数），修正被取整的历史数据
+    try {
+        const quizzes = await client.execute(
+            'SELECT id, studynote_id, results_json, score FROM study_quiz',
+        )
+        let recalculated = 0
+        for (const row of quizzes.rows) {
+            const q = row as unknown as {
+                id: number
+                studynote_id: number
+                results_json: string | null
+                score: number | null
+            }
+            let newScore: number | null = null
+            if (q.results_json) {
+                try {
+                    const results = JSON.parse(q.results_json) as Array<{
+                        score?: number
+                    }>
+                    if (Array.isArray(results) && results.length > 0) {
+                        const totalScore = results.reduce(
+                            (sum, r) => sum + (r.score || 0),
+                            0,
+                        )
+                        newScore =
+                            Math.round(
+                                (totalScore / (results.length * 10)) *
+                                    100 *
+                                    10,
+                            ) / 10
+                    }
+                } catch {
+                    // results_json 解析失败时沿用原 score
+                }
+            }
+            if (newScore === null) newScore = q.score
+            await client.execute({
+                sql: 'UPDATE study_quiz SET score = ? WHERE id = ?',
+                args: [newScore, q.id],
+            })
+            await client.execute({
+                sql: 'UPDATE study_notes SET quiz_score = ? WHERE id = ?',
+                args: [newScore, q.studynote_id],
+            })
+            recalculated++
+        }
+        console.log(`已重新计算 ${recalculated} 条历史测验成绩。`)
+    } catch (e) {
+        console.warn('历史成绩重算跳过:', (e as Error).message)
     }
 
     console.log('Migration completed successfully!')

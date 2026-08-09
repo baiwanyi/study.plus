@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
+import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { useStudynotesQuiz } from './hooks/useStudynotesQuiz'
 import type {
@@ -9,6 +10,7 @@ import type {
     StudynotesQuizQuestion,
     StudynotesQuizResult,
 } from '@shared/types'
+import type { FC } from 'react'
 
 type QuizStatus =
     | 'idle'
@@ -18,14 +20,22 @@ type QuizStatus =
     | 'graded'
     | 'error'
 
-interface StudynotesQuizPanelProps {
+interface QuizModalEditorProps {
+    open: boolean
     cardId: number | null
     canQuiz: boolean
+    lessonTopic: string
+    onClose: () => void
+    onSaved?: () => void
 }
 
-export const StudynotesQuizPanel: React.FC<StudynotesQuizPanelProps> = ({
+export const QuizModalEditor: FC<QuizModalEditorProps> = ({
+    open,
     cardId,
     canQuiz,
+    lessonTopic,
+    onClose,
+    onSaved,
 }) => {
     const { showSnackbar } = useSnackbar()
     const {
@@ -43,19 +53,69 @@ export const StudynotesQuizPanel: React.FC<StudynotesQuizPanelProps> = ({
         showSnackbar('答题内容已自动保存', 'success')
     })
 
-    if (!canQuiz) {
-        return <LockedState />
+    // 仅「已提交且尚未批改」时，将批改动作放到弹窗底部确认栏
+    const showGradeConfirm = isSubmitted && quiz?.results == null
+    const handleGrade = () => void grade()
+
+    const handleClose = () => {
+        onSaved?.()
+        onClose()
     }
 
-    if (isEmpty) {
-        return (
-            <EmptyState
-                isGenerating={status === 'generating'}
-                onGenerate={() => void generate()}
-            />
-        )
-    }
+    return (
+        <Modal
+            open={open}
+            onCancel={handleClose}
+            title={lessonTopic ? `专属测验 · ${lessonTopic}` : '专属测验'}
+            size="full"
+            isScroll={true}
+            footer={showGradeConfirm ? undefined : false}
+            onConfirm={showGradeConfirm ? handleGrade : undefined}
+            confirmLabel="批改"
+            isLoading={status === 'grading'}
+            isDisabled={status === 'grading'}>
+            {!canQuiz ? (
+                <LockedState />
+            ) : isEmpty ? (
+                <EmptyState
+                    isGenerating={status === 'generating'}
+                    onGenerate={() => void generate()}
+                />
+            ) : (
+                <QuizBody
+                    status={status}
+                    quiz={quiz}
+                    answers={answers}
+                    errorMsg={errorMsg}
+                    isSubmitted={isSubmitted}
+                    setAnswer={setAnswer}
+                    generate={generate}
+                    submit={submit}
+                />
+            )}
+        </Modal>
+    )
+}
 
+function QuizBody({
+    status,
+    quiz,
+    answers,
+    errorMsg,
+    isSubmitted,
+    setAnswer,
+    generate,
+    submit,
+}: {
+    status: QuizStatus
+    quiz: StudynotesQuiz | null
+    answers: string[]
+    errorMsg: string | null
+    isSubmitted: boolean
+    setAnswer: (index: number, value: string) => void
+    generate: () => Promise<void> | void
+    submit: () => Promise<void> | void
+}) {
     const results = quiz?.results ?? null
     const hasResults = results !== null
     // 预构建 index -> result 映射，避免题目列表内 O(n²) 查找
@@ -73,14 +133,13 @@ export const StudynotesQuizPanel: React.FC<StudynotesQuizPanelProps> = ({
     const isReadOnly = isSubmitted || status === 'grading'
 
     return (
-        <div className="flex h-full flex-col">
+        <div className="flex flex-1 flex-col">
             <QuizHeader
                 isSubmitted={isSubmitted}
                 hasResults={hasResults}
                 quiz={quiz}
                 status={status}
                 onGenerate={() => void generate()}
-                onGrade={() => void grade()}
                 onSubmit={() => void submit()}
             />
 
@@ -154,7 +213,6 @@ function QuizHeader({
     quiz,
     status,
     onGenerate,
-    onGrade,
     onSubmit,
 }: {
     isSubmitted: boolean
@@ -162,12 +220,11 @@ function QuizHeader({
     quiz: StudynotesQuiz | null
     status: QuizStatus
     onGenerate: () => void
-    onGrade: () => void
     onSubmit: () => void
 }) {
     return (
-        <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 py-3">
-            <div className="min-w-0">
+        <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 pb-3">
+            <div className="min-w-0 space-y-1">
                 <div className="truncate text-sm font-semibold text-gray-800">
                     {isSubmitted && hasResults ? '测验结果' : '专属测验'}
                 </div>
@@ -187,27 +244,21 @@ function QuizHeader({
                                     <strong className="text-green-600">
                                         {quiz.correctCount}
                                     </strong>{' '}
-                                    / {quiz.questions.length}
+                                    / {quiz?.questions.length ?? 10}
                                 </span>
                                 <span className="h-4 w-px bg-gray-300" />
                                 <ScoreBadge score={quiz.score} />
                             </div>
                         ) : (
-                            <button
-                                type="button"
-                                disabled={status === 'grading'}
-                                onClick={onGrade}
-                                className="btn btn-primary">
-                                {status === 'grading' ? (
-                                    <Loader2 className="size-4 animate-spin" />
-                                ) : (
-                                    '批改'
-                                )}
-                            </button>
+                            <span className="text-xs text-gray-500">
+                                已提交，点击下方「批改」查看结果
+                            </span>
                         )}
                         <button
                             type="button"
-                            disabled={status === 'generating'}
+                            disabled={
+                                status === 'generating' || status === 'grading'
+                            }
                             onClick={onGenerate}
                             className="btn btn-outline">
                             重新测试
@@ -250,7 +301,7 @@ function ResultFeedback({
         return null
     }
     return (
-        <div className="space-y-3 border-b bg-white border-gray-200 p-3 text-sm">
+        <div className="space-y-3 border-b border-gray-200 bg-white p-3 text-sm">
             {status === 'error' && errorMsg && (
                 <div className="rounded-md border border-red-200 bg-red-50 p-3">
                     <span className="text-xs text-red-600">{errorMsg}</span>
@@ -334,7 +385,7 @@ function QuizQuestionItem({
                                 <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
                             ))}
 
-                        <p>
+                        <span>
                             <span>答：</span>
                             <span
                                 className={
@@ -347,7 +398,7 @@ function QuizQuestionItem({
                                     （{formatScore(result.score)}分）
                                 </span>
                             )}
-                        </p>
+                        </span>
                     </p>
                     {result && (
                         <div className="space-y-2">
@@ -371,7 +422,7 @@ function QuizQuestionItem({
                     placeholder="在此作答（可留空，留空判 0 分）"
                     rows={2}
                     maxLength={2000}
-                    className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
+                    className="form-textarea w-full min-h-14 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-y-auto"
                 />
             )}
         </div>

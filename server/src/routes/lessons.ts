@@ -1,9 +1,14 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, desc, eq, inArray } from 'drizzle-orm'
 import { Router } from 'express'
 import rateLimit from 'express-rate-limit'
 import { studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
-import { studyLessons, studyPreviews, studynotes, studynoteQuiz } from '../db/schema'
+import {
+    studyLessons,
+    studyPreviews,
+    studyNotes,
+    studyQuiz,
+} from '../db/schema'
 import { analyzePreview } from '../services/ai'
 import type { SQL } from 'drizzle-orm'
 import type { Request, Response } from 'express'
@@ -24,7 +29,10 @@ function safeJsonParse<T>(raw: string | null, fallback: T | null): T | null {
     try {
         return JSON.parse(raw) as T
     } catch (error) {
-        console.warn('预习记录 JSON 字段解析失败，已回退默认值:', (error as Error).message)
+        console.warn(
+            '预习记录 JSON 字段解析失败，已回退默认值:',
+            (error as Error).message,
+        )
         return fallback
     }
 }
@@ -60,20 +68,25 @@ lessonsRouter.get('/', async (req: Request, res: Response) => {
             .where(filters.length > 0 ? and(...filters) : undefined)
             .orderBy(desc(studyLessons.createdAt))
 
-        // 聚合预习状态（一对多→一对一）
-        const previews = await db.select().from(studyPreviews)
+        // 聚合预习状态（一对多→一对一）：仅查当前课程集合，避免全表扫描
+        const lessonIds = lessons.map((l) => l.id)
+        const previews = await db
+            .select()
+            .from(studyPreviews)
+            .where(inArray(studyPreviews.lessonId, lessonIds))
         const previewMap = new Map(previews.map((p) => [p.lessonId, p]))
 
-        // 聚合心得状态（一对一：同一课程最多一条已关联心得）
+        // 聚合心得状态（一对一：同一课程最多一条已关联心得）：
+        // 仅查当前课程集合，避免全表加载所有心得
         const notes = await db
             .select({
-                id: studynotes.id,
-                lessonId: studynotes.lessonId,
-                evaluation: studynotes.evaluation,
-                quizScore: studynotes.quizScore,
+                id: studyNotes.id,
+                lessonId: studyNotes.lessonId,
+                evaluation: studyNotes.evaluation,
+                quizScore: studyNotes.quizScore,
             })
-            .from(studynotes)
-            .where(sql`${studynotes.lessonId} IS NOT NULL`)
+            .from(studyNotes)
+            .where(inArray(studyNotes.lessonId, lessonIds))
         const noteMap = new Map(notes.map((n) => [n.lessonId, n]))
 
         const result = lessons.map((lesson) => {
@@ -86,8 +99,16 @@ lessonsRouter.get('/', async (req: Request, res: Response) => {
                     preview.aiAnalysis,
                     null,
                 )
-                if (parsed && typeof parsed.completenessScore === 'number') {
-                    previewScore = parsed.completenessScore
+                // 兼容 AI 返回字符串数字（如 '85'）或 number，统一归一为有限数字
+                const raw = parsed?.completenessScore
+                const num =
+                    typeof raw === 'number'
+                        ? raw
+                        : typeof raw === 'string'
+                          ? Number(raw)
+                          : NaN
+                if (parsed && Number.isFinite(num)) {
+                    previewScore = num
                 }
             }
 
@@ -97,18 +118,28 @@ lessonsRouter.get('/', async (req: Request, res: Response) => {
                     note.evaluation,
                     null,
                 )
-                if (parsed && typeof parsed.completenessScore === 'number') {
-                    studynoteScore = parsed.completenessScore
+                const raw = parsed?.completenessScore
+                const num =
+                    typeof raw === 'number'
+                        ? raw
+                        : typeof raw === 'string'
+                          ? Number(raw)
+                          : NaN
+                if (parsed && Number.isFinite(num)) {
+                    studynoteScore = num
                 }
             }
 
             return {
                 ...lesson,
+                // 用 != null && !== '' 显式判断，避免字段为数字 0 或空串被 || 误判为未完成
                 previewDone: Boolean(
                     preview &&
-                        (preview.content ||
-                            preview.oldKnowledge ||
-                            preview.questions),
+                    ((preview.content != null && preview.content !== '') ||
+                        (preview.oldKnowledge != null &&
+                            preview.oldKnowledge !== '') ||
+                        (preview.questions != null &&
+                            preview.questions !== '')),
                 ),
                 previewAnalyzed: Boolean(preview?.aiAnalysis),
                 previewScore,
@@ -146,9 +177,15 @@ lessonsRouter.post('/', async (req: Request, res: Response) => {
             return
         }
 
+        const now = new Date().toISOString()
         const rows = await db
             .insert(studyLessons)
-            .values({ subject, topic: topic.trim() })
+            .values({
+                subject,
+                topic: topic.trim(),
+                createdAt: now,
+                updatedAt: now,
+            })
             .returning()
 
         res.json(rows[0])
@@ -229,17 +266,15 @@ lessonsRouter.delete('/:id', async (req: Request, res: Response) => {
                 .delete(studyPreviews)
                 .where(eq(studyPreviews.lessonId, lessonId))
             const notes = await tx
-                .select({ id: studynotes.id })
-                .from(studynotes)
-                .where(eq(studynotes.lessonId, lessonId))
+                .select({ id: studyNotes.id })
+                .from(studyNotes)
+                .where(eq(studyNotes.lessonId, lessonId))
             for (const note of notes) {
                 await tx
-                    .delete(studynoteQuiz)
-                    .where(eq(studynoteQuiz.studynoteId, note.id))
+                    .delete(studyQuiz)
+                    .where(eq(studyQuiz.studynoteId, note.id))
             }
-            await tx
-                .delete(studynotes)
-                .where(eq(studynotes.lessonId, lessonId))
+            await tx.delete(studyNotes).where(eq(studyNotes.lessonId, lessonId))
             return tx
                 .delete(studyLessons)
                 .where(eq(studyLessons.id, lessonId))
@@ -311,6 +346,16 @@ lessonsRouter.post('/:id/preview', async (req: Request, res: Response) => {
             return
         }
 
+        // 三个字段全部未提供视为空请求，避免写入一条全空预习记录导致 previewDone 误判
+        if (
+            content === undefined &&
+            oldKnowledge === undefined &&
+            questions === undefined
+        ) {
+            res.status(400).json({ error: '至少需要提供一个预习字段' })
+            return
+        }
+
         const lesson = await db
             .select()
             .from(studyLessons)
@@ -334,21 +379,24 @@ lessonsRouter.post('/:id/preview', async (req: Request, res: Response) => {
                 (content !== undefined && content !== existing[0].content) ||
                 (oldKnowledge !== undefined &&
                     oldKnowledge !== existing[0].oldKnowledge) ||
-                (questions !== undefined &&
-                    questions !== existing[0].questions)
+                (questions !== undefined && questions !== existing[0].questions)
             const rows = await db
                 .update(studyPreviews)
                 .set({
                     ...(content !== undefined && { content }),
                     ...(oldKnowledge !== undefined && { oldKnowledge }),
                     ...(questions !== undefined && { questions }),
-                    ...(contentChanged && { aiAnalysis: null, aiAnalyzedAt: null }),
+                    ...(contentChanged && {
+                        aiAnalysis: null,
+                        aiAnalyzedAt: null,
+                    }),
                     updatedAt: now,
                 })
                 .where(eq(studyPreviews.id, existing[0].id))
                 .returning()
             res.json(rows[0])
         } else {
+            const now = new Date().toISOString()
             const rows = await db
                 .insert(studyPreviews)
                 .values({
@@ -356,6 +404,8 @@ lessonsRouter.post('/:id/preview', async (req: Request, res: Response) => {
                     content: content ?? '',
                     oldKnowledge: oldKnowledge ?? '',
                     questions: questions ?? '',
+                    createdAt: now,
+                    updatedAt: now,
                 })
                 .returning()
             res.json(rows[0])
@@ -407,10 +457,14 @@ lessonsRouter.post(
                       null,
                   )
                 : null
-            if (
+            // 复用判定：completenessScore 必须为有限数字（排除 NaN），且结构为纯对象，避免脏数据原样回传
+            const scoreOk =
                 existingAnalysis &&
-                typeof existingAnalysis.completenessScore === 'number'
-            ) {
+                typeof existingAnalysis === 'object' &&
+                !Array.isArray(existingAnalysis) &&
+                typeof existingAnalysis.completenessScore === 'number' &&
+                Number.isFinite(existingAnalysis.completenessScore)
+            if (scoreOk) {
                 res.json({
                     analysis: existingAnalysis,
                     analyzedAt: preview.aiAnalyzedAt,
@@ -437,10 +491,12 @@ lessonsRouter.post(
             }
 
             const now = new Date().toISOString()
+            // 规范化存储：写入 JSON.stringify(analysis) 而非原始字符串，
+            // 避免 AI 返回中可能的 BOM/尾随空白被原样落库造成后续解析脏数据
             await db
                 .update(studyPreviews)
                 .set({
-                    aiAnalysis: analysisRaw,
+                    aiAnalysis: JSON.stringify(analysis),
                     aiAnalyzedAt: now,
                     updatedAt: now,
                 })
@@ -480,8 +536,8 @@ lessonsRouter.get('/:id/studynote', async (req: Request, res: Response) => {
 
         const rows = await db
             .select()
-            .from(studynotes)
-            .where(eq(studynotes.lessonId, lessonId))
+            .from(studyNotes)
+            .where(eq(studyNotes.lessonId, lessonId))
             .limit(1)
 
         res.json({ studynote: rows[0] ?? null })

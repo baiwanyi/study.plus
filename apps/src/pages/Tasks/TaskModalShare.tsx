@@ -9,6 +9,7 @@ import { defaultGradeColors } from '@apps/utils/client'
 import { Modal } from '@components/Modal'
 import '@apps/styles/markdown-viewer.css'
 import type { Task, TaskGrade, AIScoreResult } from '@shared/types'
+import { sanitizeSvg } from '@apps/utils/sanitize'
 
 // ===== Mermaid rendering for share modal =====
 mermaid.initialize({
@@ -18,23 +19,6 @@ mermaid.initialize({
 })
 
 let mermaidRenderCounter = 0
-
-function sanitizeSvg(svg: string): string {
-    return svg
-        .replace(/\s+on\w+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
-        .replace(
-            /<(script|iframe|embed|object|form|input|textarea|button|select)[\s\S]*?<\/\1>/gi,
-            '',
-        )
-        .replace(
-            /<(script|iframe|embed|object|form|input|textarea|button|select)\b[^>]*\/?>/gi,
-            '',
-        )
-        .replace(
-            /((?:href|src|xlink:href)\s*=\s*)(?:"(?:javascript|data):[^"]*"|'(?:javascript|data):[^']*')/gi,
-            '$1""',
-        )
-}
 
 const MermaidCodeBlock = memo(function MermaidCodeBlock({
     code,
