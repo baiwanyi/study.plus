@@ -45,7 +45,7 @@ export interface StudynotesQuizResult {
 
 export interface StudynotesQuiz {
     id: number
-    studynoteId: number
+    studyId: number
     questions: StudynotesQuizQuestion[]
     answers: string[] | null
     results: StudynotesQuizResult[] | null

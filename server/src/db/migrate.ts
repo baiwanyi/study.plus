@@ -891,6 +891,19 @@ export async function migrate(): Promise<void> {
         return !!col && (col as unknown as { type: string }).type === 'INTEGER'
     }
 
+    const colExists = async (
+        table: string,
+        column: string,
+    ): Promise<boolean> => {
+        const info = await client.execute({
+            sql: `PRAGMA table_info(${table})`,
+            args: [],
+        })
+        return info.rows.some(
+            (r) => (r as unknown as { name: string }).name === column,
+        )
+    }
+
     const changeColumnToReal = async (
         table: string,
         column: string,
@@ -926,13 +939,13 @@ export async function migrate(): Promise<void> {
     // 基于已存的 results_json 重新计算百分制成绩（保留一位小数），修正被取整的历史数据
     try {
         const quizzes = await client.execute(
-            'SELECT id, studynote_id, results_json, score FROM study_quiz',
+            'SELECT id, study_id, results_json, score FROM study_quiz',
         )
         let recalculated = 0
         for (const row of quizzes.rows) {
             const q = row as unknown as {
                 id: number
-                studynote_id: number
+                study_id: number
                 results_json: string | null
                 score: number | null
             }
@@ -965,13 +978,97 @@ export async function migrate(): Promise<void> {
             })
             await client.execute({
                 sql: 'UPDATE study_notes SET quiz_score = ? WHERE id = ?',
-                args: [newScore, q.studynote_id],
+                args: [newScore, q.study_id],
             })
             recalculated++
         }
         console.log(`已重新计算 ${recalculated} 条历史测验成绩。`)
     } catch (e) {
         console.warn('历史成绩重算跳过:', (e as Error).message)
+    }
+
+    // ===== 模型去冗余与关联重构 =====
+    // 1) study_notes 去掉冗余的 subject/topic 列（权威来源为 study_lessons）
+    // 2) study_quiz.studynote_id 改为 study_id，直接关联 study_lessons.id
+    // 采用重建表方式，确保外键指向正确且数据经 notes.lesson_id 完整迁移。
+
+    // 1) study_notes 去冗余列（libSQL 支持 DROP COLUMN，幂等）
+    const notesHasSubject = await colExists('study_notes', 'subject')
+    if (notesHasSubject) {
+        await client.execute('ALTER TABLE study_notes DROP COLUMN subject')
+        console.log('Dropped study_notes.subject.')
+    }
+    const notesHasTopic = await colExists('study_notes', 'topic')
+    if (notesHasTopic) {
+        await client.execute('ALTER TABLE study_notes DROP COLUMN topic')
+        console.log('Dropped study_notes.topic.')
+    }
+
+    // 2) study_quiz 重建为 study_id 关联 study_lessons
+    const quizHasOldCol = await colExists('study_quiz', 'studynote_id')
+    if (quizHasOldCol) {
+        // 备份旧表
+        await client.execute(
+            'ALTER TABLE study_quiz RENAME TO study_quiz_old',
+        )
+        // 新建结构：study_id 关联 study_lessons
+        await client.execute(`
+            CREATE TABLE study_quiz (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_id INTEGER NOT NULL UNIQUE REFERENCES study_lessons(id) ON DELETE CASCADE,
+                questions_json TEXT NOT NULL,
+                answers_json TEXT,
+                results_json TEXT,
+                score REAL,
+                correct_count INTEGER,
+                comment TEXT NOT NULL DEFAULT '',
+                suggestions_json TEXT NOT NULL DEFAULT '[]',
+                generated_at TEXT NOT NULL,
+                submitted_at TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        `)
+        // 数据回填：study_id = lessons.id，经 notes.lesson_id 关联
+        await client.execute(`
+            INSERT INTO study_quiz (
+                id, study_id, questions_json, answers_json, results_json,
+                score, correct_count, comment, suggestions_json,
+                generated_at, submitted_at, created_at
+            )
+            SELECT
+                q.id,
+                l.id AS study_id,
+                q.questions_json, q.answers_json, q.results_json,
+                q.score, q.correct_count, q.comment, q.suggestions_json,
+                q.generated_at, q.submitted_at, q.created_at
+            FROM study_quiz_old q
+            JOIN study_notes n ON n.id = q.studynote_id
+            JOIN study_lessons l ON l.id = n.lesson_id
+        `)
+        // 重置自增序列
+        const maxId = await client.execute(
+            'SELECT MAX(id) as max_id FROM study_quiz',
+        )
+        const nextId = Number(maxId.rows[0]?.max_id ?? 0) + 1
+        await client.execute({
+            sql: 'DELETE FROM sqlite_sequence WHERE name = ?',
+            args: ['study_quiz'],
+        })
+        await client.execute({
+            sql: 'INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)',
+            args: ['study_quiz', nextId - 1],
+        })
+        await client.execute('DROP TABLE study_quiz_old')
+        console.log('Rebuilt study_quiz with study_id -> study_lessons.')
+    } else {
+        // 首次建表或已迁移：确保新结构唯一索引存在（幂等）
+        try {
+            await client.execute(
+                'CREATE UNIQUE INDEX IF NOT EXISTS study_quiz_study_id_unique ON study_quiz(study_id)',
+            )
+        } catch (e) {
+            console.warn('创建 study_quiz 唯一索引跳过:', (e as Error).message)
+        }
     }
 
     console.log('Migration completed successfully!')

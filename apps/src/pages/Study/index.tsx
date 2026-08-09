@@ -200,10 +200,10 @@ export const Studynotes: FC = () => {
 
             <QuizModalEditor
                 open={quizLesson != null}
-                cardId={activeQuizLesson?.studynoteId ?? null}
+                cardId={activeQuizLesson?.id ?? null}
                 lessonTopic={activeQuizLesson?.topic ?? ''}
                 canQuiz={
-                    activeQuizLesson?.studynoteId != null &&
+                    activeQuizLesson?.id != null &&
                     activeQuizLesson.studynoteScore != null &&
                     activeQuizLesson.studynoteScore >= 80
                 }

@@ -237,6 +237,7 @@ export const studyNotes = sqliteTable('study_notes', {
     evaluatedAt: text('evaluated_at'),
     quizScore: real('quiz_score'),
     lessonId: integer('lesson_id')
+        .notNull()
         .references(() => studyLessons.id, {
             onDelete: 'cascade',
         }),
@@ -291,10 +292,10 @@ export const studyPreviews = sqliteTable('study_previews', {
 
 export const studyQuiz = sqliteTable('study_quiz', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    studynoteId: integer('studynote_id')
+    studyId: integer('study_id')
         .notNull()
         .unique()
-        .references(() => studyNotes.id, { onDelete: 'cascade' }),
+        .references(() => studyLessons.id, { onDelete: 'cascade' }),
     questionsJson: text('questions_json').notNull(),
     answersJson: text('answers_json'),
     resultsJson: text('results_json'),

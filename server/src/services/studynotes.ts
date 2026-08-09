@@ -1,6 +1,6 @@
-import { and, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { db } from '../db/index'
-import { studyNotes, studyQuiz } from '../db/schema'
+import { studyNotes, studyQuiz, studyLessons } from '../db/schema'
 import {
     evaluateStudynotesReflection,
     generateStudynotesQuiz,
@@ -62,7 +62,7 @@ export function safeJsonParse<T>(
 export function mapQuizRow(row: StudyQuizRow): StudynotesQuiz {
     return {
         id: row.id,
-        studynoteId: row.studynoteId,
+        studyId: row.studyId,
         questions: safeJsonParse<StudynotesQuizQuestion[]>(
             row.questionsJson,
             [],
@@ -95,35 +95,47 @@ export function validateAnswers(raw: unknown): string[] | null {
 export async function listStudyNotes(params: {
     subject?: string
     search?: string
-}): Promise<Array<StudyNoteRow & { quizCount: number }>> {
+}): Promise<
+    Array<StudyNoteRow & { quizCount: number; subject: string; topic: string }>
+> {
     const filters = []
     if (
         params.subject &&
         typeof params.subject === 'string' &&
         STUDYNOTE_SUBJECTS.has(params.subject)
     ) {
-        filters.push(eq(studyNotes.subject, params.subject))
+        filters.push(eq(studyLessons.subject, params.subject))
     }
 
-    const cards = await db
-        .select()
+    const base = db
+        .select({
+            note: studyNotes,
+            lessonSubject: studyLessons.subject,
+            lessonTopic: studyLessons.topic,
+        })
         .from(studyNotes)
+        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
         .where(filters.length > 0 ? and(...filters) : undefined)
         .orderBy(desc(studyNotes.createdAt))
+        .$dynamic()
+
+    const rows = await base
 
     const countRows = await db
         .select({
-            cardId: studyQuiz.studynoteId,
+            cardId: studyQuiz.studyId,
             count: sql<number>`COUNT(*)`,
         })
         .from(studyQuiz)
-        .groupBy(studyQuiz.studynoteId)
+        .groupBy(studyQuiz.studyId)
 
     const countMap = new Map(countRows.map((r) => [r.cardId, r.count]))
 
-    const result = cards.map((card) => ({
-        ...card,
-        quizCount: countMap.get(card.id) ?? 0,
+    const result = rows.map((row) => ({
+        ...row.note,
+        subject: row.lessonSubject,
+        topic: row.lessonTopic,
+        quizCount: countMap.get(row.note.lessonId) ?? 0,
     }))
 
     if (params.search && typeof params.search === 'string') {
@@ -142,18 +154,28 @@ export async function listStudyNotes(params: {
 
 export async function getStudyNote(
     id: number,
-): Promise<StudyNoteRow | null> {
-    const rows = await db
-        .select()
+): Promise<(StudyNoteRow & { subject: string; topic: string }) | null> {
+    const [row] = await db
+        .select({
+            note: studyNotes,
+            subject: studyLessons.subject,
+            topic: studyLessons.topic,
+        })
         .from(studyNotes)
+        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
         .where(eq(studyNotes.id, id))
         .limit(1)
-    return rows[0] ?? null
+    if (!row) {
+        return null
+    }
+    return {
+        ...row.note,
+        subject: row.subject,
+        topic: row.topic,
+    }
 }
 
 export interface CreateStudyNoteInput {
-    subject: string
-    topic?: unknown
     summary: string
     example: string
     stuckPoints: string
@@ -163,49 +185,81 @@ export interface CreateStudyNoteInput {
 
 export async function createStudyNote(
     input: CreateStudyNoteInput,
-): Promise<StudyNoteRow> {
-    const normalizedLessonId =
-        input.lessonId == null || input.lessonId === ''
-            ? null
-            : Number(input.lessonId)
+): Promise<StudyNoteRow & { subject: string; topic: string }> {
+    if (input.lessonId == null || input.lessonId === '') {
+        throw new Error('创建学习笔记必须关联 lessonId')
+    }
+    const normalizedLessonId = Number(input.lessonId)
+    // 非法非数字输入（如 'abc'）归一化为 NaN，写入 notNull 整型列会出错，须提前拒绝
+    if (!Number.isFinite(normalizedLessonId) || normalizedLessonId <= 0) {
+        throw new Error('创建学习笔记必须关联有效的 lessonId')
+    }
+    // 先取关联 lesson 的 subject/topic，回写笔记冗余列（当前 schema 仍保留）
+    const [lesson] = await db
+        .select({
+            subject: studyLessons.subject,
+            topic: studyLessons.topic,
+        })
+        .from(studyLessons)
+        .where(eq(studyLessons.id, normalizedLessonId))
+        .limit(1)
     const inserted = await db
         .insert(studyNotes)
         .values({
-            subject: input.subject,
-            topic: typeof input.topic === 'string' ? input.topic : '',
+            subject: lesson?.subject ?? '',
+            topic: lesson?.topic ?? '',
             summary: input.summary,
             example: input.example,
             stuckPoints: input.stuckPoints,
             memoryHook:
-                typeof input.memoryHook === 'string'
-                    ? input.memoryHook
-                    : null,
+                typeof input.memoryHook === 'string' ? input.memoryHook : null,
             lessonId: normalizedLessonId,
         })
         .returning()
-    return inserted[0]
+    return {
+        ...inserted[0],
+        subject: lesson?.subject ?? '',
+        topic: lesson?.topic ?? '',
+    }
 }
 
 export interface UpdateStudyNotePatch {
-    subject?: string
-    topic?: string
     summary?: string
     example?: string
     stuckPoints?: string
     memoryHook?: string | null
+    lessonId?: number
 }
 
 export async function updateStudyNote(
     id: number,
     patch: UpdateStudyNotePatch,
 ): Promise<StudyNoteRow | null> {
-    const setValues: Record<string, unknown> = { updatedAt: new Date().toISOString() }
-    if (patch.subject !== undefined) setValues.subject = patch.subject
-    if (patch.topic !== undefined) setValues.topic = patch.topic
+    const setValues: Record<string, unknown> = {
+        updatedAt: new Date().toISOString(),
+    }
     if (patch.summary !== undefined) setValues.summary = patch.summary
     if (patch.example !== undefined) setValues.example = patch.example
-    if (patch.stuckPoints !== undefined) setValues.stuckPoints = patch.stuckPoints
+    if (patch.stuckPoints !== undefined)
+        setValues.stuckPoints = patch.stuckPoints
     if (patch.memoryHook !== undefined) setValues.memoryHook = patch.memoryHook
+    if (patch.lessonId !== undefined) {
+        // 改关联 lesson 时校验目标存在，并同步回填 subject/topic 冗余列，避免与 lesson 脱节
+        const [lesson] = await db
+            .select({
+                subject: studyLessons.subject,
+                topic: studyLessons.topic,
+            })
+            .from(studyLessons)
+            .where(eq(studyLessons.id, patch.lessonId))
+            .limit(1)
+        if (!lesson) {
+            throw new Error('目标 lesson 不存在，无法更新学习笔记')
+        }
+        setValues.lessonId = patch.lessonId
+        setValues.subject = lesson.subject
+        setValues.topic = lesson.topic
+    }
 
     const updated = await db
         .update(studyNotes)
@@ -232,8 +286,10 @@ interface StudynotesCardInput {
     memoryHook?: string | null
 }
 
-/** 把笔记行组装为 AI 评估/出题/批改所需的卡片输入 */
-function buildCard(note: StudyNoteRow): StudynotesCardInput {
+/** 把笔记行组装为 AI 评估/出题/批改所需的卡片输入（subject/topic 来自关联 lesson） */
+function buildCard(
+    note: StudyNoteRow & { subject: string; topic: string },
+): StudynotesCardInput {
     return {
         subject: note.subject,
         topic: note.topic,
@@ -253,22 +309,24 @@ export interface EvaluationResult {
 export async function evaluateStudyNote(
     id: number,
 ): Promise<EvaluationResult | null> {
-    const rows = await db
-        .select()
+    const [row] = await db
+        .select({
+            note: studyNotes,
+            subject: studyLessons.subject,
+            topic: studyLessons.topic,
+        })
         .from(studyNotes)
+        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
         .where(eq(studyNotes.id, id))
         .limit(1)
-    if (!rows[0]) return null
+    if (!row) return null
 
-    const card = rows[0]
+    const card = { ...row.note, subject: row.subject, topic: row.topic }
     const existingEval = card.evaluation
         ? safeJsonParse<Record<string, unknown>>(card.evaluation, null)
         : null
     // 已有有效评估则直接复用，避免重复高成本 AI 调用（防止账单刷爆）
-    if (
-        existingEval &&
-        typeof existingEval.completenessScore === 'number'
-    ) {
+    if (existingEval && typeof existingEval.completenessScore === 'number') {
         return {
             evaluation: existingEval,
             evaluatedAt: card.evaluatedAt ?? '',
@@ -311,14 +369,25 @@ export interface GenerateQuizResult {
 export async function generateQuiz(
     id: number,
 ): Promise<GenerateQuizResult | null> {
-    const rows = await db
-        .select()
+    // id 此处语义为 lesson.id：quiz 直接关联 study_lessons，笔记经 lessonId 回溯
+    const [noteRow] = await db
+        .select({
+            note: studyNotes,
+            subject: studyLessons.subject,
+            topic: studyLessons.topic,
+        })
         .from(studyNotes)
-        .where(eq(studyNotes.id, id))
+        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
+        .where(eq(studyNotes.lessonId, id))
+        .orderBy(asc(studyNotes.id))
         .limit(1)
-    if (!rows[0]) return null
+    if (!noteRow) return null
 
-    const card = rows[0]
+    const card = {
+        ...noteRow.note,
+        subject: noteRow.subject,
+        topic: noteRow.topic,
+    }
     const evaluation = card.evaluation
         ? safeJsonParse<Record<string, unknown>>(card.evaluation, null)
         : null
@@ -333,7 +402,7 @@ export async function generateQuiz(
         .from(studyQuiz)
         .where(
             and(
-                eq(studyQuiz.studynoteId, id),
+                eq(studyQuiz.studyId, id),
                 sql`${studyQuiz.submittedAt} IS NULL`,
             ),
         )
@@ -350,32 +419,30 @@ export async function generateQuiz(
     const now = new Date().toISOString()
     let quizRow: StudyQuizRow | undefined
 
-    // 并发竞态下 insert 可能因唯一约束冲突抛异常，捕获后回退复用已有未提交记录
-    try {
-        quizRow = (
-            await db
-                .insert(studyQuiz)
-                .values({
-                    studynoteId: id,
-                    questionsJson: JSON.stringify(sanitized),
-                    generatedAt: now,
-                })
-                .returning()
-        )[0]
-    } catch (insertError: unknown) {
-        const message =
-            insertError instanceof Error
-                ? insertError.message
-                : String(insertError)
-        console.warn('并发生成测验冲突，回退复用已有记录:', message)
-        const fallback = await db
-            .select()
-            .from(studyQuiz)
-            .where(eq(studyQuiz.studynoteId, id))
-            .orderBy(desc(studyQuiz.id))
-            .limit(1)
-        quizRow = fallback[0]
-    }
+    // 并发竞态处理：基于 study_id 唯一约束，冲突时静默跳过（onConflictDoNothing），
+    // 再复用首条成功写入的“未提交且题目非空”记录，避免重复生成与误复用历史旧题。
+    await db
+        .insert(studyQuiz)
+        .values({
+            studyId: id,
+            questionsJson: JSON.stringify(sanitized),
+            generatedAt: now,
+        })
+        .onConflictDoNothing({ target: studyQuiz.studyId })
+
+    const fallback = await db
+        .select()
+        .from(studyQuiz)
+        .where(
+            and(
+                eq(studyQuiz.studyId, id),
+                sql`${studyQuiz.submittedAt} IS NULL`,
+                sql`json_array_length(${studyQuiz.questionsJson}) > 0`,
+            ),
+        )
+        .orderBy(desc(studyQuiz.id))
+        .limit(1)
+    quizRow = fallback[0]
 
     if (!quizRow) {
         throw new Error('生成测验失败')
@@ -392,12 +459,7 @@ export async function saveQuizAnswers(
     const existing = await db
         .select()
         .from(studyQuiz)
-        .where(
-            and(
-                eq(studyQuiz.id, quizId),
-                eq(studyQuiz.studynoteId, id),
-            ),
-        )
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, id)))
         .limit(1)
 
     if (!existing[0]) return null
@@ -423,12 +485,7 @@ export async function submitQuiz(
     const existing = await db
         .select()
         .from(studyQuiz)
-        .where(
-            and(
-                eq(studyQuiz.id, quizId),
-                eq(studyQuiz.studynoteId, id),
-            ),
-        )
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, id)))
         .limit(1)
 
     if (!existing[0]) return null
@@ -436,12 +493,23 @@ export async function submitQuiz(
         throw new Error('该测验已提交')
     }
 
-    const card = await db
-        .select()
+    const [noteRow] = await db
+        .select({
+            note: studyNotes,
+            subject: studyLessons.subject,
+            topic: studyLessons.topic,
+        })
         .from(studyNotes)
-        .where(eq(studyNotes.id, id))
+        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
+        .where(eq(studyNotes.lessonId, id))
+        .orderBy(asc(studyNotes.id))
         .limit(1)
-    if (!card[0]) return null
+    if (!noteRow) return null
+    const card = {
+        ...noteRow.note,
+        subject: noteRow.subject,
+        topic: noteRow.topic,
+    }
 
     const questions =
         safeJsonParse<StudynotesQuizQuestion[]>(
@@ -449,11 +517,7 @@ export async function submitQuiz(
             [],
         ) ?? []
 
-    const grade = await gradeStudynotesQuiz(
-        buildCard(card[0]),
-        questions,
-        answers,
-    )
+    const grade = await gradeStudynotesQuiz(buildCard(card), questions, answers)
 
     const now = new Date().toISOString()
     await db
@@ -469,14 +533,14 @@ export async function submitQuiz(
         })
         .where(eq(studyQuiz.id, quizId))
 
-    // 回写最新分数快照到卡片
+    // 回写最新分数快照到卡片（id 此处为 lesson.id，经 lessonId 关联）
     await db
         .update(studyNotes)
         .set({
             quizScore: grade.score,
             updatedAt: now,
         })
-        .where(eq(studyNotes.id, id))
+        .where(eq(studyNotes.lessonId, id))
 
     const updated = await db
         .select()
@@ -494,12 +558,7 @@ export async function gradeQuiz(
     const existing = await db
         .select()
         .from(studyQuiz)
-        .where(
-            and(
-                eq(studyQuiz.id, quizId),
-                eq(studyQuiz.studynoteId, id),
-            ),
-        )
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, id)))
         .limit(1)
 
     if (!existing[0]) return null
@@ -524,18 +583,25 @@ export async function gradeQuiz(
         throw new Error('该记录无答题内容，无法批改')
     }
 
-    const card = await db
-        .select()
+    const [noteRow] = await db
+        .select({
+            note: studyNotes,
+            subject: studyLessons.subject,
+            topic: studyLessons.topic,
+        })
         .from(studyNotes)
-        .where(eq(studyNotes.id, id))
+        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
+        .where(eq(studyNotes.lessonId, id))
+        .orderBy(asc(studyNotes.id))
         .limit(1)
-    if (!card[0]) return null
+    if (!noteRow) return null
+    const card = {
+        ...noteRow.note,
+        subject: noteRow.subject,
+        topic: noteRow.topic,
+    }
 
-    const grade = await gradeStudynotesQuiz(
-        buildCard(card[0]),
-        questions,
-        answers,
-    )
+    const grade = await gradeStudynotesQuiz(buildCard(card), questions, answers)
 
     const now = new Date().toISOString()
     await db
@@ -549,14 +615,14 @@ export async function gradeQuiz(
         })
         .where(eq(studyQuiz.id, quizId))
 
-    // 回写最新分数快照到卡片
+    // 回写最新分数快照到卡片（id 此处为 lesson.id，经 lessonId 关联）
     await db
         .update(studyNotes)
         .set({
             quizScore: grade.score,
             updatedAt: now,
         })
-        .where(eq(studyNotes.id, id))
+        .where(eq(studyNotes.lessonId, id))
 
     const updated = await db
         .select()
@@ -573,7 +639,7 @@ export async function getLatestQuiz(
     const rows = await db
         .select()
         .from(studyQuiz)
-        .where(eq(studyQuiz.studynoteId, id))
+        .where(eq(studyQuiz.studyId, id))
         .orderBy(desc(studyQuiz.id))
         .limit(1)
 
