@@ -2,6 +2,7 @@
 
 import { useMemo } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
+import { MarkdownView } from '@components/MarkdownView'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { useStudynotesQuiz } from './hooks/useStudynotesQuiz'
@@ -310,9 +311,9 @@ function ResultFeedback({
             {isSubmitted && quiz && hasResults && (
                 <div className="space-y-3">
                     {quiz.comment && (
-                        <p className="border-l-2 border-blue-300 bg-blue-50/60 p-3 leading-relaxed text-gray-700">
-                            {quiz.comment}
-                        </p>
+                        <div className="border-l-2 border-blue-300 bg-blue-50/60 p-3 leading-relaxed text-gray-700">
+                            <MarkdownView content={quiz.comment ?? ''} />
+                        </div>
                     )}
                     <ReviewSuggestions suggestions={quiz.suggestions} />
                 </div>
@@ -369,9 +370,7 @@ function QuizQuestionItem({
                 <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-primary">
                     {question.index}
                 </span>
-                <p className="text-sm font-medium text-gray-800">
-                    {question.question}
-                </p>
+                <MarkdownView content={question.question} />
             </div>
 
             {isReadOnly ? (
@@ -402,13 +401,25 @@ function QuizQuestionItem({
                     </p>
                     {result && (
                         <div className="space-y-2">
-                            <p className="rounded-md bg-blue-50 p-2 text-sm text-blue-800">
-                                参考答案：{result.correctAnswer}
-                            </p>
+                            <div className="flex rounded-md bg-blue-50 p-2">
+                                <span className="font-extrabold text-sm text-blue-800">
+                                    参考答案：
+                                </span>
+                                <MarkdownView
+                                    content={result.correctAnswer}
+                                    className="text-sm! text-blue-800!"
+                                />
+                            </div>
                             {result.explanation && (
-                                <p className="rounded-md bg-amber-50 p-2 text-sm text-amber-800">
-                                    解析：{result.explanation}
-                                </p>
+                                <div className="flex rounded-md bg-amber-50 p-2">
+                                    <span className="font-extrabold text-sm text-amber-800">
+                                        解析：
+                                    </span>
+                                    <MarkdownView
+                                        content={result.explanation}
+                                        className="text-sm! text-amber-800!"
+                                    />
+                                </div>
                             )}
                         </div>
                     )}
