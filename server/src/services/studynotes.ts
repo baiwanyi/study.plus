@@ -194,7 +194,7 @@ export async function createStudyNote(
     if (!Number.isFinite(normalizedLessonId) || normalizedLessonId <= 0) {
         throw new Error('创建学习笔记必须关联有效的 lessonId')
     }
-    // 先取关联 lesson 的 subject/topic，回写笔记冗余列（当前 schema 仍保留）
+    // 先取关联 lesson 的 subject/topic，作为返回字段（study_notes 已无冗余列）
     const [lesson] = await db
         .select({
             subject: studyLessons.subject,
@@ -206,8 +206,6 @@ export async function createStudyNote(
     const inserted = await db
         .insert(studyNotes)
         .values({
-            subject: lesson?.subject ?? '',
-            topic: lesson?.topic ?? '',
             summary: input.summary,
             example: input.example,
             stuckPoints: input.stuckPoints,
@@ -244,12 +242,9 @@ export async function updateStudyNote(
         setValues.stuckPoints = patch.stuckPoints
     if (patch.memoryHook !== undefined) setValues.memoryHook = patch.memoryHook
     if (patch.lessonId !== undefined) {
-        // 改关联 lesson 时校验目标存在，并同步回填 subject/topic 冗余列，避免与 lesson 脱节
+        // 改关联 lesson 时校验目标存在，避免写入无效外键
         const [lesson] = await db
-            .select({
-                subject: studyLessons.subject,
-                topic: studyLessons.topic,
-            })
+            .select({ id: studyLessons.id })
             .from(studyLessons)
             .where(eq(studyLessons.id, patch.lessonId))
             .limit(1)
@@ -257,8 +252,6 @@ export async function updateStudyNote(
             throw new Error('目标 lesson 不存在，无法更新学习笔记')
         }
         setValues.lessonId = patch.lessonId
-        setValues.subject = lesson.subject
-        setValues.topic = lesson.topic
     }
 
     const updated = await db
@@ -396,7 +389,9 @@ export async function generateQuiz(
         throw new Error('AI 评估未达 80 分，暂不能开始测验')
     }
 
-    // 幂等：复用已存在但未提交的测验，避免重复生成与孤儿记录
+    // 幂等：仅复用「未提交」记录继续作答；已提交的历史不阻塞重新生成新题。
+    // 部分唯一索引(study_id WHERE submitted_at IS NULL)保证同一时刻最多一套进行中，
+    // 因此同一课程可有多套已提交历史，重新生成时插入新行。
     const pending = await db
         .select()
         .from(studyQuiz)
@@ -404,8 +399,10 @@ export async function generateQuiz(
             and(
                 eq(studyQuiz.studyId, id),
                 sql`${studyQuiz.submittedAt} IS NULL`,
+                sql`json_array_length(${studyQuiz.questionsJson}) > 0`,
             ),
         )
+        .orderBy(desc(studyQuiz.id))
         .limit(1)
 
     if (pending[0]) {
@@ -419,8 +416,8 @@ export async function generateQuiz(
     const now = new Date().toISOString()
     let quizRow: StudyQuizRow | undefined
 
-    // 并发竞态处理：基于 study_id 唯一约束，冲突时静默跳过（onConflictDoNothing），
-    // 再复用首条成功写入的“未提交且题目非空”记录，避免重复生成与误复用历史旧题。
+    // 并发竞态处理：部分唯一索引保证同一时刻最多一套未提交记录，
+    // 冲突时静默跳过（onConflictDoNothing），再复用首条成功写入的未提交记录。
     await db
         .insert(studyQuiz)
         .values({
@@ -428,7 +425,7 @@ export async function generateQuiz(
             questionsJson: JSON.stringify(sanitized),
             generatedAt: now,
         })
-        .onConflictDoNothing({ target: studyQuiz.studyId })
+        .onConflictDoNothing()
 
     const fallback = await db
         .select()
@@ -463,8 +460,9 @@ export async function saveQuizAnswers(
         .limit(1)
 
     if (!existing[0]) return null
-    if (existing[0].submittedAt) {
-        throw new Error('该测验已提交，无法修改')
+    // 批改前可反复保存答案：仅「已批改」才锁定
+    if (existing[0].resultsJson) {
+        throw new Error('该测验已批改，无法修改答案')
     }
 
     await db
@@ -489,58 +487,20 @@ export async function submitQuiz(
         .limit(1)
 
     if (!existing[0]) return null
-    if (existing[0].submittedAt) {
-        throw new Error('该测验已提交')
+    // 批改前可反复提交：仅「已批改」才锁定，已提交未批改时允许覆盖答案并刷新提交时间
+    if (existing[0].resultsJson) {
+        throw new Error('该测验已批改，无法修改答案')
     }
 
-    const [noteRow] = await db
-        .select({
-            note: studyNotes,
-            subject: studyLessons.subject,
-            topic: studyLessons.topic,
-        })
-        .from(studyNotes)
-        .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
-        .where(eq(studyNotes.lessonId, id))
-        .orderBy(asc(studyNotes.id))
-        .limit(1)
-    if (!noteRow) return null
-    const card = {
-        ...noteRow.note,
-        subject: noteRow.subject,
-        topic: noteRow.topic,
-    }
-
-    const questions =
-        safeJsonParse<StudynotesQuizQuestion[]>(
-            existing[0].questionsJson,
-            [],
-        ) ?? []
-
-    const grade = await gradeStudynotesQuiz(buildCard(card), questions, answers)
-
+    // 两步式：提交仅保存答案并标记已提交，AI 批改由 gradeQuiz 单独完成
     const now = new Date().toISOString()
     await db
         .update(studyQuiz)
         .set({
             answersJson: JSON.stringify(answers),
-            resultsJson: JSON.stringify(grade.results),
-            score: grade.score,
-            correctCount: grade.correctCount,
-            comment: grade.comment,
-            suggestionsJson: JSON.stringify(grade.suggestions),
             submittedAt: now,
         })
         .where(eq(studyQuiz.id, quizId))
-
-    // 回写最新分数快照到卡片（id 此处为 lesson.id，经 lessonId 关联）
-    await db
-        .update(studyNotes)
-        .set({
-            quizScore: grade.score,
-            updatedAt: now,
-        })
-        .where(eq(studyNotes.lessonId, id))
 
     const updated = await db
         .select()
@@ -554,6 +514,7 @@ export async function submitQuiz(
 export async function gradeQuiz(
     id: number,
     quizId: number,
+    latestAnswers?: string[],
 ): Promise<{ quiz: StudynotesQuiz } | null> {
     const existing = await db
         .select()
@@ -562,7 +523,7 @@ export async function gradeQuiz(
         .limit(1)
 
     if (!existing[0]) return null
-    // 仅允许「已提交但未批改」的旧记录执行补批改；已批改的记录不允许重复
+    // 仅允许「已提交但未批改」的记录执行批改；已批改的记录不允许重复
     if (!existing[0].submittedAt || existing[0].resultsJson) {
         throw new Error('该记录当前状态不可批改')
     }
@@ -572,14 +533,17 @@ export async function gradeQuiz(
             existing[0].questionsJson,
             [],
         ) ?? []
-    const answers = existing[0].answersJson
-        ? safeJsonParse<string[]>(existing[0].answersJson, [])
-        : []
+    // 批改前允许微调答案：传入 latestAnswers 则以其为准（并回写 answersJson），否则回退库内快照
+    const answers =
+        latestAnswers ??
+        (existing[0].answersJson
+            ? safeJsonParse<string[]>(existing[0].answersJson, [])
+            : [])
     if (questions.length === 0) {
         throw new Error('该记录无题目，无法批改')
     }
-    // 库内答案损坏为空数组时，批改会下标错位，直接拒绝而非静默批改
-    if (answers.length === 0) {
+    // 答案缺失/损坏为空数组时，批改会下标错位，直接拒绝而非静默批改
+    if (!Array.isArray(answers) || answers.length === 0) {
         throw new Error('该记录无答题内容，无法批改')
     }
 
@@ -607,6 +571,10 @@ export async function gradeQuiz(
     await db
         .update(studyQuiz)
         .set({
+            // 批改采用最新答案时同步回写，保证库内答案与批改依据一致
+            ...(latestAnswers
+                ? { answersJson: JSON.stringify(latestAnswers) }
+                : {}),
             resultsJson: JSON.stringify(grade.results),
             score: grade.score,
             correctCount: grade.correctCount,

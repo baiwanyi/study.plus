@@ -79,7 +79,7 @@ export const Modal: FC<ModalProps> = ({
                     {children}
                 </div>
                 {footer !== false && (
-                    <footer className="flex justify-end gap-3 px-6 pb-6 pt-3 border-t border-gray-200 shrink-0">
+                    <footer className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 shrink-0">
                         {typeof footer === 'object' ? (
                             footer
                         ) : (

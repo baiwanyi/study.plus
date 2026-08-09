@@ -1,3 +1,4 @@
+import { sql } from 'drizzle-orm'
 import {
     index,
     integer,
@@ -227,8 +228,6 @@ export const taskMessages = sqliteTable(
 
 export const studyNotes = sqliteTable('study_notes', {
     id: integer('id').primaryKey({ autoIncrement: true }),
-    subject: text('subject').notNull(),
-    topic: text('topic').notNull().default(''),
     summary: text('summary').notNull(),
     example: text('example').notNull(),
     stuckPoints: text('stuck_points').notNull(),
@@ -290,25 +289,36 @@ export const studyPreviews = sqliteTable('study_previews', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const studyQuiz = sqliteTable('study_quiz', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    studyId: integer('study_id')
-        .notNull()
-        .unique()
-        .references(() => studyLessons.id, { onDelete: 'cascade' }),
-    questionsJson: text('questions_json').notNull(),
-    answersJson: text('answers_json'),
-    resultsJson: text('results_json'),
-    score: real('score'),
-    correctCount: integer('correct_count'),
-    comment: text('comment').notNull().default(''),
-    suggestionsJson: text('suggestions_json').notNull().default('[]'),
-    generatedAt: text('generated_at').notNull(),
-    submittedAt: text('submitted_at'),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-})
+export const studyQuiz = sqliteTable(
+    'study_quiz',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        studyId: integer('study_id')
+            .notNull()
+            .references(() => studyLessons.id, { onDelete: 'cascade' }),
+        questionsJson: text('questions_json').notNull(),
+        answersJson: text('answers_json'),
+        resultsJson: text('results_json'),
+        score: real('score'),
+        correctCount: integer('correct_count'),
+        comment: text('comment').notNull().default(''),
+        suggestionsJson: text('suggestions_json').notNull().default('[]'),
+        generatedAt: text('generated_at').notNull(),
+        submittedAt: text('submitted_at'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        // 部分唯一索引：同一课程同时最多一套「未提交」测验，保证并发不重复生成；
+        // 已提交的历史记录允许保留多套，支持重新生成新题。
+        studyIdPendingUnique: uniqueIndex(
+            'study_quiz_study_id_pending_unique',
+        )
+            .on(table.studyId)
+            .where(sql`${table.submittedAt} IS NULL`),
+    }),
+)
 
 export const weeklyMessages = sqliteTable(
     'weekly_messages',

@@ -109,12 +109,20 @@ export const studynotesApi = {
             },
         )
     },
-    gradeQuiz: (id: number, quizId: number) => {
+    gradeQuiz: (id: number, quizId: number, answers?: string[]) => {
         assertPositiveInt(id, '学习管理 ID')
         assertPositiveInt(quizId, '测验 ID')
+        if (answers !== undefined) {
+            assertStringArray(answers, '答案')
+        }
         return request<{ quiz: StudynotesQuiz }>(
             `/study/${id}/quiz/${quizId}/grade`,
-            { method: 'POST' },
+            {
+                method: 'POST',
+                body: answers
+                    ? JSON.stringify({ answers })
+                    : undefined,
+            },
         )
     },
 }

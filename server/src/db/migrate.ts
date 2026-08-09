@@ -1061,14 +1061,71 @@ export async function migrate(): Promise<void> {
         await client.execute('DROP TABLE study_quiz_old')
         console.log('Rebuilt study_quiz with study_id -> study_lessons.')
     } else {
-        // 首次建表或已迁移：确保新结构唯一索引存在（幂等）
-        try {
-            await client.execute(
-                'CREATE UNIQUE INDEX IF NOT EXISTS study_quiz_study_id_unique ON study_quiz(study_id)',
-            )
-        } catch (e) {
-            console.warn('创建 study_quiz 唯一索引跳过:', (e as Error).message)
+        // 首次建表或已迁移：无需处理，后续统一迁移块会确保部分唯一索引
+    }
+
+    // ===== study_quiz 支持多套历史：去除 study_id 全量唯一，改为部分唯一索引 =====
+    // 需求：已提交的测验保留为历史，重新生成时插入新行。
+    // 约束改为「同一课程同时最多一套未提交(进行中)测验」，已提交记录可多条。
+    // 幂等：检测到全量唯一约束（partial=0 且非主键）时重建表去除，再建部分唯一索引。
+    const quizIndexList = await client.execute(
+        "PRAGMA index_list('study_quiz')",
+    )
+    const hasFullUnique = quizIndexList.rows.some((row) => {
+        const r = row as unknown as {
+            unique: number
+            origin: string
+            partial: number
         }
+        return r.unique === 1 && r.partial === 0 && r.origin !== 'pk'
+    })
+    if (hasFullUnique) {
+        console.log('Rebuilding study_quiz to drop full unique(study_id)...')
+        await client.execute(
+            'ALTER TABLE study_quiz RENAME TO study_quiz_old',
+        )
+        await client.execute(`
+            CREATE TABLE study_quiz (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                study_id INTEGER NOT NULL REFERENCES study_lessons(id) ON DELETE CASCADE,
+                questions_json TEXT NOT NULL,
+                answers_json TEXT,
+                results_json TEXT,
+                score REAL,
+                correct_count INTEGER,
+                comment TEXT NOT NULL DEFAULT '',
+                suggestions_json TEXT NOT NULL DEFAULT '[]',
+                generated_at TEXT NOT NULL,
+                submitted_at TEXT,
+                created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            )
+        `)
+        await client.execute(
+            'INSERT INTO study_quiz SELECT id, study_id, questions_json, answers_json, results_json, score, correct_count, comment, suggestions_json, generated_at, submitted_at, created_at FROM study_quiz_old',
+        )
+        const maxId = await client.execute(
+            'SELECT MAX(id) as max_id FROM study_quiz',
+        )
+        const nextId = Number(maxId.rows[0]?.max_id ?? 0) + 1
+        await client.execute({
+            sql: 'DELETE FROM sqlite_sequence WHERE name = ?',
+            args: ['study_quiz'],
+        })
+        await client.execute({
+            sql: 'INSERT INTO sqlite_sequence (name, seq) VALUES (?, ?)',
+            args: ['study_quiz', nextId - 1],
+        })
+        await client.execute('DROP TABLE study_quiz_old')
+        console.log('Dropped full unique constraint on study_quiz.study_id.')
+    }
+
+    // 确保部分唯一索引存在（幂等）：同一课程同时最多一套未提交测验
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS study_quiz_study_id_pending_unique ON study_quiz(study_id) WHERE submitted_at IS NULL',
+        )
+    } catch (e) {
+        console.warn('创建 study_quiz 部分唯一索引跳过:', (e as Error).message)
     }
 
     console.log('Migration completed successfully!')

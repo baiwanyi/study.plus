@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import { studynotesSubjectValues } from '@shared/utils'
 import type { Request, Response } from 'express'
 import { parsePosInt } from '../utils/param'
 import { aiLimiter } from '../utils/rate-limit'
@@ -19,12 +18,6 @@ import {
 } from '../services/studynotes'
 
 export const studynotesRouter = Router()
-
-const VALID_SUBJECTS = new Set<string>([
-    ...studynotesSubjectValues,
-    'science',
-    'custom',
-])
 
 // List studyNotes cards with optional subject filter and search
 studynotesRouter.get('/', async (req: Request, res: Response) => {
@@ -68,38 +61,22 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
 // Create studyNotes card
 studynotesRouter.post('/', async (req: Request, res: Response) => {
     try {
-        const {
-            subject,
-            topic,
-            summary,
-            example,
-            stuckPoints,
-            memoryHook,
-            lessonId,
-        } = req.body
+        const { summary, example, stuckPoints, memoryHook, lessonId } =
+            req.body
 
         // Validate required fields: must be non-empty strings (reject arrays/objects)
         if (
-            typeof subject !== 'string' ||
             typeof summary !== 'string' ||
             typeof example !== 'string' ||
             typeof stuckPoints !== 'string' ||
-            !subject.trim() ||
             !summary.trim() ||
             !example.trim()
         ) {
-            res.status(400).json({ error: '学科、概括、例子为必填项' })
-            return
-        }
-
-        if (!VALID_SUBJECTS.has(subject)) {
-            res.status(400).json({ error: '无效的学科' })
+            res.status(400).json({ error: '概括、例子为必填项' })
             return
         }
 
         const note = await createStudyNote({
-            subject,
-            topic,
             summary,
             example,
             stuckPoints,
@@ -124,48 +101,41 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
             return
         }
 
-        const { subject, topic, summary, example, stuckPoints, memoryHook } =
+        const { summary, example, stuckPoints, memoryHook, lessonId } =
             req.body
 
         // Validate at least one content field is provided
         if (
-            subject === undefined &&
-            topic === undefined &&
             summary === undefined &&
             example === undefined &&
             stuckPoints === undefined &&
-            memoryHook === undefined
+            memoryHook === undefined &&
+            lessonId === undefined
         ) {
             res.status(400).json({ error: '请提供至少一个要更新的字段' })
             return
         }
 
         if (
-            (subject !== undefined && typeof subject !== 'string') ||
             (summary !== undefined && typeof summary !== 'string') ||
             (example !== undefined && typeof example !== 'string') ||
             (stuckPoints !== undefined && typeof stuckPoints !== 'string') ||
-            (topic !== undefined && typeof topic !== 'string') ||
             (memoryHook !== undefined &&
                 typeof memoryHook !== 'string' &&
-                memoryHook !== null)
+                memoryHook !== null) ||
+            (lessonId !== undefined &&
+                (typeof lessonId !== 'number' || !Number.isInteger(lessonId)))
         ) {
             res.status(400).json({ error: '字段类型错误' })
             return
         }
 
-        if (subject !== undefined && !VALID_SUBJECTS.has(subject)) {
-            res.status(400).json({ error: '无效的学科' })
-            return
-        }
-
         const note = await updateStudyNote(id, {
-            subject,
-            topic,
             summary,
             example,
             stuckPoints,
             memoryHook,
+            lessonId,
         })
         if (!note) {
             res.status(404).json({ error: '学习管理未找到' })
@@ -363,7 +333,13 @@ studynotesRouter.post(
                 return
             }
 
-            const result = await gradeQuiz(id, quizId)
+            // 批改前允许微调答案：body 携带最新 answers 时以其为准（并回写），否则用库内提交快照
+            const latestAnswers = validateAnswers(req.body?.answers)
+            const result = await gradeQuiz(
+                id,
+                quizId,
+                latestAnswers ?? undefined,
+            )
             if (!result) {
                 res.status(404).json({ error: '测验记录未找到' })
                 return

@@ -97,6 +97,7 @@ export function useStudynotesQuiz(
     cardId: number | null,
     canQuiz: boolean,
     onAutoSaveSuccess?: () => void,
+    onAutoSaveError?: (message: string) => void,
 ) {
     const [state, dispatch] = useReducer(reducer, initialState)
     const savedSnapshotRef = useRef<string>('')
@@ -115,10 +116,10 @@ export function useStudynotesQuiz(
         status: state.status,
     }
 
-    // 仅在「已出题、未提交、且答案有变化」时保存；完全基于 ref 读取，避免依赖 state.status 闭包
+    // 批改前（含已提交未批改）只要答案有变化即保存；已批改后停止。完全基于 ref 读取，避免依赖 state.status 闭包
     const shouldAutoSave = useCallback((): boolean => {
         const { quiz, answers, status } = latestRef.current
-        if (!quiz || quiz.submittedAt) return false
+        if (!quiz || quiz.results) return false
         if (status !== 'answering') return false
         const current = JSON.stringify(answers)
         return current !== savedSnapshotRef.current
@@ -133,12 +134,13 @@ export function useStudynotesQuiz(
             // 自动保存成功回调（如 showSnackbar 提示），由调用方决定如何体现
             onAutoSaveSuccess?.()
         } catch (error: unknown) {
-            // 自动保存失败不阻断用户，仅记录日志
+            // 自动保存失败不阻断用户，但通过回调提示（由调用方决定如何体现）
             const message =
                 error instanceof Error ? error.message : String(error)
             console.warn('自动保存答题内容失败：', message)
+            onAutoSaveError?.(message)
         }
-    }, [shouldAutoSave, onAutoSaveSuccess])
+    }, [shouldAutoSave, onAutoSaveSuccess, onAutoSaveError])
 
     // 打开卡片时恢复现场
     useEffect(() => {
@@ -217,10 +219,10 @@ export function useStudynotesQuiz(
         }
     }, [state.status, state.quiz])
 
-    // 按当前模式批改旧记录：用库内已有题目+答案直接 AI 批改，不重新作答
+    // 批改：用当前最新答案（含批改前微调内容）AI 批改，不重新作答
     const grade = useCallback(async (): Promise<void> => {
-        const { cardId: id, quiz } = latestRef.current
-        // 防重入：仅允许「已提交但未批改」的旧记录执行补批改
+        const { cardId: id, quiz, answers } = latestRef.current
+        // 防重入：仅允许「已提交但未批改」的记录执行批改
         if (
             !id ||
             !quiz ||
@@ -231,23 +233,7 @@ export function useStudynotesQuiz(
             return
         dispatch({ type: 'GRADE_START' })
         try {
-            const { quiz: updated } = await studynotesApi.gradeQuiz(id, quiz.id)
-            dispatch({ type: 'GRADE_SUCCESS', quiz: updated })
-        } catch (error: unknown) {
-            const message =
-                error instanceof Error ? error.message : String(error)
-            dispatch({ type: 'ERROR', message })
-        }
-    }, [state.status])
-
-    const submit = useCallback(async (): Promise<void> => {
-        const { cardId: id, quiz, answers } = latestRef.current
-        // 防重入：已提交或正在批改时拒绝，避免重复 AI 批改（账单浪费）与竞态
-        if (!id || !quiz || quiz.submittedAt || state.status === 'grading')
-            return
-        dispatch({ type: 'GRADE_START' })
-        try {
-            const { quiz: updated } = await studynotesApi.submitQuiz(
+            const { quiz: updated } = await studynotesApi.gradeQuiz(
                 id,
                 quiz.id,
                 answers,
@@ -258,6 +244,30 @@ export function useStudynotesQuiz(
             const message =
                 error instanceof Error ? error.message : String(error)
             dispatch({ type: 'ERROR', message })
+        }
+    }, [state.status])
+
+    const submit = useCallback(async (): Promise<boolean> => {
+        const { cardId: id, quiz, answers } = latestRef.current
+        // 防重入：已批改或正在提交时拒绝；批改前（含已提交未批改）允许反复提交
+        if (!id || !quiz || quiz.results || state.status === 'grading')
+            return false
+        dispatch({ type: 'GRADE_START' })
+        try {
+            // 两步式：提交仅保存答案并标记已提交，批改由 grade 单独完成
+            const { quiz: updated } = await studynotesApi.submitQuiz(
+                id,
+                quiz.id,
+                answers,
+            )
+            savedSnapshotRef.current = JSON.stringify(answers)
+            dispatch({ type: 'GRADE_SUCCESS', quiz: updated })
+            return true
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            dispatch({ type: 'ERROR', message })
+            return false
         }
     }, [state.status])
 

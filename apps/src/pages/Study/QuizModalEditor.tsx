@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo } from 'react'
+import { useLayoutEffect, useMemo, useRef } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { MarkdownView } from '@components/MarkdownView'
 import { Modal } from '@components/Modal'
@@ -50,13 +50,26 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         generate,
         grade,
         submit,
-    } = useStudynotesQuiz(cardId, canQuiz, () => {
-        showSnackbar('答题内容已自动保存', 'success')
-    })
+    } = useStudynotesQuiz(
+        cardId,
+        canQuiz,
+        () => {
+            showSnackbar('答题内容已自动保存', 'success')
+        },
+        () => {
+            showSnackbar('自动保存失败，请稍后重试', 'error')
+        },
+    )
 
-    // 仅「已提交且尚未批改」时，将批改动作放到弹窗底部确认栏
-    const showGradeConfirm = isSubmitted && quiz?.results == null
-    const handleGrade = () => void grade()
+    // 底部确认栏仅负责「提交答案」；批改按钮置于 QuizHeader。
+    // 批改前（含已提交未批改）均显示，允许反复提交直到批改
+    const showSubmitConfirm = Boolean(quiz) && quiz?.results == null
+    const handleSubmit = async () => {
+        const ok = await submit()
+        if (ok) {
+            showSnackbar('已提交，请点击「批改」查看结果', 'info')
+        }
+    }
 
     const handleClose = () => {
         onSaved?.()
@@ -70,9 +83,8 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
             title={lessonTopic ? `专属测验 · ${lessonTopic}` : '专属测验'}
             size="full"
             isScroll={true}
-            footer={showGradeConfirm ? undefined : false}
-            onConfirm={showGradeConfirm ? handleGrade : undefined}
-            confirmLabel="批改"
+            onConfirm={showSubmitConfirm ? handleSubmit : undefined}
+            confirmLabel="提交答案"
             isLoading={status === 'grading'}
             isDisabled={status === 'grading'}>
             {!canQuiz ? (
@@ -91,7 +103,7 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
                     isSubmitted={isSubmitted}
                     setAnswer={setAnswer}
                     generate={generate}
-                    submit={submit}
+                    onGrade={() => void grade()}
                 />
             )}
         </Modal>
@@ -106,7 +118,7 @@ function QuizBody({
     isSubmitted,
     setAnswer,
     generate,
-    submit,
+    onGrade,
 }: {
     status: QuizStatus
     quiz: StudynotesQuiz | null
@@ -115,7 +127,7 @@ function QuizBody({
     isSubmitted: boolean
     setAnswer: (index: number, value: string) => void
     generate: () => Promise<void> | void
-    submit: () => Promise<void> | void
+    onGrade: () => void
 }) {
     const results = quiz?.results ?? null
     const hasResults = results !== null
@@ -130,8 +142,23 @@ function QuizBody({
         return map
     }, [results])
 
-    // 已提交或批改进行中均展示只读答案区，防止批改期间误改已提交内容
-    const isReadOnly = isSubmitted || status === 'grading'
+    // 仅「已有批改结果」或「批改进行中」展示只读答案区；
+    // 已提交未批改时保持 textarea 可查看，批改后才切换为只读结果视图
+    const isReadOnly = hasResults || status === 'grading'
+
+    // 作答 textarea 自适应高度：内容或状态变化后按 scrollHeight 调整，避免固定行数浪费空间/内部滚动
+    const answerListRef = useRef<HTMLDivElement>(null)
+    useLayoutEffect(() => {
+        const container = answerListRef.current
+        if (!container) return
+        const textareas =
+            container.querySelectorAll<HTMLTextAreaElement>('.form-textarea')
+        textareas.forEach((el) => {
+            el.style.height = '1px'
+            // scrollHeight 不含边框，border-box 下需补上边框高度
+            el.style.height = `${el.scrollHeight + 2}px`
+        })
+    }, [quiz, answers, status])
 
     return (
         <div className="flex flex-1 flex-col">
@@ -141,7 +168,7 @@ function QuizBody({
                 quiz={quiz}
                 status={status}
                 onGenerate={() => void generate()}
-                onSubmit={() => void submit()}
+                onGrade={onGrade}
             />
 
             <ResultFeedback
@@ -153,7 +180,9 @@ function QuizBody({
             />
 
             {/* 题目列表（纵向滚动） */}
-            <div className="flex-1 space-y-4 overflow-y-auto p-4">
+            <div
+                ref={answerListRef}
+                className="flex-1 space-y-4 overflow-y-auto p-4">
                 {quiz?.questions.map((q) => {
                     const result = resultMap.get(q.index) ?? null
                     // answers 为 0-based 数组，q.index 为 1-based 题号，取 -1 对齐
@@ -214,14 +243,14 @@ function QuizHeader({
     quiz,
     status,
     onGenerate,
-    onSubmit,
+    onGrade,
 }: {
     isSubmitted: boolean
     hasResults: boolean
     quiz: StudynotesQuiz | null
     status: QuizStatus
     onGenerate: () => void
-    onSubmit: () => void
+    onGrade: () => void
 }) {
     return (
         <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 pb-3">
@@ -236,7 +265,7 @@ function QuizHeader({
                 </div>
             </div>
             <div className="flex shrink-0 items-center gap-2.5">
-                {isSubmitted && quiz ? (
+                {isSubmitted && quiz && (
                     <>
                         {hasResults ? (
                             <div className="flex items-center gap-2 text-sm">
@@ -251,9 +280,19 @@ function QuizHeader({
                                 <ScoreBadge score={quiz.score} />
                             </div>
                         ) : (
-                            <span className="text-xs text-gray-500">
-                                已提交，点击下方「批改」查看结果
-                            </span>
+                            <button
+                                type="button"
+                                disabled={
+                                    status === 'generating' ||
+                                    status === 'grading'
+                                }
+                                onClick={onGrade}
+                                className="btn btn-primary">
+                                {status === 'grading' ? (
+                                    <Loader2 className="size-4 animate-spin" />
+                                ) : null}
+                                批改
+                            </button>
                         )}
                         <button
                             type="button"
@@ -265,18 +304,6 @@ function QuizHeader({
                             重新测试
                         </button>
                     </>
-                ) : (
-                    <button
-                        type="button"
-                        disabled={status === 'grading'}
-                        onClick={onSubmit}
-                        className="btn btn-primary">
-                        {status === 'grading' ? (
-                            <Loader2 className="size-4 animate-spin" />
-                        ) : (
-                            '提交答案'
-                        )}
-                    </button>
                 )}
             </div>
         </div>
@@ -431,9 +458,9 @@ function QuizQuestionItem({
                         onAnswerChange(question.index - 1, e.target.value)
                     }
                     placeholder="在此作答（可留空，留空判 0 分）"
-                    rows={2}
+                    rows={1}
                     maxLength={2000}
-                    className="form-textarea w-full min-h-14 border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-y-auto"
+                    className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"
                 />
             )}
         </div>

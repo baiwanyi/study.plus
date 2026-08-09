@@ -249,15 +249,9 @@ lessonsRouter.delete('/:id', async (req: Request, res: Response) => {
             await tx
                 .delete(studyPreviews)
                 .where(eq(studyPreviews.lessonId, lessonId))
-            const notes = await tx
-                .select({ id: studyNotes.id })
-                .from(studyNotes)
-                .where(eq(studyNotes.lessonId, lessonId))
-            for (const note of notes) {
-                await tx
-                    .delete(studyQuiz)
-                    .where(eq(studyQuiz.studynoteId, note.id))
-            }
+            await tx
+                .delete(studyQuiz)
+                .where(eq(studyQuiz.studyId, lessonId))
             await tx.delete(studyNotes).where(eq(studyNotes.lessonId, lessonId))
             return tx
                 .delete(studyLessons)
