@@ -1,9 +1,16 @@
-import { eq, and, gte, lte, sql, ne, like } from 'drizzle-orm'
-import type { Transaction } from 'drizzle-orm/libsql'
+import { and, eq, gte, isNull, lte, ne, or, sql } from 'drizzle-orm'
 import { db } from '../db/index'
 import { pointRecords, monthSummary, exchanges } from '../db/schema'
 import { loadRules } from './rules-loader'
 import type { MonthSummary } from '@shared/types'
+
+// 事务句柄类型：db.transaction 回调参数类型（SQLiteTransaction），与 typeof db 组成联合，
+// 使 recompute 既能接受主库 db 也能接受事务内 tx。
+type DbOrTx =
+    | typeof db
+    | (Parameters<typeof db.transaction>[0] extends (tx: infer T) => unknown
+          ? T
+          : never)
 
 interface ComputedSummary extends MonthSummary {
     totalEarn: number
@@ -16,16 +23,17 @@ interface ComputedSummary extends MonthSummary {
 
 async function ensureMonthRow(
     targetMonth: string,
-    tx: Transaction = db,
+    tx: DbOrTx = db,
+    rules?: Awaited<ReturnType<typeof loadRules>>,
 ): Promise<MonthSummary> {
+    const loadedRules = rules ?? (await loadRules())
     const rows = (await tx
         .select()
         .from(monthSummary)
         .where(eq(monthSummary.month, targetMonth))) as MonthSummary[]
     if (rows.length > 0) return rows[0]
 
-    const rules = await loadRules()
-    const defaultBasePoints = rules.monthlyBasePoints
+    const defaultBasePoints = loadedRules.monthlyBasePoints
 
     const prevMonthDate = new Date(`${targetMonth}-01T00:00:00.000Z`)
     prevMonthDate.setMonth(prevMonthDate.getMonth() - 1)
@@ -51,7 +59,10 @@ async function ensureMonthRow(
             .where(
                 and(
                     eq(pointRecords.type, 'earn'),
-                    ne(pointRecords.relatedType, 'revoked'),
+                    or(
+                        isNull(pointRecords.relatedType),
+                        ne(pointRecords.relatedType, 'revoked'),
+                    ),
                     gte(pointRecords.createdAt, prevStart),
                     lte(pointRecords.createdAt, prevEnd),
                 ),
@@ -62,7 +73,10 @@ async function ensureMonthRow(
             .where(
                 and(
                     eq(pointRecords.type, 'deduct'),
-                    ne(pointRecords.relatedType, 'revoked'),
+                    or(
+                        isNull(pointRecords.relatedType),
+                        ne(pointRecords.relatedType, 'revoked'),
+                    ),
                     gte(pointRecords.createdAt, prevStart),
                     lte(pointRecords.createdAt, prevEnd),
                 ),
@@ -83,8 +97,12 @@ async function ensureMonthRow(
 
 export async function recomputeMonthSummary(
     targetMonth: string,
-    tx: Transaction = db,
+    tx: DbOrTx = db,
 ): Promise<ComputedSummary> {
+    // 校验月份格式（YYYY-MM），避免 Invalid Date 经 toISOString() 抛错或写入脏数据
+    if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) {
+        throw new Error(`targetMonth 格式非法: ${targetMonth}，应为 YYYY-MM`)
+    }
     const startDate = new Date(`${targetMonth}-01T00:00:00.000Z`)
     const endDate = new Date(startDate)
     endDate.setUTCMonth(endDate.getUTCMonth() + 1)
@@ -93,9 +111,9 @@ export async function recomputeMonthSummary(
     const start = startDate.toISOString()
     const end = endDate.toISOString()
 
-    const summary = await ensureMonthRow(targetMonth, tx)
-
     const rules = await loadRules()
+    const summary = await ensureMonthRow(targetMonth, tx, rules)
+
     const minimumPointsForPrivileges = rules.minimumPointsForPrivileges
 
     const earnResult = await tx
@@ -104,7 +122,10 @@ export async function recomputeMonthSummary(
         .where(
             and(
                 eq(pointRecords.type, 'earn'),
-                ne(pointRecords.relatedType, 'revoked'),
+                or(
+                    isNull(pointRecords.relatedType),
+                    ne(pointRecords.relatedType, 'revoked'),
+                ),
                 gte(pointRecords.createdAt, start),
                 lte(pointRecords.createdAt, end),
             ),
@@ -115,7 +136,14 @@ export async function recomputeMonthSummary(
         .where(
             and(
                 eq(pointRecords.type, 'deduct'),
-                ne(pointRecords.relatedType, 'revoked'),
+                or(
+                    isNull(pointRecords.relatedType),
+                    ne(pointRecords.relatedType, 'exchange'),
+                ),
+                or(
+                    isNull(pointRecords.relatedType),
+                    ne(pointRecords.relatedType, 'revoked'),
+                ),
                 gte(pointRecords.createdAt, start),
                 lte(pointRecords.createdAt, end),
             ),
@@ -136,25 +164,12 @@ export async function recomputeMonthSummary(
         )
     const totalExchanges = Number(exchangesResult[0]?.total) || 0
 
-    const advanceEarnResult = await tx
-        .select({ total: sql`COALESCE(SUM(${pointRecords.amount}), 0)` })
-        .from(pointRecords)
-        .where(
-            and(
-                eq(pointRecords.type, 'earn'),
-                like(pointRecords.reason, '积分预支 - %'),
-                gte(pointRecords.createdAt, start),
-                lte(pointRecords.createdAt, end),
-            ),
-        )
-    const advanceEarn = Number(advanceEarnResult[0]?.total) || 0
-
+    // 预支发放额已计入 pointRecords 的 earn（reason 形如「积分预支 - N期」），
+    // 经由 totalEarn 进入 balance，无需在 availableBalance 中重复累加。
     const balance = summary.basePoints + totalEarn - totalDeduct
-    const availableBalance =
-        summary.basePoints -
-        rules.monthlyBasePoints -
-        totalExchanges +
-        advanceEarn
+    // 可用余额 = 当前总余额 - 已兑换消耗（兑换扣减统一由 exchanges 表计数，
+    // 因此 pointRecords 中 relatedType='exchange' 的 deduct 已在上文排除，避免重复扣减）。
+    const availableBalance = balance - totalExchanges
 
     await tx
         .update(monthSummary)

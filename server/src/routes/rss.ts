@@ -120,7 +120,8 @@ router.get('/feed', async (req: Request, res: Response) => {
         const items = parseRssFeed(xml)
         res.json({ items })
     } catch (err) {
-        res.status(500).json({ error: (err as Error).message })
+        console.error('获取 RSS 源失败:', err)
+        res.status(500).json({ error: '获取 RSS 源失败' })
     }
 })
 
@@ -155,7 +156,8 @@ router.get('/post/:id', async (req: Request, res: Response) => {
             excerpt: data.excerpt.rendered,
         })
     } catch (err) {
-        res.status(500).json({ error: (err as Error).message })
+        console.error('获取文章内容失败:', err)
+        res.status(500).json({ error: '获取文章内容失败' })
     }
 })
 

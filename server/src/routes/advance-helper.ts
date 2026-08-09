@@ -18,10 +18,14 @@ export async function loadSystemSettings(): Promise<SystemSettings> {
             .select()
             .from(options)
             .where(eq(options.key, 'system'))
-        if (rows[0]) {
+        if (rows[0] && typeof rows[0].value === 'string') {
             const parsed = JSON.parse(rows[0].value)
             // 运行时守卫：防止 DB 中存储的畸形数据（非对象）污染配置合并
-            if (parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)) {
+            if (
+                parsed !== null &&
+                typeof parsed === 'object' &&
+                !Array.isArray(parsed)
+            ) {
                 return {
                     ...defaultSystemSettings,
                     ...parsed,
@@ -35,7 +39,10 @@ export async function loadSystemSettings(): Promise<SystemSettings> {
 }
 
 export function isFirstDayOfMonth(): boolean {
-    return new Date().getDate() === 1
+    // 与系统时间基准一致：monthSummary 使用 UTC 年月、积分记录 createdAt 存 UTC，
+    // 故此处用 getUTCDate 判断，避免本地时区与 UTC 的月初错位（如东八区 8 小时偏移）
+    // 导致定时还款任务重复或漏触发。
+    return new Date().getUTCDate() === 1
 }
 
 export function calculateAdvanceRepayment(

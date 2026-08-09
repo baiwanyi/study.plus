@@ -24,8 +24,12 @@ import { weeklyRouter } from './routes/weekly'
 // （生产环境禁止向客户端返回错误堆栈，见全局错误处理器）。
 process.env.NODE_ENV ||= 'production'
 
-const app = express()
+// 导出 app 以便集成测试通过 supertest 直接驱动，无需真实监听端口。
+// 生产启动逻辑（API Key 校验、定时任务、listen）统一收口在 import.meta.main
+// 守卫中，避免被测试 import 时触发 process.exit / 端口占用 / 后台定时器。
+export const app = express()
 const PORT = Number(process.env.PORT) || 3006
+const isMain = import.meta.main
 
 // Security headers via helmet (covers CSP, X-Content-Type-Options,
 // X-Frame-Options, Referrer-Policy). HSTS is NOT managed by helmet here —
@@ -93,13 +97,9 @@ app.use('/api/', apiLimiter)
 
 // API key authentication — fail-fast if API_KEY is not configured at startup.
 // Every non-public API endpoint must present a matching X-API-Key header.
+// 注意：process.exit(1) 仅在直接以主模块运行（生产启动）时执行；
+// 被测试 import 时不触发，避免测试进程直接退出。
 const API_KEY = process.env.API_KEY
-if (!API_KEY) {
-    console.error(
-        'FATAL: 环境变量 API_KEY 未设置。出于安全考虑，服务器拒绝在无认证的情况下启动。',
-    )
-    process.exit(1)
-}
 
 function requireApiKey(req: Request, res: Response, next: NextFunction): void {
     const provided =
@@ -230,17 +230,27 @@ function setupMonthlyRepayment(): void {
     console.log('[Scheduled] 每月还款定时任务已启动')
 }
 
-setupMonthlyRepayment()
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server listening on port ${PORT}`)
-}).on('error', (err: NodeJS.ErrnoException) => {
-    if (err.code === 'EADDRINUSE') {
+// 以下为生产启动逻辑：仅当以主模块直接运行（node/bun server/src/index.ts）时执行。
+// 被测试 import 时 isMain 为 false，跳过定时任务与端口监听，避免污染测试环境。
+if (isMain) {
+    if (!API_KEY) {
         console.error(
-            `Port ${PORT} is already in use. Please free the port or set PORT environment variable to a different value.`,
+            'FATAL: 环境变量 API_KEY 未设置。出于安全考虑，服务器拒绝在无认证的情况下启动。',
         )
-    } else {
-        console.error('Server failed to start:', err)
+        process.exit(1)
     }
-    process.exit(1)
-})
+    setupMonthlyRepayment()
+
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`Server listening on port ${PORT}`)
+    }).on('error', (err: NodeJS.ErrnoException) => {
+        if (err.code === 'EADDRINUSE') {
+            console.error(
+                `Port ${PORT} is already in use. Please free the port or set PORT environment variable to a different value.`,
+            )
+        } else {
+            console.error('Server failed to start:', err)
+        }
+        process.exit(1)
+    })
+}

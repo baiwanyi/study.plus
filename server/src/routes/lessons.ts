@@ -1,6 +1,5 @@
 import { and, desc, eq, inArray } from 'drizzle-orm'
 import { Router } from 'express'
-import rateLimit from 'express-rate-limit'
 import { studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
 import {
@@ -10,16 +9,12 @@ import {
     studyQuiz,
 } from '../db/schema'
 import { analyzePreview } from '../services/ai'
+import { parsePosInt } from '../utils/param'
+import { aiLimiter } from '../utils/rate-limit'
 import type { SQL } from 'drizzle-orm'
 import type { Request, Response } from 'express'
 
 export const lessonsRouter = Router()
-
-/** Validate param is a positive integer; returns -1 if invalid */
-function parsePosInt(raw: unknown): number {
-    const id = Number(raw)
-    return Number.isInteger(id) && id > 0 ? id : -1
-}
 
 const VALID_SUBJECTS = new Set<string>(studynotesSubjectValues)
 
@@ -36,17 +31,6 @@ function safeJsonParse<T>(raw: string | null, fallback: T | null): T | null {
         return fallback
     }
 }
-
-// 预习 AI 分析限流（防账单刷爆，与心得评估同等级：每小时 30 次）
-const previewAiLimiter = rateLimit({
-    windowMs: 60 * 60 * 1000,
-    max: 30,
-    standardHeaders: true,
-    legacyHeaders: false,
-    handler: (_req: Request, res: Response) => {
-        res.status(429).json({ error: 'AI 调用过于频繁，请稍后再试' })
-    },
-})
 
 // List lessons with aggregated preview/reflection/quiz status
 lessonsRouter.get('/', async (req: Request, res: Response) => {
@@ -420,7 +404,7 @@ lessonsRouter.post('/:id/preview', async (req: Request, res: Response) => {
 // AI analyze lesson preview
 lessonsRouter.post(
     '/:id/preview/analyze',
-    previewAiLimiter,
+    aiLimiter,
     async (req: Request, res: Response) => {
         try {
             const lessonId = parsePosInt(req.params.id)

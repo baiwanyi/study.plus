@@ -9,7 +9,7 @@
         "build": "pnpm --filter apps build",
         "db:migrate": "pnpm --filter server db:migrate",
         "start": "pnpm --filter server start",
-        "test": "vitest run"
+        "test": "pnpm --filter server exec vitest run"
     },
     "devDependencies": {
         "concurrently": "^10.0.0",

@@ -106,7 +106,7 @@ router.get('/:md5', async (req: Request<{ md5: string }>, res: Response) => {
         res.json(rows[0])
     } catch (err) {
         console.error('获取视频详情失败:', err)
-        res.status(500).json({ error: String(err) })
+        res.status(500).json({ error: '获取视频详情失败' })
     }
 })
 
@@ -201,11 +201,13 @@ router.post('/scan', async (_req: Request, res: Response) => {
         )
         res.end()
     } catch (err) {
+        console.error('扫描视频目录失败:', err)
         if (!res.headersSent) {
-            res.status(500).json({ error: String(err) })
+            res.status(500).json({ error: '扫描视频目录失败' })
         } else {
             res.write(
-                JSON.stringify({ type: 'error', message: String(err) }) + '\n',
+                JSON.stringify({ type: 'error', message: '扫描视频目录失败' }) +
+                    '\n',
             )
             res.end()
         }
@@ -237,7 +239,7 @@ router.put(
             res.json(rows[0])
         } catch (err) {
             console.error('更新视频标题失败:', err)
-            res.status(500).json({ error: String(err) })
+            res.status(500).json({ error: '更新视频标题失败' })
         }
     },
 )
@@ -259,7 +261,7 @@ router.post(
             res.json({ success: true })
         } catch (err) {
             console.error('增加浏览次数失败:', err)
-            res.status(500).json({ error: String(err) })
+            res.status(500).json({ error: '增加浏览次数失败' })
         }
     },
 )
@@ -374,7 +376,7 @@ router.get(
             }
         } catch (err) {
             console.error('流式传输视频失败:', err)
-            res.status(500).json({ error: String(err) })
+            res.status(500).json({ error: '流式传输视频失败' })
         }
     },
 )
@@ -395,7 +397,7 @@ router.put(
             res.json({ success: true })
         } catch (err) {
             console.error('保存播放进度失败:', err)
-            res.status(500).json({ error: String(err) })
+            res.status(500).json({ error: '保存播放进度失败' })
         }
     },
 )
@@ -423,7 +425,7 @@ router.post(
             res.json(updated[0])
         } catch (err) {
             console.error('切换收藏失败:', err)
-            res.status(500).json({ error: String(err) })
+            res.status(500).json({ error: '切换收藏失败' })
         }
     },
 )

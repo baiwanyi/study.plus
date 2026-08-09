@@ -1,6 +1,7 @@
 import { eq, ne, desc, and, gte, lte, sql, inArray } from 'drizzle-orm'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
+import { z } from 'zod'
 import { db } from '../db/index'
 import {
     pointRecords,
@@ -11,7 +12,11 @@ import {
 import { getPointsForGrade, getPointsForExamScore } from '../services/points'
 import { loadRules } from './rules-loader'
 import { recomputeMonthSummary } from './summary-helper'
-import { loadSystemSettings, isFirstDayOfMonth, repayActiveAdvances } from './advance-helper'
+import {
+    loadSystemSettings,
+    isFirstDayOfMonth,
+    repayActiveAdvances,
+} from './advance-helper'
 import type {
     PointRecord,
     CreatePointRecordRequest,
@@ -27,6 +32,45 @@ import type {
 
 const router = Router()
 
+const createPointSchema = z.object({
+    type: z.string().min(1, 'type 为必填项'),
+    amount: z.number({ error: 'amount 必须为数字' }).finite('amount 必须为有效数字'),
+    reason: z.string().min(1, 'reason 为必填项'),
+    ruleName: z.string().optional(),
+    relatedId: z.coerce.number().int().optional(),
+    relatedType: z.string().optional(),
+})
+
+const byGradeSchema = z.object({
+    category: z.string().min(1, 'category 为必填项'),
+    grade: z.string().min(1, 'grade 为必填项'),
+    remark: z.string().optional(),
+    relatedId: z.coerce.number().int().optional(),
+})
+
+const byExamScoreSchema = z.object({
+    score: z
+        .number({ error: 'score 必须为数字' })
+        .min(0, 'score 必须在 0-100 之间')
+        .max(100, 'score 必须在 0-100 之间'),
+    remark: z.string().optional(),
+    relatedId: z.coerce.number().int().optional(),
+})
+
+const byCustomRuleSchema = z.object({
+    ruleId: z.string().min(1, 'ruleId 为必填项'),
+    remark: z.string().optional(),
+    relatedId: z.coerce.number().int().optional(),
+})
+
+const createAdvanceSchema = z.object({
+    amount: z.number().int('预支积分必须为整数').positive('预支积分必须为正整数'),
+    installments: z.union(
+        [z.literal(1), z.literal(3), z.literal(6), z.literal(9), z.literal(12)],
+        { error: '期数仅支持 1/3/6/9/12 五个档位' },
+    ),
+})
+
 router.get(
     '/',
     async (req: Request, res: Response<PointRecord[] | ApiErrorResponse>) => {
@@ -38,12 +82,14 @@ router.get(
             }
             const rawLimit = Number(req.query.limit)
             const rawOffset = Number(req.query.offset)
-            const limit = Number.isFinite(rawLimit) && rawLimit > 0
-                ? Math.min(Math.trunc(rawLimit), 200)
-                : 20
-            const offset = Number.isFinite(rawOffset) && rawOffset > 0
-                ? Math.trunc(rawOffset)
-                : 0
+            const limit =
+                Number.isFinite(rawLimit) && rawLimit > 0
+                    ? Math.min(Math.trunc(rawLimit), 200)
+                    : 20
+            const offset =
+                Number.isFinite(rawOffset) && rawOffset > 0
+                    ? Math.trunc(rawOffset)
+                    : 0
             const conditions = []
 
             if (type) conditions.push(eq(pointRecords.type, type))
@@ -92,34 +138,25 @@ router.post(
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
         try {
-            const {
-                type,
-                amount,
-                reason,
-                ruleName,
-                relatedId,
-                relatedType,
-            }: CreatePointRecordRequest = req.body
-            if (!type || amount === undefined || amount === null || !reason) {
+            const parsed = createPointSchema.safeParse(req.body)
+            if (!parsed.success) {
                 res.status(400).json({
-                    error: 'type、amount 和 reason 为必填项',
+                    error: parsed.error.issues[0]?.message ?? '请求参数无效',
                 })
                 return
             }
-            if (typeof amount !== 'number' || !Number.isFinite(amount)) {
-                res.status(400).json({ error: 'amount 必须为有效数字' })
-                return
-            }
+            const { type, amount, reason, ruleName, relatedId, relatedType } =
+                parsed.data
             const result = await db.transaction(async (tx) => {
                 const inserted = await tx
                     .insert(pointRecords)
                     .values({
-                        type,
+                        type: type as PointRecordType,
                         amount,
                         reason,
                         ruleName,
                         relatedId,
-                        relatedType,
+                        relatedType: relatedType as RelatedType | undefined,
                     })
                     .returning()
                 await recomputeMonthSummary(
@@ -131,7 +168,9 @@ router.post(
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points:', err)
-            res.status(500).json({ error: '服务器内部错误' } as ApiErrorResponse)
+            res.status(500).json({
+                error: '服务器内部错误',
+            } as ApiErrorResponse)
         }
     },
 )
@@ -152,19 +191,14 @@ router.post(
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
         try {
-            const { category, grade, remark, relatedId } = req.body
-            if (!category || !grade) {
-                res.status(400).json({ error: 'category 和 grade 为必填项' })
+            const parsed = byGradeSchema.safeParse(req.body)
+            if (!parsed.success) {
+                res.status(400).json({
+                    error: parsed.error.issues[0]?.message ?? '请求参数无效',
+                })
                 return
             }
-            if (
-                relatedId !== undefined &&
-                relatedId !== null &&
-                isNaN(Number(relatedId))
-            ) {
-                res.status(400).json({ error: 'relatedId 必须为有效数字' })
-                return
-            }
+            const { category, grade, remark, relatedId } = parsed.data
 
             const rules = await loadRules()
             const validGrades = rules.gradingScale.homework.map((g) => g.grade)
@@ -207,7 +241,9 @@ router.post(
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points/by-grade:', err)
-            res.status(500).json({ error: '服务器内部错误' } as ApiErrorResponse)
+            res.status(500).json({
+                error: '服务器内部错误',
+            } as ApiErrorResponse)
         }
     },
 )
@@ -223,30 +259,14 @@ router.post(
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
         try {
-            const { score, remark, relatedId } = req.body
-            if (score === undefined || score === null) {
-                res.status(400).json({ error: 'score 为必填项' })
+            const parsed = byExamScoreSchema.safeParse(req.body)
+            if (!parsed.success) {
+                res.status(400).json({
+                    error: parsed.error.issues[0]?.message ?? '请求参数无效',
+                })
                 return
             }
-            if (
-                relatedId !== undefined &&
-                relatedId !== null &&
-                isNaN(Number(relatedId))
-            ) {
-                res.status(400).json({ error: 'relatedId 必须为有效数字' })
-                return
-            }
-
-            const numScore = Number(score)
-            if (isNaN(numScore)) {
-                res.status(400).json({ error: 'score 必须为数字' })
-                return
-            }
-
-            if (numScore < 0 || numScore > 100) {
-                res.status(400).json({ error: 'score 必须在 0-100 之间' })
-                return
-            }
+            const { score: numScore, remark, relatedId } = parsed.data
 
             const rules = await loadRules()
 
@@ -284,7 +304,9 @@ router.post(
             res.json(result[0] as PointRecord)
         } catch (err) {
             console.error('Error in POST /points/by-exam-score:', err)
-            res.status(500).json({ error: '服务器内部错误' } as ApiErrorResponse)
+            res.status(500).json({
+                error: '服务器内部错误',
+            } as ApiErrorResponse)
         }
     },
 )
@@ -299,19 +321,14 @@ router.post(
         >,
         res: Response<PointRecord | ApiErrorResponse>,
     ) => {
-        const { ruleId, remark, relatedId } = req.body
-        if (!ruleId) {
-            res.status(400).json({ error: 'ruleId 为必填项' })
+        const parsed = byCustomRuleSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? '请求参数无效',
+            })
             return
         }
-        if (
-            relatedId !== undefined &&
-            relatedId !== null &&
-            isNaN(Number(relatedId))
-        ) {
-            res.status(400).json({ error: 'relatedId 必须为有效数字' })
-            return
-        }
+        const { ruleId, remark, relatedId } = parsed.data
 
         try {
             const rules = await loadRules()
@@ -366,7 +383,8 @@ router.post(
 router.get('/summary', async (req: Request, res: Response) => {
     try {
         const { month } = req.query as { month?: string }
-        const targetMonth: string = month || new Date().toISOString().slice(0, 7)
+        const targetMonth: string =
+            month || new Date().toISOString().slice(0, 7)
         const summary = await recomputeMonthSummary(targetMonth)
         res.json(summary)
     } catch (err) {
@@ -625,11 +643,8 @@ router.get(
     async (req: Request, res: Response<PointAdvance[] | ApiErrorResponse>) => {
         try {
             const rawStatus = req.query.status as string | undefined
-            if (
-                rawStatus &&
-                rawStatus !== 'active' &&
-                rawStatus !== 'completed'
-            ) {
+            const statusSchema = z.enum(['active', 'completed'])
+            if (rawStatus && !statusSchema.safeParse(rawStatus).success) {
                 res.status(400).json({
                     error: `无效的状态值 "${rawStatus}"，仅支持 active 或 completed`,
                 })
@@ -640,12 +655,14 @@ router.get(
                 : undefined
             const rawLimit = Number(req.query.limit)
             const rawOffset = Number(req.query.offset)
-            const limit = Number.isFinite(rawLimit) && rawLimit > 0
-                ? Math.min(Math.trunc(rawLimit), 200)
-                : 20
-            const offset = Number.isFinite(rawOffset) && rawOffset > 0
-                ? Math.trunc(rawOffset)
-                : 0
+            const limit =
+                Number.isFinite(rawLimit) && rawLimit > 0
+                    ? Math.min(Math.trunc(rawLimit), 200)
+                    : 20
+            const offset =
+                Number.isFinite(rawOffset) && rawOffset > 0
+                    ? Math.trunc(rawOffset)
+                    : 0
             const records = (await db
                 .select()
                 .from(pointAdvances)
@@ -714,25 +731,14 @@ router.post(
         res: Response<PointAdvance | ApiErrorResponse>,
     ) => {
         try {
-            const { amount, installments } = req.body
-
-            if (
-                typeof amount !== 'number' ||
-                !Number.isInteger(amount) ||
-                amount <= 0
-            ) {
+            const parsed = createAdvanceSchema.safeParse(req.body)
+            if (!parsed.success) {
                 res.status(400).json({
-                    error: '预支积分必须为正整数',
+                    error: parsed.error.issues[0]?.message ?? '请求参数无效',
                 })
                 return
             }
-
-            if (![1, 3, 6, 9, 12].includes(installments)) {
-                res.status(400).json({
-                    error: '期数仅支持 1/3/6/9/12 五个档位',
-                })
-                return
-            }
+            const { amount, installments } = parsed.data
 
             const settings = await loadSystemSettings()
             const maxPendingAmount = settings.maxPendingAmount ?? 500

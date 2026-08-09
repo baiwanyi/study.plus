@@ -10,7 +10,7 @@ import { client } from './index'
 
 console.log('Running database migration...')
 
-async function migrate(): Promise<void> {
+export async function migrate(): Promise<void> {
     await client.execute(`
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -977,7 +977,10 @@ async function migrate(): Promise<void> {
     console.log('Migration completed successfully!')
 }
 
-migrate().catch((err: Error) => {
-    console.error('Migration failed:', err.message)
-    process.exit(1)
-})
+// 仅当作为脚本直接运行时执行迁移；被测试 import 时不触发，避免 vitest 内意外退出。
+if (import.meta.main) {
+    migrate().catch((err: Error) => {
+        console.error('Migration failed:', err.message)
+        process.exit(1)
+    })
+}

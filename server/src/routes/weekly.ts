@@ -1,9 +1,14 @@
 import { desc, eq, asc } from 'drizzle-orm'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
+import { z } from 'zod'
 import { DEFAULT_WEEKLY_AI_HELPER } from '@shared/constants'
 import { taskClassLabels } from '@shared/utils'
-import { parseContent, stringifyContent } from '@shared/weekly'
+import {
+    parseContent,
+    stringifyContent,
+    WeeklyContentSchema,
+} from '@shared/weekly'
 import { db } from '../db/index'
 import {
     weeklyReports,
@@ -12,10 +17,33 @@ import {
     options,
 } from '../db/schema'
 import { analyzeWeeklyReport, chatAboutWeeklyReport } from '../services/ai'
+import { aiLimiter } from '../utils/rate-limit'
+import { parsePosInt } from '../utils/param'
 import type { WeeklyAnalysis, ChatMessage } from '@shared/types'
-import type { WeeklyReportContent } from '@shared/weekly'
 
 const router = Router()
+
+const createWeeklySchema = z.object({
+    weekNumber: z
+        .number()
+        .int('周次必须为整数')
+        .min(1, '周次至少为 1')
+        .max(53, '周次最多为 53'),
+    year: z
+        .number()
+        .int('年份必须为整数')
+        .min(2000, '年份不合法')
+        .max(2100, '年份不合法'),
+    content: WeeklyContentSchema,
+})
+
+const updateWeeklySchema = z.object({
+    content: WeeklyContentSchema,
+})
+
+const weeklyChatSchema = z.object({
+    message: z.string().min(1, '消息内容不能为空').max(2000, '消息内容过长'),
+})
 
 async function loadAiTeacherName(): Promise<string> {
     try {
@@ -80,26 +108,21 @@ router.get('/', async (req: Request, res: Response) => {
         const reports = await query
         res.json(reports)
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : '查询周报失败'
-        console.error('GET /api/weekly error:', message)
-        res.status(500).json({ error: message })
+        console.error('查询周报失败:', err)
+        res.status(500).json({ error: '查询周报失败' })
     }
 })
 
 router.post('/', async (req: Request, res: Response) => {
     try {
-        const { weekNumber, year, content } = req.body as {
-            weekNumber: number
-            year: number
-            content: WeeklyReportContent
-        }
-
-        if (!weekNumber || !year || !content) {
+        const parsed = createWeeklySchema.safeParse(req.body)
+        if (!parsed.success) {
             res.status(400).json({
-                error: '缺少必要字段：weekNumber, year, content',
+                error: parsed.error.issues[0]?.message ?? '请求参数无效',
             })
             return
         }
+        const { weekNumber, year, content } = parsed.data
 
         const [report] = await db
             .insert(weeklyReports)
@@ -112,21 +135,26 @@ router.post('/', async (req: Request, res: Response) => {
 
         res.status(201).json(report)
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : '创建周报失败'
-        console.error('POST /api/weekly error:', message)
-        res.status(500).json({ error: message })
+        console.error('创建周报失败:', err)
+        res.status(500).json({ error: '创建周报失败' })
     }
 })
 
 router.put('/:id', async (req: Request, res: Response) => {
     try {
-        const id = Number(req.params.id)
-        const { content } = req.body as { content: WeeklyReportContent }
-
-        if (!content) {
-            res.status(400).json({ error: '缺少必要字段：content' })
+        const id = parsePosInt(req.params.id)
+        if (id < 0) {
+            res.status(400).json({ error: '周报 ID 必须为正整数' })
             return
         }
+        const parsed = updateWeeklySchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? '请求参数无效',
+            })
+            return
+        }
+        const { content } = parsed.data
 
         const [report] = await db
             .update(weeklyReports)
@@ -144,27 +172,33 @@ router.put('/:id', async (req: Request, res: Response) => {
 
         res.json(report)
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : '更新周报失败'
-        console.error('PUT /api/weekly/:id error:', message)
-        res.status(500).json({ error: message })
+        console.error('更新周报失败:', err)
+        res.status(500).json({ error: '更新周报失败' })
     }
 })
 
 router.delete('/:id', async (req: Request, res: Response) => {
     try {
-        const id = Number(req.params.id)
+        const id = parsePosInt(req.params.id)
+        if (id < 0) {
+            res.status(400).json({ error: '周报 ID 必须为正整数' })
+            return
+        }
         await db.delete(weeklyReports).where(eq(weeklyReports.id, id))
         res.json({ success: true })
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : '删除周报失败'
-        console.error('DELETE /api/weekly/:id error:', message)
-        res.status(500).json({ error: message })
+        console.error('删除周报失败:', err)
+        res.status(500).json({ error: '删除周报失败' })
     }
 })
 
-router.post('/:id/analyze', async (req: Request, res: Response) => {
+router.post('/:id/analyze', aiLimiter, async (req: Request, res: Response) => {
     try {
-        const id = Number(req.params.id)
+        const id = parsePosInt(req.params.id)
+        if (id < 0) {
+            res.status(400).json({ error: '周报 ID 必须为正整数' })
+            return
+        }
         const [report] = await db
             .select()
             .from(weeklyReports)
@@ -214,9 +248,8 @@ router.post('/:id/analyze', async (req: Request, res: Response) => {
 
         res.json({ analysis })
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'AI分析失败'
-        console.error('POST /api/weekly/:id/analyze error:', message)
-        res.status(500).json({ error: message })
+        console.error('AI 分析周报失败:', err)
+        res.status(500).json({ error: 'AI 分析周报失败' })
     }
 })
 
@@ -242,21 +275,26 @@ router.get('/:id/conversation', async (req: Request, res: Response) => {
 
         res.json({ conversation: conv, messages })
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : '查询会话失败'
-        console.error('GET /api/weekly/:id/conversation error:', message)
-        res.status(500).json({ error: message })
+        console.error('查询会话失败:', err)
+        res.status(500).json({ error: '查询会话失败' })
     }
 })
 
-router.post('/:id/chat', async (req: Request, res: Response) => {
+router.post('/:id/chat', aiLimiter, async (req: Request, res: Response) => {
     try {
-        const id = Number(req.params.id)
-        const { message } = req.body as { message: string }
-
-        if (!message?.trim()) {
-            res.status(400).json({ error: '消息不能为空' })
+        const id = parsePosInt(req.params.id)
+        if (id < 0) {
+            res.status(400).json({ error: '周报 ID 必须为正整数' })
             return
         }
+        const parsed = weeklyChatSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? '请求参数无效',
+            })
+            return
+        }
+        const { message } = parsed.data
 
         const [report] = await db
             .select()
@@ -323,9 +361,8 @@ router.post('/:id/chat', async (req: Request, res: Response) => {
 
         res.json({ reply })
     } catch (err: unknown) {
-        const message = err instanceof Error ? err.message : 'AI对话失败'
-        console.error('POST /api/weekly/:id/chat error:', message)
-        res.status(500).json({ error: message })
+        console.error('AI 对话周报失败:', err)
+        res.status(500).json({ error: 'AI 对话周报失败' })
     }
 })
 

@@ -1,6 +1,7 @@
 import { eq, desc, asc, and, inArray } from 'drizzle-orm'
 import { Router } from 'express'
 import type { Request, Response } from 'express'
+import { z } from 'zod'
 import { toTaskType, taskStatus, taskTypeValues } from '@shared/utils'
 import { db } from '../db/index'
 import {
@@ -19,6 +20,7 @@ import {
     chatAboutTask,
 } from '../services/ai'
 import { getPointsForGrade } from '../services/points'
+import { aiLimiter } from '../utils/rate-limit'
 import { loadRules } from './rules-loader'
 import { recomputeMonthSummary } from './summary-helper'
 import type {
@@ -62,6 +64,31 @@ function parseTaskId(id: string): number | null {
     const taskId = Number(id)
     return Number.isInteger(taskId) && taskId > 0 ? taskId : null
 }
+
+const createTaskSchema = z.object({
+    title: z.string().min(1, '标题不能为空').max(200, '标题过长'),
+    type: z.enum(taskTypeValues),
+})
+
+const updateTaskSchema = z.object({
+    title: z.string().min(1, '标题不能为空').max(200, '标题过长').optional(),
+    type: z.enum(taskTypeValues).optional(),
+    status: z.enum(taskStatus).optional(),
+})
+
+const aiPromptSchema = z.object({
+    content: z
+        .string()
+        .min(1, '内容不能为空')
+        .max(10000, '内容过长（上限 10000 字符）'),
+})
+
+const aiChatSchema = z.object({
+    message: z
+        .string()
+        .min(1, '消息不能为空')
+        .max(2000, '消息过长（上限 2000 字符）'),
+})
 
 function buildTask(row: typeof tasks.$inferSelect): Task {
     return {
@@ -235,15 +262,14 @@ router.post(
         req: Request<{}, Task | ApiErrorResponse, CreateTaskRequest>,
         res: Response<Task | ApiErrorResponse>,
     ) => {
-        const { title, type }: CreateTaskRequest = req.body
-        if (!title || !type) {
-            res.status(400).json({ error: 'title and type are required' })
+        const parsed = createTaskSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? 'Invalid task data',
+            })
             return
         }
-        if (!isValidEnum(type, taskTypeValues)) {
-            res.status(400).json({ error: 'Invalid task type' })
-            return
-        }
+        const { title, type } = parsed.data
         const result = await db
             .insert(tasks)
             .values({ title, type })
@@ -267,16 +293,14 @@ router.put(
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
-        const { title, type, status }: UpdateTaskRequest = req.body
-
-        if (type && !isValidEnum(type, taskTypeValues)) {
-            res.status(400).json({ error: 'Invalid task type' })
+        const parsed = updateTaskSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? 'Invalid task data',
+            })
             return
         }
-        if (status && !isValidEnum(status, taskStatus)) {
-            res.status(400).json({ error: 'Invalid task status' })
-            return
-        }
+        const { title, type, status } = parsed.data
 
         const result = await db
             .update(tasks)
@@ -348,11 +372,14 @@ router.post(
             res.status(400).json({ error: 'Invalid task id' })
             return
         }
-        const { content }: SubmitTaskRequest = req.body
-        if (!content) {
-            res.status(400).json({ error: 'content is required' })
+        const parsed = aiPromptSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? 'Invalid content',
+            })
             return
         }
+        const { content } = parsed.data
 
         const task = await fetchTaskById(taskId)
         if (!task) {
@@ -392,6 +419,7 @@ router.post(
 
 router.post(
     '/:id/ai-title',
+    aiLimiter,
     async (
         req: Request<{ id: string }, { title: string } | ApiErrorResponse>,
         res: Response<{ title: string } | ApiErrorResponse>,
@@ -426,6 +454,7 @@ router.post(
 
 router.post(
     '/ai-generate-title',
+    aiLimiter,
     async (
         req: Request<
             {},
@@ -448,6 +477,7 @@ router.post(
 
 router.post(
     '/:id/ai-score',
+    aiLimiter,
     async (
         req: Request<{ id: string }, SubmitTaskResponse | ApiErrorResponse>,
         res: Response<SubmitTaskResponse | ApiErrorResponse>,
@@ -544,6 +574,7 @@ router.get(
 
 router.post(
     '/:id/ai-demo',
+    aiLimiter,
     async (
         req: Request<{ id: string }, { demo: string } | ApiErrorResponse>,
         res: Response<{ demo: string } | ApiErrorResponse>,
@@ -597,6 +628,7 @@ router.post(
 
 router.post(
     '/:id/ai-chat',
+    aiLimiter,
     async (
         req: Request<
             { id: string },
@@ -617,11 +649,14 @@ router.post(
             return
         }
 
-        const { message } = req.body
-        if (!message) {
-            res.status(400).json({ error: 'message is required' })
+        const parsed = aiChatSchema.safeParse(req.body)
+        if (!parsed.success) {
+            res.status(400).json({
+                error: parsed.error.issues[0]?.message ?? 'Invalid message',
+            })
             return
         }
+        const { message } = parsed.data
 
         let [conv] = await db
             .select()

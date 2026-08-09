@@ -36,6 +36,9 @@ export default defineConfig({
             },
         },
     },
+    // 全局唯一 env 文件位于仓库根目录（apps/ 的上一级）。
+    // Vite 仅将 VITE_ 前缀变量注入客户端，其余变量仅服务端可见。
+    envDir: path.resolve(__dirname, '..'),
     publicDir: 'public',
     optimizeDeps: {
         include: ['@uiw/react-md-editor'],

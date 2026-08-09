@@ -9,7 +9,6 @@ import { recomputeMonthSummary } from './summary-helper'
 import type {
     Exchange,
     CreateExchangeRequest,
-    ExchangeStatus,
     RevokeExchangeResponse,
     ApiErrorResponse,
 } from '@shared/types'
@@ -24,12 +23,24 @@ const createExchangeSchema = z.object({
         .positive('兑换积分必须为正数'),
 })
 
-router.get('/', async (req: Request, res: Response<Exchange[]>) => {
-    const { itemType, month, status } = req.query as {
-        itemType?: string
-        month?: string
-        status?: ExchangeStatus
+const listQuerySchema = z.object({
+    itemType: z.string().min(1).optional(),
+    month: z
+        .string()
+        .regex(/^\d{4}-\d{2}$/, 'month 格式应为 YYYY-MM')
+        .optional(),
+    status: z.enum(['active', 'revoked']).optional(),
+    limit: z.coerce.number().int().positive().max(200).optional(),
+    offset: z.coerce.number().int().min(0).optional(),
+})
+
+router.get('/', async (req: Request, res: Response<Exchange[] | ApiErrorResponse>) => {
+    const parsed = listQuerySchema.safeParse(req.query)
+    if (!parsed.success) {
+        res.status(400).json(parsed.error.issues[0]?.message as never)
+        return
     }
+    const { itemType, month, status, limit, offset } = parsed.data
     const conditions = []
 
     if (itemType) conditions.push(eq(exchanges.itemType, itemType))
@@ -45,24 +56,16 @@ router.get('/', async (req: Request, res: Response<Exchange[]>) => {
     }
 
     // 分页：默认 50 条，上限 200，防止大表全量返回（性能）
-    const limit = Math.min(Number(req.query.limit) || 50, 200)
-    const offset = Math.max(Number(req.query.offset) || 0, 0)
+    const pageLimit = limit ?? 50
+    const pageOffset = offset ?? 0
 
-    const records: Exchange[] =
-        conditions.length > 0
-            ? ((await db
-                  .select()
-                  .from(exchanges)
-                  .where(and(...conditions))
-                  .orderBy(desc(exchanges.createdAt))
-                  .limit(limit)
-                  .offset(offset)) as Exchange[])
-            : ((await db
-                  .select()
-                  .from(exchanges)
-                  .orderBy(desc(exchanges.createdAt))
-                  .limit(limit)
-                  .offset(offset)) as Exchange[])
+    const records: Exchange[] = (await db
+        .select()
+        .from(exchanges)
+        .where(conditions.length > 0 ? and(...conditions) : undefined)
+        .orderBy(desc(exchanges.createdAt))
+        .limit(pageLimit)
+        .offset(pageOffset)) as Exchange[]
 
     res.json(records)
 })
@@ -91,7 +94,7 @@ router.post(
             const rate = rules.exchangeRates[itemType]
             if (rate) {
                 const quantity: number =
-                    (pointsCost / (rate.points || 1)) * rate.ratio
+                    (pointsCost / (rate.points || 1)) * (rate.ratio || 1)
                 const formattedQty = Number.isInteger(quantity)
                     ? String(quantity)
                     : quantity.toFixed(1)
@@ -166,15 +169,13 @@ router.post(
             return
         }
 
-        const { exchangeSrc } = await loadRulesWithSrc()
-        const itemLabel = getExchangeItemLabel(exchangeSrc, exchange.itemType)
-
         try {
             const currentMonth: string = new Date().toISOString().slice(0, 7)
 
             await db.transaction(async (tx) => {
-                // 撤销仅改动流水与兑换状态，余额统一交由 recomputeMonthSummary 重算，
-                // 避免「手动累加 + 重算」重复计入导致余额虚高。
+                // 撤销仅将兑换扣减流水标记为已撤销，并改 exchanges 状态为 revoked。
+                // 可用余额由 recomputeMonthSummary 统一重算：totalExchanges 因状态变更而减少，
+                // 从而自动恢复余额，无需插入反向 earn（否则会重复加回导致余额虚高）。
                 await tx
                     .update(pointRecords)
                     .set({ relatedType: 'revoked' })
@@ -184,18 +185,6 @@ router.post(
                             eq(pointRecords.relatedType, 'exchange'),
                         ),
                     )
-
-                await tx.insert(pointRecords).values({
-                    type: 'earn',
-                    amount: exchange.pointsCost,
-                    reason: `撤销兑换${itemLabel} ${exchange.detail}`,
-                    ruleName: 'exchangeRevoked',
-                    relatedId: exchange.id,
-                    // relatedType 用 'exchange'（非 'revoked'），确保 recompute 将其计入 totalEarn；
-                    // 原 deduct 记录的 relatedType 已改为 'revoked' 被排除在 totalDeduct 之外，
-                    // 二者结合实现「真正返还积分」。
-                    relatedType: 'exchange',
-                })
 
                 await tx
                     .update(exchanges)
