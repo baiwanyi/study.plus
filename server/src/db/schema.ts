@@ -218,11 +218,30 @@ export const studynotes = sqliteTable('studynotes', {
     memoryHook: text('memory_hook'),
     evaluation: text('evaluation'),
     evaluatedAt: text('evaluated_at'),
-    followUpScore: integer('follow_up_score'),
+    quizScore: integer('quiz_score'),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
     updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const studynoteQuiz = sqliteTable('studynote_quiz', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    studynoteId: integer('studynote_id')
+        .notNull()
+        .references(() => studynotes.id, { onDelete: 'cascade' }),
+    questionsJson: text('questions_json').notNull(),
+    answersJson: text('answers_json'),
+    resultsJson: text('results_json'),
+    score: integer('score'),
+    correctCount: integer('correct_count'),
+    comment: text('comment').notNull().default(''),
+    suggestionsJson: text('suggestions_json').notNull().default('[]'),
+    generatedAt: text('generated_at').notNull(),
+    submittedAt: text('submitted_at'),
+    createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),
 })

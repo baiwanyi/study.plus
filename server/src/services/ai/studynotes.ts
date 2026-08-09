@@ -1,11 +1,13 @@
 import {
     defaultPromptEvaluateStudynotes,
-    promptStudynotesFollowUpHeader,
-    promptStudynotesFollowUpQuiz,
-    promptStudynotesFollowUpRound1,
-    promptStudynotesFollowUpSummary,
+    promptStudynotesQuizGenerate,
+    promptStudynotesQuizGrade,
 } from '@shared/constants'
 import { studynotesSubjectLabels } from '@shared/utils'
+import type {
+    StudynotesQuizQuestion,
+    StudynotesQuizResult,
+} from '@shared/types'
 import {
     callDeepSeek,
     DEEPSEEK_API_KEY,
@@ -78,81 +80,154 @@ export async function evaluateStudynotesReflection(
     }
 }
 
-export async function studynotesFollowUpChat(
-    subject: string,
-    topic: string,
-    summary: string,
-    example: string,
-    stuckPoints: string,
-    prevMessages: { role: string; content: string }[],
-    userMessage?: string,
-): Promise<string> {
-    if (!DEEPSEEK_API_KEY) {
-        return '测验出错：AI 对话未配置，请设置 DEEPSEEK_API_KEY'
-    }
+interface StudynotesCardInput {
+    subject: string
+    topic: string
+    summary: string
+    example: string
+    stuckPoints: string
+    memoryHook?: string | null
+}
 
-    const roundNumber = prevMessages.filter((m) => m.role === 'user').length + 1
-    const historyText =
-        prevMessages.length > 0
-            ? prevMessages
-                  .map(
-                      (m) =>
-                          `${m.role === 'assistant' ? '老师' : '学生'}：${m.content}`,
-                  )
-                  .join('\n')
-            : ''
-
-    const subjectLabel = studynotesSubjectLabels[subject] || subject || '未填写学科'
-
-    // 按轮次选择对应的指令段落，避免 AI 看到无关指令产生误导
-    let sectionPrompt: string
-    if (roundNumber === 1) {
-        sectionPrompt = promptStudynotesFollowUpRound1
-    } else if (roundNumber <= 10) {
-        sectionPrompt = promptStudynotesFollowUpQuiz
-            .replace('{history}', historyText)
-            .replace('{studentAnswer}', userMessage || '')
-            .replace('{roundNumber}', String(roundNumber))
-    } else {
-        sectionPrompt = promptStudynotesFollowUpSummary
-            .replace('{history}', historyText)
-            .replace('{studentAnswer}', userMessage || '')
-    }
-
-    const prompt = promptStudynotesFollowUpHeader
+function buildCardPrompt(
+    card: StudynotesCardInput,
+    template: string,
+): string {
+    const subjectLabel =
+        studynotesSubjectLabels[card.subject] || card.subject || '未填写学科'
+    return template
         .replace('{subject}', subjectLabel)
-        .replace('{topic}', topic || '未填写课题')
-        .replace('{summary}', summary || '未填写')
-        .replace('{example}', example || '未填写')
-        .replace('{stuckPoints}', stuckPoints || '未填写')
-        + sectionPrompt
+        .replace('{topic}', card.topic || '未填写课题')
+        .replace('{summary}', card.summary || '未填写')
+        .replace('{example}', card.example || '未填写')
+        .replace('{stuckPoints}', card.stuckPoints || '未填写')
+        .replace('{memoryHook}', card.memoryHook || '未填写')
+}
+
+export async function generateStudynotesQuiz(
+    card: StudynotesCardInput,
+): Promise<StudynotesQuizQuestion[]> {
+    if (!DEEPSEEK_API_KEY) {
+        throw new Error('AI 出题未配置，请设置 DEEPSEEK_API_KEY')
+    }
+
+    const prompt = buildCardPrompt(card, promptStudynotesQuizGenerate)
 
     try {
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
             max_tokens: 4000,
+            response_format: { type: 'json_object' },
             timeoutMs: 120_000,
         })
 
         await logAiUsage(
-            'studynotes-followup',
+            'studynotes-quiz-generate',
             usage,
-            `学习心得追问：${topic || subject}`,
+            `学习心得出题：${card.topic || card.subject}`,
         )
 
-        return reply
+        const parsed = safeJsonParse<{
+            questions?: StudynotesQuizQuestion[]
+        } | null>(reply, null)
+        if (
+            !parsed ||
+            !Array.isArray(parsed.questions) ||
+            parsed.questions.length !== 10
+        ) {
+            throw new Error('AI 返回的题目数量不正确（应为10题）')
+        }
+
+        return parsed.questions.map((q, i) => ({
+            index: i + 1,
+            question: String(q.question || '').trim(),
+        }))
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('AI follow-up error:', message)
+        console.error('AI quiz generate error:', message)
+        throw new Error(`出题失败：${message}`)
+    }
+}
 
-        // 针对特定错误类型给出更友好的提示
-        if (message.includes('Empty response') || message.includes('截断')) {
-            return '测验出错：AI 返回为空，请稍后重试。如果持续出现，请检查 API 配置或联系管理员。'
+export interface StudynotesQuizGradeResult {
+    results: StudynotesQuizResult[]
+    score: number
+    correctCount: number
+    comment: string
+    suggestions: string[]
+}
+
+export async function gradeStudynotesQuiz(
+    card: StudynotesCardInput,
+    questions: StudynotesQuizQuestion[],
+    answers: string[],
+): Promise<StudynotesQuizGradeResult> {
+    if (!DEEPSEEK_API_KEY) {
+        throw new Error('AI 批改未配置，请设置 DEEPSEEK_API_KEY')
+    }
+
+    const questionsAndAnswers = questions
+        .map((q, i) => {
+            const ans = answers[i] ?? ''
+            return `第${q.index}题：${q.question}\n学生答案：${ans || '（空）'}`
+        })
+        .join('\n\n')
+
+    const prompt = buildCardPrompt(card, promptStudynotesQuizGrade).replace(
+        '{questionsAndAnswers}',
+        questionsAndAnswers,
+    )
+
+    try {
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 6000,
+            response_format: { type: 'json_object' },
+            timeoutMs: 120_000,
+        })
+
+        await logAiUsage(
+            'studynotes-quiz-grade',
+            usage,
+            `学习心得批改：${card.topic || card.subject}`,
+        )
+
+        const parsed = safeJsonParse<{
+            results?: StudynotesQuizResult[]
+            score?: number
+            correctCount?: number
+            comment?: string
+            suggestions?: string[]
+        } | null>(reply, null)
+        if (
+            !parsed ||
+            !Array.isArray(parsed.results) ||
+            parsed.results.length !== questions.length
+        ) {
+            throw new Error('AI 返回的批改结果与题目数量不匹配')
         }
-        if (message.includes('内容被过滤')) {
-            return '测验出错：您的问题包含不合适的内容，已被 AI 过滤，请换一种方式回答。'
+
+        return {
+            results: parsed.results.map((r) => ({
+                index: r.index,
+                question: String(r.question || '').trim(),
+                studentAnswer: String(r.studentAnswer ?? ''),
+                isCorrect: Boolean(r.isCorrect),
+                correctAnswer: String(r.correctAnswer ?? ''),
+                explanation: String(r.explanation ?? ''),
+            })),
+            score: Number(parsed.score ?? 0),
+            correctCount: Number(parsed.correctCount ?? 0),
+            comment: String(parsed.comment ?? ''),
+            suggestions: Array.isArray(parsed.suggestions)
+                ? parsed.suggestions.map(String)
+                : [],
         }
-        return `测验出错：${message}，请稍后重试`
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('AI quiz grade error:', message)
+        throw new Error(`批改失败：${message}`)
     }
 }

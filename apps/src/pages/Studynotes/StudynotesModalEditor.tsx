@@ -1,26 +1,14 @@
 'use client'
 
-import { MessageSquareText } from 'lucide-react'
 import { useCallback, useEffect, useLayoutEffect, useRef, useState } from 'react'
 import { studynotesApi } from '@apps/utils/api'
-import AiChatPanel from '@components/AiChatPanel'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import { EvaluationReport } from './EvaluationReport'
-import type {
-    StudynotesItem,
-    StudynotesEvaluation,
-    StudynotesMessage,
-    ChatMessage,
-} from '@shared/types'
-
-const MAX_FOLLOWUP_ROUNDS = 10
-
-function mapMessages(msgs: StudynotesMessage[]): ChatMessage[] {
-    return msgs.map(({ role, content }) => ({ role, content }))
-}
+import { StudynotesQuizPanel } from './StudynotesQuizPanel'
+import type { StudynotesItem, StudynotesEvaluation } from '@shared/types'
 
 interface StudynotesModalEditorProps {
     open: boolean
@@ -57,19 +45,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     const [currentCard, setCurrentCard] = useState<StudynotesItem | null>(null)
 
     const canFollowUp = evaluation != null && evaluation.completenessScore >= 80
-
-    const [chatMessages, setChatMessages] = useState<ChatMessage[]>([])
-    const [chatSending, setChatSending] = useState(false)
-    const [hasTriggeredConversation, setHasTriggeredConversation] =
-        useState(false)
-
-    const userCount = chatMessages.filter(
-        (m) => m.role === 'user',
-    ).length
-    const conversationActive =
-        hasTriggeredConversation &&
-        userCount < MAX_FOLLOWUP_ROUNDS
-    const conversationComplete = userCount >= MAX_FOLLOWUP_ROUNDS
 
     const mountedRef = useRef(false)
     const formContainerRef = useRef<HTMLDivElement>(null)
@@ -114,8 +89,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     useEffect(() => {
         if (!open) return
         mountedRef.current = true
-        setChatMessages([])
-        setHasTriggeredConversation(false)
         setEvaluation(null)
         setEvaluationError(false)
         setCurrentCard(null)
@@ -149,15 +122,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         } catch {
                             /* empty */
                         }
-                    }
-                    try {
-                        const msgs = await studynotesApi.getMessages(card.id)
-                        if (!mountedRef.current) return
-                        if (msgs.length > 0) {
-                            setChatMessages(mapMessages(msgs))
-                        }
-                    } catch {
-                        // No messages yet
                     }
                 })
                 .catch(() => showSnackbar('加载学习心得失败', 'error'))
@@ -276,60 +240,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
             setSaving(false)
         }
     }, [cardId, currentCard, evaluationError, subject, topic, summary, example, stuckPoints, memoryHook, showSnackbar, onSaved])
-
-    const runFollowUp = useCallback(async (message?: string) => {
-        if (!currentCard) {
-            showSnackbar(
-                message ? '请先保存卡片后再发送消息' : '请先保存卡片',
-                'error',
-            )
-            return
-        }
-        if (!canFollowUp) {
-            showSnackbar('评分未达到80分，暂无法进行测验', 'error')
-            return
-        }
-        // 重新测验时清空旧消息，避免旧内容残留
-        if (!message) {
-            setChatMessages([])
-        }
-        setHasTriggeredConversation(true)
-        setChatSending(true)
-        const MAX_RETRIES = 1
-        let lastError: unknown
-        for (let i = 0; i <= MAX_RETRIES; i++) {
-            try {
-                const result = await studynotesApi.followUp(currentCard.id, message)
-                setChatMessages(mapMessages(result.messages))
-                lastError = undefined
-                break
-            } catch (err) {
-                lastError = err
-                if (i < MAX_RETRIES) {
-                    await new Promise((r) => setTimeout(r, 2000))
-                }
-            }
-        }
-        if (lastError) {
-            showSnackbar(
-                message ? '发送失败，请稍后重试' : '测验出错，请稍后重试',
-                'error',
-            )
-        }
-        setChatSending(false)
-    }, [currentCard, canFollowUp, showSnackbar])
-
-    const handleFollowUp = useCallback(() => runFollowUp(), [runFollowUp])
-
-    const handleChatSend = useCallback((message: string) => runFollowUp(message), [runFollowUp])
-
-    function getEmptyText(): string {
-        if (!currentCard) return '请先保存卡片后再使用 AI 功能'
-        if (!canFollowUp) return '评分未达80分，暂无法测验'
-        if (!hasTriggeredConversation) return '点击"开始测验"进行10道题智能测验'
-        if (conversationComplete) return '本轮测验已结束，可再次点击"重新测验"开始新一轮'
-        return ''
-    }
 
     function getConfirmLabel(): string {
         if (evaluating) return '评估中...'
@@ -470,35 +380,12 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         </div>
                     </div>
 
-                    {/* ===== Right: AI 辅导员 ===== */}
-                    <div className="flex flex-col h-full min-h-0 max-h-[calc(90vh-9rem)]">
-                        {/* AiChatPanel */}
-                        <div className="flex-1 min-h-0">
-                            <AiChatPanel
-                                messages={chatMessages}
-                                onSend={handleChatSend}
-                                sending={chatSending}
-                                aiHelperName=""
-                                emptyText={getEmptyText()}
-                                inputPlaceholder="输入你的答案...">
-                                <button
-                                    onClick={handleFollowUp}
-                                    disabled={
-                                        chatSending ||
-                                        !currentCard ||
-                                        !canFollowUp ||
-                                        conversationActive
-                                    }
-                                    className="btn btn-outline btn-sm">
-                                    <MessageSquareText className="size-4" />
-                                    <span className="ml-1">
-                                        {conversationComplete
-                                            ? '重新测验'
-                                            : '开始测验'}
-                                    </span>
-                                </button>
-                            </AiChatPanel>
-                        </div>
+                    {/* ===== Right: 专属测验 ===== */}
+                    <div className="flex flex-col h-full min-h-0 max-h-[calc(90vh-9rem)] border-l border-gray-200">
+                        <StudynotesQuizPanel
+                            cardId={currentCard?.id ?? null}
+                            canQuiz={canFollowUp}
+                        />
                     </div>
                 </div>
             )}

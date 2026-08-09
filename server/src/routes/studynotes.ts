@@ -1,15 +1,20 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
 import { Router } from 'express'
 import { studynotesSubjectValues } from '@shared/utils'
+import type {
+    StudynotesQuiz,
+    StudynotesQuizQuestion,
+    StudynotesQuizResult,
+} from '@shared/types'
 import { db } from '../db/index'
 import {
     studynotes,
-    studynoteConversations,
-    studynoteMessages,
+    studynoteQuiz,
 } from '../db/schema'
 import {
     evaluateStudynotesReflection,
-    studynotesFollowUpChat,
+    generateStudynotesQuiz,
+    gradeStudynotesQuiz,
 } from '../services/ai'
 import type { SQL } from 'drizzle-orm'
 import type { Request, Response } from 'express'
@@ -20,6 +25,36 @@ export const studynotesRouter = Router()
 function parseCardId(raw: unknown): number {
     const id = Number(raw)
     return Number.isInteger(id) && id > 0 ? id : -1
+}
+
+const QUIZ_ANSWER_MAX_LEN = 5000
+const QUIZ_SIZE = 10
+
+function mapQuizRow(row: typeof studynoteQuiz.$inferSelect): StudynotesQuiz {
+    return {
+        id: row.id,
+        studynoteId: row.studynoteId,
+        questions: JSON.parse(row.questionsJson) as StudynotesQuizQuestion[],
+        answers: row.answersJson ? (JSON.parse(row.answersJson) as string[]) : null,
+        results: row.resultsJson
+            ? (JSON.parse(row.resultsJson) as StudynotesQuizResult[])
+            : null,
+        score: row.score,
+        correctCount: row.correctCount,
+        comment: row.comment,
+        suggestions: JSON.parse(row.suggestionsJson) as string[],
+        generatedAt: row.generatedAt,
+        submittedAt: row.submittedAt,
+    }
+}
+
+function validateAnswers(raw: unknown): string[] | null {
+    if (!Array.isArray(raw)) return null
+    if (raw.length !== QUIZ_SIZE) return null
+    return raw.map((item) => {
+        if (typeof item !== 'string') return ''
+        return item.slice(0, QUIZ_ANSWER_MAX_LEN)
+    })
 }
 
 const VALID_SUBJECTS = new Set<string>(studynotesSubjectValues)
@@ -46,26 +81,20 @@ studynotesRouter.get('/', async (req: Request, res: Response) => {
             .where(filters.length > 0 ? and(...filters) : undefined)
             .orderBy(desc(studynotes.createdAt))
 
-        // Fetch follow-up message counts per card (GROUP BY avoids N+1 with JS counting).
-        // Only count assistant replies to reflect actual AI follow-up turns.
+        // Fetch quiz counts per card (GROUP BY avoids N+1 with JS counting).
         const countRows = await db
             .select({
-                cardId: studynoteConversations.studynoteId,
+                cardId: studynoteQuiz.studynoteId,
                 count: sql<number>`COUNT(*)`,
             })
-            .from(studynoteConversations)
-            .innerJoin(
-                studynoteMessages,
-                eq(studynoteMessages.conversationId, studynoteConversations.id),
-            )
-            .where(eq(studynoteMessages.role, 'assistant'))
-            .groupBy(studynoteConversations.studynoteId)
+            .from(studynoteQuiz)
+            .groupBy(studynoteQuiz.studynoteId)
 
         const countMap = new Map(countRows.map((r) => [r.cardId, r.count]))
 
         const result = cards.map((card) => ({
             ...card,
-            followUpCount: countMap.get(card.id) ?? 0,
+            quizCount: countMap.get(card.id) ?? 0,
         }))
 
         // Apply search filter in-memory for simplicity
@@ -313,8 +342,8 @@ studynotesRouter.post('/:id/evaluate', async (req: Request, res: Response) => {
     }
 })
 
-// AI follow-up chat
-studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
+// 生成专属测验：校验评估 ≥80 后，出 10 题并入库（submittedAt 为 null）
+studynotesRouter.post('/:id/quiz', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
@@ -334,120 +363,210 @@ studynotesRouter.post('/:id/follow-up', async (req: Request, res: Response) => {
         }
 
         const card = rows[0]
-        const userMessage =
-            typeof req.body?.message === 'string' ? req.body.message.trim() : ''
-
-        let conversationId: number
-        const existingConv = await db
-            .select()
-            .from(studynoteConversations)
-            .where(eq(studynoteConversations.studynoteId, id))
-            .limit(1)
-
-        // 重新测验（无 message 且已有对话）：清空旧消息后复用 conversation，
-        // 因为 studynoteId 有 UNIQUE 约束，不能创建多条 conversation
-        const isRestart = !userMessage && !!existingConv[0]
-
-        if (isRestart) {
-            conversationId = existingConv[0].id
-            await db
-                .delete(studynoteMessages)
-                .where(
-                    eq(studynoteMessages.conversationId, conversationId),
-                )
-        } else if (!existingConv[0]) {
-            // 首次测验：创建新 conversation
-            const newConv = await db
-                .insert(studynoteConversations)
-                .values({ studynoteId: id })
-                .returning()
-            conversationId = newConv[0].id
-        } else {
-            // 正常答题：复用已有 conversation
-            conversationId = existingConv[0].id
-        }
-
-        if (userMessage) {
-            await db.insert(studynoteMessages).values({
-                conversationId,
-                role: 'user',
-                content: userMessage,
+        const evaluation = card.evaluation ? JSON.parse(card.evaluation) : null
+        const completenessScore = evaluation?.completenessScore
+        if (
+            typeof completenessScore !== 'number' ||
+            completenessScore < 80
+        ) {
+            res.status(403).json({
+                error: 'AI 评估未达 80 分，暂不能开始测验',
             })
+            return
         }
 
-        const prevMessages = await db
-            .select()
-            .from(studynoteMessages)
-            .where(eq(studynoteMessages.conversationId, conversationId))
-            .orderBy(asc(studynoteMessages.createdAt))
-
-        const aiReply = await studynotesFollowUpChat(
-            card.subject,
-            card.topic,
-            card.summary,
-            card.example,
-            card.stuckPoints,
-            prevMessages,
-            userMessage || undefined,
-        )
-
-        // 测验出错时（如 AI 超时、过滤、返回为空）不允许将错误信息写入数据库
-        if (aiReply.startsWith('测验出错：') || aiReply.startsWith('追问出错：')) {
-            throw new Error(aiReply)
-        }
-
-        await db.insert(studynoteMessages).values({
-            conversationId,
-            role: 'assistant',
-            content: aiReply,
+        const questions = await generateStudynotesQuiz({
+            subject: card.subject,
+            topic: card.topic,
+            summary: card.summary,
+            example: card.example,
+            stuckPoints: card.stuckPoints,
+            memoryHook: card.memoryHook,
         })
 
-        // 解析 AI 回复中的掌握程度评分，保存到卡片
-        // 使用宽松正则以兼容 AI 的各种格式变体（如"】："、"】: "等）
-        const scoreRegex = /掌握程度评分[^0-9]*(\d+)/
-        const scoreMatch = aiReply.match(scoreRegex)
-        if (scoreMatch) {
-            const followUpScore = Number.parseInt(scoreMatch[1], 10)
-            if (!Number.isNaN(followUpScore) && followUpScore >= 0 && followUpScore <= 100) {
-                console.log(`[FollowUp Score] 卡片 ${id} 评分: ${followUpScore} 分`)
-                await db
-                    .update(studynotes)
-                    .set({
-                        followUpScore,
-                        updatedAt: new Date().toISOString(),
-                    })
-                    .where(eq(studynotes.id, id))
-            }
-        } else {
-            // 仅在可能是总结回复时（内容较长）记录未匹配情况，便于排查
-            if (aiReply.length > 200) {
-                console.warn(
-                    `[FollowUp Score] 卡片 ${id} 未匹配到评分，回复前 200 字: ${aiReply.slice(0, 200)}`,
-                )
-            }
-        }
+        const now = new Date().toISOString()
+        const inserted = await db
+            .insert(studynoteQuiz)
+            .values({
+                studynoteId: id,
+                questionsJson: JSON.stringify(questions),
+                generatedAt: now,
+            })
+            .returning()
 
-        await db
-            .update(studynoteConversations)
-            .set({ updatedAt: new Date().toISOString() })
-            .where(eq(studynoteConversations.id, conversationId))
-
-        const allMessages = await db
-            .select()
-            .from(studynoteMessages)
-            .where(eq(studynoteMessages.conversationId, conversationId))
-            .orderBy(asc(studynoteMessages.createdAt))
-
-        res.json({ messages: allMessages })
+        res.json({ quiz: mapQuizRow(inserted[0]) })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error in studynotes follow-up:', message)
-        res.status(500).json({ error: 'AI 测验失败' })
+        console.error('Error generating studynotes quiz:', message)
+        res.status(500).json({ error: message || '生成测验失败' })
     }
 })
 
-// GET conversation messages for a studynotes card
-studynotesRouter.get('/:id/messages', async (req: Request, res: Response) => {
+// 自动保存答题内容：仅更新 answersJson，不批改
+studynotesRouter.patch(
+    '/:id/quiz/:quizId/answers',
+    async (req: Request, res: Response) => {
+        try {
+            const id = parseCardId(req.params.id)
+            const quizId = Number(req.params.quizId)
+            if (id === -1 || !Number.isInteger(quizId) || quizId <= 0) {
+                res.status(400).json({ error: '无效的参数' })
+                return
+            }
+
+            const answers = validateAnswers(req.body?.answers)
+            if (!answers) {
+                res.status(400).json({
+                    error: `答案必须为长度 ${QUIZ_SIZE} 的数组`,
+                })
+                return
+            }
+
+            const existing = await db
+                .select()
+                .from(studynoteQuiz)
+                .where(
+                    and(
+                        eq(studynoteQuiz.id, quizId),
+                        eq(studynoteQuiz.studynoteId, id),
+                    ),
+                )
+                .limit(1)
+
+            if (!existing[0]) {
+                res.status(404).json({ error: '测验记录未找到' })
+                return
+            }
+            if (existing[0].submittedAt) {
+                res.status(409).json({ error: '该测验已提交，无法修改' })
+                return
+            }
+
+            await db
+                .update(studynoteQuiz)
+                .set({
+                    answersJson: JSON.stringify(answers),
+                    updatedAt: new Date().toISOString(),
+                })
+                .where(eq(studynoteQuiz.id, quizId))
+
+            res.json({ success: true })
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error)
+            console.error('Error saving quiz answers:', message)
+            res.status(500).json({ error: '保存答题内容失败' })
+        }
+    },
+)
+
+// 提交并批改测验
+studynotesRouter.post(
+    '/:id/quiz/:quizId/submit',
+    async (req: Request, res: Response) => {
+        try {
+            const id = parseCardId(req.params.id)
+            const quizId = Number(req.params.quizId)
+            if (id === -1 || !Number.isInteger(quizId) || quizId <= 0) {
+                res.status(400).json({ error: '无效的参数' })
+                return
+            }
+
+            const answers = validateAnswers(req.body?.answers)
+            if (!answers) {
+                res.status(400).json({
+                    error: `答案必须为长度 ${QUIZ_SIZE} 的数组`,
+                })
+                return
+            }
+
+            const existing = await db
+                .select()
+                .from(studynoteQuiz)
+                .where(
+                    and(
+                        eq(studynoteQuiz.id, quizId),
+                        eq(studynoteQuiz.studynoteId, id),
+                    ),
+                )
+                .limit(1)
+
+            if (!existing[0]) {
+                res.status(404).json({ error: '测验记录未找到' })
+                return
+            }
+            if (existing[0].submittedAt) {
+                res.status(409).json({ error: '该测验已提交' })
+                return
+            }
+
+            const card = await db
+                .select()
+                .from(studynotes)
+                .where(eq(studynotes.id, id))
+                .limit(1)
+            if (!card[0]) {
+                res.status(404).json({ error: '学习心得未找到' })
+                return
+            }
+
+            const questions = JSON.parse(
+                existing[0].questionsJson,
+            ) as StudynotesQuizQuestion[]
+
+            const grade = await gradeStudynotesQuiz(
+                {
+                    subject: card[0].subject,
+                    topic: card[0].topic,
+                    summary: card[0].summary,
+                    example: card[0].example,
+                    stuckPoints: card[0].stuckPoints,
+                    memoryHook: card[0].memoryHook,
+                },
+                questions,
+                answers,
+            )
+
+            const now = new Date().toISOString()
+            await db
+                .update(studynoteQuiz)
+                .set({
+                    answersJson: JSON.stringify(answers),
+                    resultsJson: JSON.stringify(grade.results),
+                    score: grade.score,
+                    correctCount: grade.correctCount,
+                    comment: grade.comment,
+                    suggestionsJson: JSON.stringify(grade.suggestions),
+                    submittedAt: now,
+                    updatedAt: now,
+                })
+                .where(eq(studynoteQuiz.id, quizId))
+
+            // 回写最新分数快照到卡片
+            await db
+                .update(studynotes)
+                .set({
+                    quizScore: grade.score,
+                    updatedAt: now,
+                })
+                .where(eq(studynotes.id, id))
+
+            const updated = await db
+                .select()
+                .from(studynoteQuiz)
+                .where(eq(studynoteQuiz.id, quizId))
+                .limit(1)
+
+            res.json({ quiz: mapQuizRow(updated[0]) })
+        } catch (error: unknown) {
+            const message = error instanceof Error ? error.message : String(error)
+            console.error('Error submitting studynotes quiz:', message)
+            res.status(500).json({ error: message || '提交测验失败' })
+        }
+    },
+)
+
+// 获取该卡片最新一条测验记录（恢复现场）
+studynotesRouter.get('/:id/quiz/latest', async (req: Request, res: Response) => {
     try {
         const id = parseCardId(req.params.id)
         if (id === -1) {
@@ -455,28 +574,22 @@ studynotesRouter.get('/:id/messages', async (req: Request, res: Response) => {
             return
         }
 
-        const conv = await db
+        const rows = await db
             .select()
-            .from(studynoteConversations)
-            .where(eq(studynoteConversations.studynoteId, id))
-            .orderBy(desc(studynoteConversations.id))
+            .from(studynoteQuiz)
+            .where(eq(studynoteQuiz.studynoteId, id))
+            .orderBy(desc(studynoteQuiz.id))
             .limit(1)
 
-        if (!conv[0]) {
-            res.json([])
+        if (!rows[0]) {
+            res.json({ quiz: null })
             return
         }
 
-        const messages = await db
-            .select()
-            .from(studynoteMessages)
-            .where(eq(studynoteMessages.conversationId, conv[0].id))
-            .orderBy(asc(studynoteMessages.createdAt))
-
-        res.json(messages)
+        res.json({ quiz: mapQuizRow(rows[0]) })
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
-        console.error('Error getting studynotes messages:', message)
-        res.status(500).json({ error: '获取对话消息失败' })
+        console.error('Error getting latest quiz:', message)
+        res.status(500).json({ error: '获取测验记录失败' })
     }
 })

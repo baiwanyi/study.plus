@@ -49,7 +49,7 @@ function renderEvaluation(evaluation: string | null) {
     }
 }
 
-function renderFollowUpScore(score: number | null | undefined) {
+function renderQuizScore(score: number | null | undefined) {
     if (score == null) {
         return <span className="text-xs text-gray-600">-</span>
     }
@@ -125,9 +125,18 @@ export const StudynotesListTable: FC<StudynotesListTableProps> = ({
             render: (record) => renderEvaluation(record.evaluation),
         },
         {
-            key: 'followUpScore',
-            header: '测验',
-            render: (record) => renderFollowUpScore(record.followUpScore),
+            key: 'quizScore',
+            header: '测验分数',
+            render: (record) => renderQuizScore(record.quizScore),
+        },
+        {
+            key: 'quizCount',
+            header: '测验次数',
+            render: (record) => (
+                <span className="text-sm text-gray-700">
+                    {record.quizCount ?? 0}
+                </span>
+            ),
         },
         {
             key: 'createdAt',

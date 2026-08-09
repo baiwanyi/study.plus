@@ -22,8 +22,36 @@ export interface StudynotesItem {
     evaluatedAt: string | null
     createdAt: string
     updatedAt: string
-    followUpCount?: number
-    followUpScore?: number | null
+    quizCount?: number
+    quizScore?: number | null
+}
+
+export interface StudynotesQuizQuestion {
+    index: number
+    question: string
+}
+
+export interface StudynotesQuizResult {
+    index: number
+    question: string
+    studentAnswer: string
+    isCorrect: boolean
+    correctAnswer: string
+    explanation: string
+}
+
+export interface StudynotesQuiz {
+    id: number
+    studynoteId: number
+    questions: StudynotesQuizQuestion[]
+    answers: string[] | null
+    results: StudynotesQuizResult[] | null
+    score: number | null
+    correctCount: number | null
+    comment: string
+    suggestions: string[]
+    generatedAt: string
+    submittedAt: string | null
 }
 
 export interface StudynotesEvaluation {

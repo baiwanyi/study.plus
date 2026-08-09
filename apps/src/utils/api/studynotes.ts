@@ -5,7 +5,7 @@ import type {
     StudynotesItem,
     StudynotesCreateRequest,
     StudynotesEvaluation,
-    StudynotesMessage,
+    StudynotesQuiz,
 } from '@shared/types'
 
 function assertValidId(id: number): void {
@@ -56,19 +56,42 @@ export const studynotesApi = {
             evaluatedAt: string
         }>(`/studynotes/${id}/evaluate`, { method: 'POST' })
     },
-    followUp: (id: number, message?: string) => {
+    generateQuiz: (id: number) => {
         assertValidId(id)
-        const options: RequestInit = { method: 'POST' }
-        if (message) {
-            options.body = JSON.stringify({ message })
-        }
-        return request<{ messages: StudynotesMessage[] }>(
-            `/studynotes/${id}/follow-up`,
-            options,
+        return request<{ quiz: StudynotesQuiz }>(`/studynotes/${id}/quiz`, {
+            method: 'POST',
+        })
+    },
+    getLatestQuiz: (id: number) => {
+        assertValidId(id)
+        return request<{ quiz: StudynotesQuiz | null }>(
+            `/studynotes/${id}/quiz/latest`,
         )
     },
-    getMessages: (id: number) => {
+    saveQuizAnswers: (id: number, quizId: number, answers: string[]) => {
         assertValidId(id)
-        return request<StudynotesMessage[]>(`/studynotes/${id}/messages`)
+        if (!Number.isInteger(quizId) || quizId <= 0) {
+            throw new Error(`无效测验 ID: ${quizId}`)
+        }
+        return request<{ success: boolean }>(
+            `/studynotes/${id}/quiz/${quizId}/answers`,
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ answers }),
+            },
+        )
+    },
+    submitQuiz: (id: number, quizId: number, answers: string[]) => {
+        assertValidId(id)
+        if (!Number.isInteger(quizId) || quizId <= 0) {
+            throw new Error(`无效测验 ID: ${quizId}`)
+        }
+        return request<{ quiz: StudynotesQuiz }>(
+            `/studynotes/${id}/quiz/${quizId}/submit`,
+            {
+                method: 'POST',
+                body: JSON.stringify({ answers }),
+            },
+        )
     },
 }

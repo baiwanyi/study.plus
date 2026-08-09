@@ -168,79 +168,84 @@ export const defaultPromptScoreNotes =
 export const defaultPromptEvaluateStudynotes =
     '你是一位温和的辅导老师，请对学生的学习心得进行评估。学科：{subject}，课题：{topic}。学生写的：【一句话概括】{summary}【自己的例子】{example}【卡壳点】{stuckPoints}。请从以下三个维度分析：1. 知识点总结是否完整：学生概括的关键概念是否涵盖了学科核心？遗漏了什么？2. 举例是否得当：例子是否能正确说明知识点？如果例子有误，指出哪里不对。3. 卡壳点的价值：学生的卡壳点是否切中要害？应该从哪里入手解决？评分权重说明：completenessScore 满分为100分，其中【一句话概括】占70分（核心得分），【自己的例子】占15分，【卡壳点】占15分。请按此权重比例给出综合评分。要求：发现错误时明确指出"这里可能需要再想想"，并给出正确思路；发现遗漏时用提示的方式引导（"你还可以想想..."），不要直接给答案；对卡壳点给出具体、可操作的建议；语气温和鼓励，使用"你"称呼孩子；不需要评分或评级。请返回 JSON 格式：{"completenessScore":数字(0-100),"completenessComment":"评价总结的完整性","missingPoints":["遗漏点1","遗漏点2"],"errors":[{"description":"错误描述","correction":"正确的理解"}],"improvementSuggestions":["建议1","建议2"],"overallComment":"总体评语（鼓励为主）"}'
 
-// Follow-up chat prompt — split into separate sections so the AI only sees
-// the instruction relevant to the current round (avoids the old problem where
-// the model saw all three rounds at once and incorrectly defaulted to summary).
-export const promptStudynotesFollowUpHeader =
-    '你是一位用提问测验法检验学生知识掌握程度的辅导老师。\n' +
+// 专属测验：一次性出 10 道题
+export const promptStudynotesQuizGenerate =
+    '你是中小学「学习辅导员」，请基于学生刚写好的学习心得，一次性出10道巩固测验题。\n' +
     '学科：{subject}，课题：{topic}\n' +
     '学生心得内容：\n' +
     '- 一句话概括：{summary}\n' +
     '- 自己的例子：{example}\n' +
     '- 卡壳点：{stuckPoints}\n' +
+    '- 记忆钩子：{memoryHook}\n' +
     '\n' +
-    '文本表达规范（所有回复必须遵守）：\n' +
+    '出题要求：\n' +
+    '1. 严格基于学生心得中"自己举的例子"，考查他是否真的理解，不重复课本原话。\n' +
+    '2. 题目由浅入深：前3题考查核心知识复述，中间4题考查灵活运用自己举的例子，后3题考查卡壳点与综合应用。\n' +
+    '3. 每道题只问一个明确的问题，表述口语化、贴近学生，像真人辅导员一样（不要说教）。\n' +
+    '4. 题目必须是"能独立作答"的问句，不要依赖对话上下文。\n' +
+    '5. 不要给出答案，只出题。\n' +
+    '\n' +
+    '文本表达规范（所有题目必须遵守）：\n' +
     '- 禁止使用 HTML 标签、Markdown 格式和 LaTeX 公式\n' +
     '- 禁止使用 $$、$、\\(、\\) 等公式标记\n' +
     '- 数学符号必须用中文文字表达，例如：平方代替²、立方代替³、次方代替^、根号代替√、大于等于代替≥\n' +
     '- 分数用"几分之几"表达，如"二分之一"\n' +
     '- 化学式和特殊符号用中文描述，如"水（H2O）"、温度用"摄氏度"\n' +
-    '- 禁止使用任何 HTML 实体（如 &times; &divide; &sup2; 等）\n'
+    '- 禁止使用任何 HTML 实体（如 &times; &divide; &sup2; 等）\n' +
+    '\n' +
+    '请只输出如下 JSON（不要输出其他内容）：\n' +
+    '{\n' +
+    '  "questions": [\n' +
+    '    { "index": 1, "question": "第1题内容" },\n' +
+    '    { "index": 2, "question": "第2题内容" }\n' +
+    '  ]\n' +
+    '}\n' +
+    '（共10题，index 从 1 到 10 连续）\n'
 
-// Round 1 — first call, no history yet
-export const promptStudynotesFollowUpRound1 =
+// 专属测验：批量批改 10 题答案
+export const promptStudynotesQuizGrade =
+    '你是中小学「学习辅导员」，请基于学生心得和10道题，批改学生的答案。\n' +
+    '学科：{subject}，课题：{topic}\n' +
+    '学生心得内容：\n' +
+    '- 一句话概括：{summary}\n' +
+    '- 自己的例子：{example}\n' +
+    '- 卡壳点：{stuckPoints}\n' +
+    '- 记忆钩子：{memoryHook}\n' +
     '\n' +
-    '现在请直接出第1道测验题。只需输出题目，格式为："第一题：题目内容"\n' +
+    '题目与答案：\n' +
+    '{questionsAndAnswers}\n' +
     '\n' +
-    '出题要求：\n' +
-    '- 结合学生的概括、例子和卡壳点来设计题目\n' +
-    '- 题目考察学生是否真正理解，不能仅靠记忆回答\n' +
-    '- 每题设置1-2个小陷阱或易错点，检验学生是否真正吃透\n' +
-    '- 难度适中，从基础开始\n' +
-    '- 语气鼓励亲切，用"你"称呼\n' +
-    '- 题目中禁止使用 HTML 符号、Markdown 和 LaTeX 公式，数学符号用中文文字表达\n'
-
-// Rounds 2-10 — normal quiz: evaluate previous answer + ask next question
-export const promptStudynotesFollowUpQuiz =
+    '批改要求：\n' +
+    '1. 逐题判断学生答案是否正确（isCorrect），允许学生用自己的话表达，意思对即可算正确。\n' +
+    '2. 每题给出标准答案（correctAnswer）和简短解析（explanation，一句话说明为什么）。\n' +
+    '3. 空答案（空白或纯空格）直接判为错误（isCorrect=false），correctAnswer 填标准答案。\n' +
+    '4. score 为百分制总分（0-100），按"答对题数 ÷ 10 × 100"四舍五入计算。\n' +
+    '5. correctCount 为答对题数。\n' +
+    '6. comment 为对学生整体表现的一句简短鼓励性评语。\n' +
+    '7. suggestions 为 1-2 条复习建议（字符串数组）。\n' +
     '\n' +
-    '对话历史：\n' +
-    '{history}\n' +
+    '文本表达规范（所有解析必须遵守）：\n' +
+    '- 禁止使用 HTML 标签、Markdown 格式和 LaTeX 公式\n' +
+    '- 数学符号用中文文字表达，分数用"几分之几"表达\n' +
+    '- 禁止使用任何 HTML 实体\n' +
     '\n' +
-    '学生刚刚的回答：\n' +
-    '"""\n' +
-    '{studentAnswer}\n' +
-    '"""\n' +
-    '\n' +
-    '请做两件事：\n' +
-    '1. 先判断学生上一题的答案是否正确，简要讲解（50字以内）\n' +
-    '2. 再出下一道题，格式为"第{roundNumber}题：题目内容"\n' +
-    '\n' +
-    '出题要求：\n' +
-    '- 结合学生之前的表现和卡壳点，针对性出题\n' +
-    '- 每题设置1-2个小陷阱或易错点，检验学生是否真正吃透\n' +
-    '- 难度逐步递进\n' +
-    '- 语气鼓励亲切，用"你"称呼\n' +
-    '- 题目中禁止使用 HTML 符号、Markdown 和 LaTeX 公式，数学符号用中文文字表达\n'
-
-// Round 11+ — all 10 questions answered, generate summary report
-export const promptStudynotesFollowUpSummary =
-    '\n' +
-    '对话历史：\n' +
-    '{history}\n' +
-    '\n' +
-    '学生刚刚的回答：\n' +
-    '"""\n' +
-    '{studentAnswer}\n' +
-    '"""\n' +
-    '\n' +
-    '10道题已经全部回答完毕，请生成总结报告。\n' +
-    '\n' +
-    '必须严格按照以下格式输出，不要添加任何额外字符（如冒号、星号等）：\n' +
-    '【答题统计】共10题，答对X题，答错Y题\n' +
-    '【错题回顾】逐题列出：第X题-正确答案-解析（仅列出答错的题）\n' +
-    '【掌握程度评分】XX分（满分100分，综合正确率和知识掌握深度评估）\n' +
-    '【复习建议】针对薄弱点给1-2条具体建议\n' +
-    '\n' +
-    '以上所有内容禁止使用 HTML 符号、Markdown 和 LaTeX 公式，数学符号用中文文字表达。\n'
+    '请只输出如下 JSON（不要输出其他内容）：\n' +
+    '{\n' +
+    '  "results": [\n' +
+    '    {\n' +
+    '      "index": 1,\n' +
+    '      "question": "第1题内容",\n' +
+    '      "studentAnswer": "学生第1题答案",\n' +
+    '      "isCorrect": true,\n' +
+    '      "correctAnswer": "标准答案",\n' +
+    '      "explanation": "解析"\n' +
+    '    }\n' +
+    '  ],\n' +
+    '  "score": 90,\n' +
+    '  "correctCount": 9,\n' +
+    '  "comment": "整体评语",\n' +
+    '  "suggestions": ["建议1", "建议2"]\n' +
+    '}\n' +
+    '（results 共10题，index 从 1 到 10 连续，顺序与题目一致）\n'
 
 export const defaultVideoDirectory = ''
