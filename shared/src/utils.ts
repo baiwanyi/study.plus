@@ -126,9 +126,10 @@ export const taskAILabels: Record<TaskAI, string> = {
     'task-chat': '作业对话',
     'weekly-analyze': '周报分析',
     'weekly-chat': '周报对话',
-    'studynotes-evaluate': '心得评估',
-    'studynotes-quiz-generate': '测验出题',
-    'studynotes-quiz-grade': '测验批改',
+    'preview-analyze': '预习分析',
+    'notes-evaluate': '心得评估',
+    'quiz-question': '测验出题',
+    'quiz-marking': '测验批改',
 }
 
 export function getCurrentMonth(): string {

@@ -116,11 +116,14 @@ export function useStudynotesQuiz(
         status: state.status,
     }
 
-    // 批改前（含已提交未批改）只要答案有变化即保存；已批改后停止。完全基于 ref 读取，避免依赖 state.status 闭包
+    // 批改前（含已提交未批改）只要答案有变化即保存；已批改（results 存在）后停止。
+    // 注意「已提交未批改」的 status 是 graded，不能用 status === 'answering' 判断，
+    // 否则批改前微调答案不会自动保存（用户直接关闭弹窗将丢失改动）。
+    // 仅暂停于 AI 操作中（生成/批改），避免与写库流程竞争。
     const shouldAutoSave = useCallback((): boolean => {
         const { quiz, answers, status } = latestRef.current
         if (!quiz || quiz.results) return false
-        if (status !== 'answering') return false
+        if (status === 'grading' || status === 'generating') return false
         const current = JSON.stringify(answers)
         return current !== savedSnapshotRef.current
     }, [])
@@ -185,8 +188,11 @@ export function useStudynotesQuiz(
 
         return () => {
             clearInterval(timer)
-            // 卸载/切卡前做一次最终保存（doAutoSave 读取最新 ref，不会被旧闭包污染）
-            void doAutoSave()
+            // 仅当真正卸载（cardId 未变化）才做最终保存；cardId 变化时 latestRef 已指向新卡片，
+            // 此时保存会把旧卡片答案请求到新卡片 id 下（服务端归属校验会拒绝，但避免无意义请求）
+            if (latestRef.current.cardId === cardId) {
+                void doAutoSave()
+            }
             // 注意：快照清空已移至 LOAD effect（跟随新卡片数据），此处不再清空，
             // 避免旧卡片慢速保存的 await 落库后误写回已被清空的 ref，造成快照污染
         }
@@ -199,25 +205,22 @@ export function useStudynotesQuiz(
     }, [])
 
     const generate = useCallback(async (): Promise<void> => {
-        const { cardId: id } = latestRef.current
-        // 防重入：正在生成或已有未提交测验时拒绝重复生成，避免重复 AI 调用
-        if (
-            !id ||
-            state.status === 'generating' ||
-            (state.quiz && !state.quiz.submittedAt)
-        )
-            return
+        const { cardId: id, quiz, status } = latestRef.current
+        // 防重入：正在生成、或存在任何未批改（results 为空）的测验时拒绝重新生成。
+        // 注意不能用 submittedAt 判断——「已提交未批改」状态下重新生成会整体替换 quiz，
+        // 导致已提交内容被直接丢弃且无法批改
+        if (!id || status === 'generating' || (quiz && !quiz.results)) return
         dispatch({ type: 'GENERATE_START' })
         try {
-            const { quiz } = await studynotesApi.generateQuiz(id)
+            const { quiz: generated } = await studynotesApi.generateQuiz(id)
             savedSnapshotRef.current = JSON.stringify(Array(QUIZ_SIZE).fill(''))
-            dispatch({ type: 'GENERATE_SUCCESS', quiz })
+            dispatch({ type: 'GENERATE_SUCCESS', quiz: generated })
         } catch (error: unknown) {
             const message =
                 error instanceof Error ? error.message : String(error)
             dispatch({ type: 'ERROR', message })
         }
-    }, [state.status, state.quiz])
+    }, [])
 
     // 批改：用当前最新答案（含批改前微调内容）AI 批改，不重新作答
     const grade = useCallback(async (): Promise<void> => {

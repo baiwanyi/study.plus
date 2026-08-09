@@ -11,6 +11,7 @@ import { useStudynotesQuiz } from './hooks/useStudynotesQuiz'
 import type {
     StudynotesQuiz,
     StudynotesQuizQuestion,
+    StudynotesQuizQuestionType,
     StudynotesQuizResult,
 } from '@shared/types'
 import type { FC } from 'react'
@@ -87,8 +88,9 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
             isScroll={true}
             onConfirm={showSubmitConfirm ? handleSubmit : undefined}
             confirmLabel="提交答案"
+            // 生成/批改中均禁用底部确认，避免 AI 流程中误提交旧答案
             isLoading={status === 'grading'}
-            isDisabled={status === 'grading'}>
+            isDisabled={status === 'grading' || status === 'generating'}>
             {!canQuiz ? (
                 <LockedState />
             ) : isEmpty ? (
@@ -208,7 +210,7 @@ function QuizBody({
 function LockedState() {
     return (
         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-gray-500">
-            AI 评估未达 80 分，暂不能开始测验。请先完善学习管理并重新评估。
+            AI 评估未达 80 分，暂不能开始测验。请先完善学习心得并重新评估。
         </div>
     )
 }
@@ -296,15 +298,20 @@ function QuizHeader({
                                 批改
                             </button>
                         )}
-                        <button
-                            type="button"
-                            disabled={
-                                status === 'generating' || status === 'grading'
-                            }
-                            onClick={onGenerate}
-                            className="btn btn-outline">
-                            重新测试
-                        </button>
+                        {/* 仅已批改后才允许重新测试：未批改（含已提交未批改）时重新生成会覆盖
+                            已提交内容（generate 内部已拒绝），按钮此时不可见避免用户误点 */}
+                        {hasResults && (
+                            <button
+                                type="button"
+                                disabled={
+                                    status === 'generating' ||
+                                    status === 'grading'
+                                }
+                                onClick={onGenerate}
+                                className="btn btn-outline">
+                                重新测验
+                            </button>
+                        )}
                     </>
                 )}
             </div>
@@ -372,7 +379,9 @@ function ReviewSuggestions({ suggestions }: { suggestions: string[] }) {
 }
 
 /** 题目类型：旧数据无 type 时按简答兼容 */
-function getQuestionType(q: StudynotesQuizQuestion): 'single' | 'multi' | 'essay' {
+function getQuestionType(
+    q: StudynotesQuizQuestion,
+): StudynotesQuizQuestionType {
     return q.type ?? 'essay'
 }
 
@@ -496,8 +505,7 @@ function ObjectiveAnswer({
                             className="mt-0.5 size-3.5 shrink-0 accent-blue-600"
                         />
                         <span className="text-gray-800">
-                            <span className="font-medium">{letter}.</span>{' '}
-                            {opt}
+                            <span className="font-medium">{letter}.</span> {opt}
                         </span>
                     </label>
                 )
@@ -661,7 +669,7 @@ function ScoreBadge({ score }: { score: number | null }) {
               : 'bg-amber-50 text-amber-700'
     return (
         <span className={`rounded-full px-3 py-1 font-semibold ${colorClass}`}>
-            得分 {value}
+            得分 {formatScore(value)}
         </span>
     )
 }

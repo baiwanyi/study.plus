@@ -1,5 +1,4 @@
 import { Router } from 'express'
-import type { Request, Response } from 'express'
 import { parsePosInt } from '../utils/param'
 import { aiLimiter } from '../utils/rate-limit'
 import {
@@ -16,6 +15,7 @@ import {
     updateStudyNote,
     validateAnswers,
 } from '../services/studynotes'
+import type { Request, Response } from 'express'
 
 export const studynotesRouter = Router()
 
@@ -61,8 +61,7 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
 // Create studyNotes card
 studynotesRouter.post('/', async (req: Request, res: Response) => {
     try {
-        const { summary, example, stuckPoints, memoryHook, lessonId } =
-            req.body
+        const { summary, example, stuckPoints, memoryHook, lessonId } = req.body
 
         // Validate required fields: must be non-empty strings (reject arrays/objects)
         if (
@@ -73,6 +72,25 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
             !example.trim()
         ) {
             res.status(400).json({ error: '概括、例子为必填项' })
+            return
+        }
+
+        // lessonId 为创建必填项：缺失/非法属于客户端错误应 400（service 层也会拒绝，但不应落到 500）
+        if (
+            typeof lessonId !== 'number' ||
+            !Number.isInteger(lessonId) ||
+            lessonId <= 0
+        ) {
+            res.status(400).json({ error: '必须关联有效的 lessonId' })
+            return
+        }
+        // memoryHook 为可选字段，但类型必须正确（与 PUT 校验保持一致）
+        if (
+            memoryHook !== undefined &&
+            memoryHook !== null &&
+            typeof memoryHook !== 'string'
+        ) {
+            res.status(400).json({ error: '字段类型错误' })
             return
         }
 
@@ -101,8 +119,7 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
             return
         }
 
-        const { summary, example, stuckPoints, memoryHook, lessonId } =
-            req.body
+        const { summary, example, stuckPoints, memoryHook, lessonId } = req.body
 
         // Validate at least one content field is provided
         if (
@@ -117,8 +134,10 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
         }
 
         if (
-            (summary !== undefined && typeof summary !== 'string') ||
-            (example !== undefined && typeof example !== 'string') ||
+            (summary !== undefined &&
+                (typeof summary !== 'string' || !summary.trim())) ||
+            (example !== undefined &&
+                (typeof example !== 'string' || !example.trim())) ||
             (stuckPoints !== undefined && typeof stuckPoints !== 'string') ||
             (memoryHook !== undefined &&
                 typeof memoryHook !== 'string' &&
@@ -126,7 +145,7 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
             (lessonId !== undefined &&
                 (typeof lessonId !== 'number' || !Number.isInteger(lessonId)))
         ) {
-            res.status(400).json({ error: '字段类型错误' })
+            res.status(400).json({ error: '字段类型错误或不能为空' })
             return
         }
 
@@ -278,10 +297,9 @@ studynotesRouter.patch(
     },
 )
 
-// 提交并批改测验
+// 提交测验：仅保存答案并标记已提交，不调 AI（批改由 grade 路由完成），故无需 AI 限流
 studynotesRouter.post(
     '/:id/quiz/:quizId/submit',
-    aiLimiter,
     async (req: Request, res: Response) => {
         try {
             const id = parsePosInt(req.params.id)
@@ -333,8 +351,16 @@ studynotesRouter.post(
                 return
             }
 
-            // 批改前允许微调答案：body 携带最新 answers 时以其为准（并回写），否则用库内提交快照
-            const latestAnswers = validateAnswers(req.body?.answers)
+            // 批改前允许微调答案：body 携带最新 answers 时以其为准（并回写），否则用库内提交快照；
+            // 区分「未携带」与「携带但非法」——后者应 400，避免静默改用库内快照造成用户困惑
+            const hasLatestAnswers = req.body?.answers !== undefined
+            const latestAnswers = hasLatestAnswers
+                ? validateAnswers(req.body.answers)
+                : undefined
+            if (hasLatestAnswers && !latestAnswers) {
+                res.status(400).json({ error: '答案必须为长度 20 的数组' })
+                return
+            }
             const result = await gradeQuiz(
                 id,
                 quizId,

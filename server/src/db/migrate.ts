@@ -390,6 +390,23 @@ export async function migrate(): Promise<void> {
         console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
     }
 
+    // AI 用量 project 值重命名：旧值 → 新值（幂等，仅更新仍为旧值的存量记录）
+    const aiProjectRenameMap = [
+        ['studynotes-preview-analyze', 'preview-analyze'],
+        ['studynotes-evaluate', 'notes-evaluate'],
+        ['studynotes-quiz-generate', 'quiz-question'],
+        ['studynotes-quiz-grade', 'quiz-marking'],
+    ] as const
+    for (const [from, to] of aiProjectRenameMap) {
+        await client.execute({
+            sql: 'UPDATE ai_usage_logs SET project = ? WHERE project = ?',
+            args: [to, from],
+        })
+    }
+    console.log(
+        'Migrated ai_usage_logs project rename (studynotes-* → quiz-*/notes-*).',
+    )
+
     await client.execute(`
     CREATE TABLE IF NOT EXISTS ai_score_logs (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -741,7 +758,10 @@ export async function migrate(): Promise<void> {
         })
         return result.rows.length > 0
     }
-    if ((await tableExists('studynotes')) && !(await tableExists('study_notes'))) {
+    if (
+        (await tableExists('studynotes')) &&
+        !(await tableExists('study_notes'))
+    ) {
         await client.execute('ALTER TABLE studynotes RENAME TO study_notes')
         console.log('Renamed studynotes to study_notes.')
     }
@@ -962,9 +982,7 @@ export async function migrate(): Promise<void> {
                         )
                         newScore =
                             Math.round(
-                                (totalScore / (results.length * 10)) *
-                                    100 *
-                                    10,
+                                (totalScore / (results.length * 10)) * 100 * 10,
                             ) / 10
                     }
                 } catch {
@@ -1008,9 +1026,7 @@ export async function migrate(): Promise<void> {
     const quizHasOldCol = await colExists('study_quiz', 'studynote_id')
     if (quizHasOldCol) {
         // 备份旧表
-        await client.execute(
-            'ALTER TABLE study_quiz RENAME TO study_quiz_old',
-        )
+        await client.execute('ALTER TABLE study_quiz RENAME TO study_quiz_old')
         // 新建结构：study_id 关联 study_lessons
         await client.execute(`
             CREATE TABLE study_quiz (
@@ -1081,9 +1097,7 @@ export async function migrate(): Promise<void> {
     })
     if (hasFullUnique) {
         console.log('Rebuilding study_quiz to drop full unique(study_id)...')
-        await client.execute(
-            'ALTER TABLE study_quiz RENAME TO study_quiz_old',
-        )
+        await client.execute('ALTER TABLE study_quiz RENAME TO study_quiz_old')
         await client.execute(`
             CREATE TABLE study_quiz (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,

@@ -1,4 +1,5 @@
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
 import { studyNotes, studyQuiz, studyLessons } from '../db/schema'
 import {
@@ -6,7 +7,6 @@ import {
     generateStudynotesQuiz,
     gradeStudynotesQuiz,
 } from './ai'
-import { studynotesSubjectValues } from '@shared/utils'
 import type {
     StudynotesQuiz,
     StudynotesQuizQuestion,
@@ -34,7 +34,8 @@ export function sanitizeQuizQuestions(
 ): StudynotesQuizQuestion[] {
     const kept = questions.filter((q) => {
         if (!Number.isInteger(q.index) || q.index > QUIZ_SIZE) return false
-        const text = q.question.trim()
+        // AI 输出不可控，题干可能是 null/数字/对象，统一转字符串再 trim，避免 .trim 抛错
+        const text = String(q.question ?? '').trim()
         if (!text) return false
         // 题型必须合法（缺省按 essay 兼容旧数据）
         const type = q.type ?? 'essay'
@@ -121,8 +122,11 @@ export function mapQuizRow(row: StudyQuizRow): StudynotesQuiz {
 export function validateAnswers(raw: unknown): string[] | null {
     if (!Array.isArray(raw)) return null
     if (raw.length !== QUIZ_SIZE) return null
-    if (!raw.every((item) => typeof item === 'string')) return null
-    return raw.map((item) => (item as string).slice(0, QUIZ_ANSWER_MAX_LEN))
+    // 类型守卫：全部元素为字符串才通过，之后 map 无需再断言
+    if (!raw.every((item): item is string => typeof item === 'string')) {
+        return null
+    }
+    return raw.map((item) => item.slice(0, QUIZ_ANSWER_MAX_LEN))
 }
 
 // === 业务函数（含 DB 操作，路由层仅负责参数解析与响应格式化） ===
@@ -229,7 +233,8 @@ export async function createStudyNote(
     if (!Number.isFinite(normalizedLessonId) || normalizedLessonId <= 0) {
         throw new Error('创建学习笔记必须关联有效的 lessonId')
     }
-    // 先取关联 lesson 的 subject/topic，作为返回字段（study_notes 已无冗余列）
+    // 先取关联 lesson 的 subject/topic，作为返回字段（study_notes 已无冗余列）；
+    // 目标 lesson 不存在时直接拒绝，避免写入无效外键（与 updateStudyNote 行为一致）
     const [lesson] = await db
         .select({
             subject: studyLessons.subject,
@@ -238,6 +243,9 @@ export async function createStudyNote(
         .from(studyLessons)
         .where(eq(studyLessons.id, normalizedLessonId))
         .limit(1)
+    if (!lesson) {
+        throw new Error('目标 lesson 不存在，无法创建学习笔记')
+    }
     const inserted = await db
         .insert(studyNotes)
         .values({
@@ -249,10 +257,11 @@ export async function createStudyNote(
             lessonId: normalizedLessonId,
         })
         .returning()
+    // lesson 已在上方判空 throw，此处直接取值（subject/topic 为 notNull 列）
     return {
         ...inserted[0],
-        subject: lesson?.subject ?? '',
-        topic: lesson?.topic ?? '',
+        subject: lesson.subject,
+        topic: lesson.topic,
     }
 }
 
@@ -353,8 +362,17 @@ export async function evaluateStudyNote(
     const existingEval = card.evaluation
         ? safeJsonParse<Record<string, unknown>>(card.evaluation, null)
         : null
-    // 已有有效评估则直接复用，避免重复高成本 AI 调用（防止账单刷爆）
-    if (existingEval && typeof existingEval.completenessScore === 'number') {
+    // 仅当评估有效且评估发生在笔记最近一次更新之后才复用，避免笔记内容已修改
+    // 仍复用旧评估导致结果与当前内容不符；笔记未变更时复用可防重复高成本 AI 调用
+    const isEvalFresh =
+        card.evaluatedAt != null &&
+        card.updatedAt != null &&
+        card.evaluatedAt >= card.updatedAt
+    if (
+        existingEval &&
+        typeof existingEval.completenessScore === 'number' &&
+        isEvalFresh
+    ) {
         return {
             evaluation: existingEval,
             evaluatedAt: card.evaluatedAt ?? '',
@@ -427,6 +445,8 @@ export async function generateQuiz(
     // 幂等：仅复用「未提交」记录继续作答；已提交的历史不阻塞重新生成新题。
     // 部分唯一索引(study_id WHERE submitted_at IS NULL)保证同一时刻最多一套进行中，
     // 因此同一课程可有多套已提交历史，重新生成时插入新行。
+    // 查询前置 json_valid 短路：questionsJson 若是损坏 JSON，json_array_length 会直接抛错导致 500，
+    // json_valid 先判定再取长度可安全跳过脏数据
     const pending = await db
         .select()
         .from(studyQuiz)
@@ -434,7 +454,7 @@ export async function generateQuiz(
             and(
                 eq(studyQuiz.studyId, id),
                 sql`${studyQuiz.submittedAt} IS NULL`,
-                sql`json_array_length(${studyQuiz.questionsJson}) > 0`,
+                sql`json_valid(${studyQuiz.questionsJson}) = 1 AND json_array_length(${studyQuiz.questionsJson}) > 0`,
             ),
         )
         .orderBy(desc(studyQuiz.id))
@@ -447,6 +467,11 @@ export async function generateQuiz(
     const questions = await generateStudynotesQuiz(buildCard(card))
     // 入库前清洗：剔除越界题与空题干，重排 index 为连续 1..N
     const sanitized = sanitizeQuizQuestions(questions)
+    // 清洗后必须仍为完整题量：非法题被剔除会导致题库数量与 QUIZ_SIZE/前端 answers 长度错位，
+    // 宁可整体失败也不写入残缺题库
+    if (sanitized.length !== QUIZ_SIZE) {
+        throw new Error(`AI 返回的题目清洗后不足${QUIZ_SIZE}题，请重新生成`)
+    }
 
     const now = new Date().toISOString()
     let quizRow: StudyQuizRow | undefined
@@ -469,7 +494,7 @@ export async function generateQuiz(
             and(
                 eq(studyQuiz.studyId, id),
                 sql`${studyQuiz.submittedAt} IS NULL`,
-                sql`json_array_length(${studyQuiz.questionsJson}) > 0`,
+                sql`json_valid(${studyQuiz.questionsJson}) = 1 AND json_array_length(${studyQuiz.questionsJson}) > 0`,
             ),
         )
         .orderBy(desc(studyQuiz.id))

@@ -176,9 +176,10 @@ export type TaskAI =
     | 'task-chat'
     | 'weekly-analyze'
     | 'weekly-chat'
-    | 'studynotes-evaluate'
-    | 'studynotes-quiz-generate'
-    | 'studynotes-quiz-grade'
+    | 'preview-analyze'
+    | 'notes-evaluate'
+    | 'quiz-question'
+    | 'quiz-marking'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =
