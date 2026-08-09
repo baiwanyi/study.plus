@@ -4,7 +4,7 @@ import { useCallback, useEffect, useReducer, useRef } from 'react'
 import { studynotesApi } from '../../../utils/api/studynotes'
 import type { StudynotesQuiz } from '@shared/types'
 
-const QUIZ_SIZE = 10
+const QUIZ_SIZE = 20
 const AUTO_SAVE_INTERVAL_MS = 30_000
 const AUTO_SAVE_DEBOUNCE_MS = 1_000
 

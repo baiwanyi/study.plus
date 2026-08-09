@@ -144,3 +144,18 @@ export function paginate<T>(items: T[], page: number, pageSize: number): T[] {
 export function formatErrorMessage(err: unknown): string {
     return err instanceof Error ? err.message : '未知错误'
 }
+
+/** 多选：['A','C','D'] -> 'A,C,D'（去重、升序、逗号分隔），供答案编码与展示还原共用 */
+export function encodeMultiSelection(selected: string[]): string {
+    const unique = [...new Set(selected.map((s) => s.trim()))]
+    return unique.sort().join(',')
+}
+
+/** 多选：'A,C,D' -> ['A','C','D']；空串/非法输入返回 [] */
+export function decodeMultiSelection(raw: string): string[] {
+    if (!raw.trim()) return []
+    return raw
+        .split(',')
+        .map((s) => s.trim().toUpperCase())
+        .filter((s) => /^[A-Z]$/.test(s))
+}

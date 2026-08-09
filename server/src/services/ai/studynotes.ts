@@ -4,7 +4,10 @@ import {
     promptStudynotesQuizGenerate,
     promptStudynotesQuizGrade,
 } from '@shared/constants'
-import { studynotesSubjectLabels } from '@shared/utils'
+import {
+    decodeMultiSelection,
+    studynotesSubjectLabels,
+} from '@shared/utils'
 import type {
     StudynotesQuizQuestion,
     StudynotesQuizResult,
@@ -194,7 +197,8 @@ export async function generateStudynotesQuiz(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
-            max_tokens: 4000,
+            // 20 题含题干/选项/答案/分值，输出量大，上限给足避免 JSON 截断
+            max_tokens: 8000,
             response_format: { type: 'json_object' },
             timeoutMs: 120_000,
         })
@@ -216,15 +220,28 @@ export async function generateStudynotesQuiz(
         const nonEmptyQuestions = parsed.questions.filter(
             (q) => String(q.question || '').trim().length > 0,
         )
-        // AI 可能返回 9/11 题，最多截取前 10 题，避免偶发数量偏差导致整体失败
-        const trimmed = nonEmptyQuestions.slice(0, 10)
-        if (trimmed.length !== 10) {
-            throw new Error('AI 返回的有效题目数量不足（应为10题）')
+        // AI 可能返回 19/21 题，最多截取前 20 题，避免偶发数量偏差导致整体失败
+        const trimmed = nonEmptyQuestions.slice(0, 20)
+        if (trimmed.length !== 20) {
+            throw new Error('AI 返回的有效题目数量不足（应为20题）')
         }
 
+        // 透传 type/options/answer/points：type 非法回落 essay；points 非法用合法默认值 5，
+        // 避免被 sanitize 当作「分值非法」剔除导致题目不足（总分由 sanitize 兜底重分配为 100）
         return trimmed.map((q, i) => ({
             index: i + 1,
+            type: q.type === 'single' || q.type === 'multi' ? q.type : 'essay',
             question: String(q.question || '').trim(),
+            points:
+                Number.isFinite(Number(q.points)) && Number(q.points) > 0
+                    ? Math.round(Number(q.points))
+                    : 5,
+            ...(Array.isArray(q.options)
+                ? { options: q.options.map(String) }
+                : {}),
+            ...(q.answer !== undefined && q.answer !== null
+                ? { answer: String(q.answer) }
+                : {}),
         }))
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
@@ -241,6 +258,50 @@ export interface StudynotesQuizGradeResult {
     suggestions: string[]
 }
 
+/**
+ * 客观题本地判分（确定性判断，不依赖 AI）。
+ * 判分口径（与分值体系对齐）：
+ * - single：选中 === 答案 → 得 points 分；否则 0 分
+ * - multi：无错选且全中 → 得 points 分；无错选但漏选 → 答对项数/答案项数 × points；
+ *          存在错选 → 0 分
+ * - 未作答一律 0 分
+ */
+export function gradeObjectiveQuestion(
+    question: StudynotesQuizQuestion,
+    answer: string,
+): { isCorrect: boolean; score: number } {
+    const points = Number.isFinite(question.points) && question.points > 0
+        ? question.points
+        : 10
+    const student = answer.trim().toUpperCase()
+    const standard = String(question.answer ?? '').trim().toUpperCase()
+    if (!student || !standard) {
+        return { isCorrect: false, score: 0 }
+    }
+    if (question.type === 'multi') {
+        const correct = decodeMultiSelection(standard)
+        const selected = decodeMultiSelection(student)
+        if (correct.length === 0) return { isCorrect: false, score: 0 }
+        const correctSet = new Set(correct)
+        // 存在错选（选了非正确答案项）→ 0 分
+        const hasWrongPick = selected.some((s) => !correctSet.has(s))
+        if (hasWrongPick) return { isCorrect: false, score: 0 }
+        // 全中 → 满分
+        const isAllHit =
+            selected.length === correct.length &&
+            correct.every((c) => selected.includes(c))
+        if (isAllHit) return { isCorrect: true, score: points }
+        // 漏选 → 按答对比例给部分分（保留一位小数）
+        const hitCount = selected.filter((s) => correctSet.has(s)).length
+        const partial = Math.round((points * (hitCount / correct.length)) * 10) / 10
+        return { isCorrect: false, score: partial }
+    }
+    // single
+    return student === standard
+        ? { isCorrect: true, score: points }
+        : { isCorrect: false, score: 0 }
+}
+
 export async function gradeStudynotesQuiz(
     card: StudynotesCardInput,
     questions: StudynotesQuizQuestion[],
@@ -250,11 +311,35 @@ export async function gradeStudynotesQuiz(
         throw new Error('AI 批改未配置，请设置 DEEPSEEK_API_KEY')
     }
 
+    // 客观题本地预判分（确定性）；主观题由 AI 判分。AI 仅负责为客观题生成解析、为主观题判分。
+    const objectiveByIndex = new Map<number, { isCorrect: boolean; score: number }>()
+    const subjectiveQuestions: StudynotesQuizQuestion[] = []
+    questions.forEach((q, i) => {
+        if (q.type === 'single' || q.type === 'multi') {
+            objectiveByIndex.set(q.index, gradeObjectiveQuestion(q, answers[i] ?? ''))
+        } else {
+            subjectiveQuestions.push(q)
+        }
+    })
+
+    // 拼装 AI 批改输入：20 题全量回显（含题型/选项/标准答案），AI 据此出解析或判分
     const questionsAndAnswers = questions
         .map((q, i) => {
             const ans = answers[i] ?? ''
             const display = ans.trim() ? ans : '（未作答）'
-            return `第${q.index}题：${q.question}\n学生答案：${display}`
+            const typeLabel =
+                q.type === 'essay'
+                    ? '简答题'
+                    : q.type === 'single'
+                      ? '单选题'
+                      : '多选题'
+            const optionsText =
+                Array.isArray(q.options) && q.options.length > 0
+                    ? `\n选项：${q.options
+                          .map((o, oi) => `${String.fromCharCode(65 + oi)}. ${o}`)
+                          .join('；')}`
+                    : ''
+            return `第${q.index}题（${typeLabel}）：${q.question}${optionsText}\n标准答案：${q.answer ?? ''}\n学生答案：${display}`
         })
         .join('\n\n')
 
@@ -267,10 +352,10 @@ export async function gradeStudynotesQuiz(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
-            // 批改需回显 10 题题干/答案/解析，输出量大，上限过低易被截断导致 JSON 未闭合，尽量给足
-            max_tokens: 16000,
+            // 20 题全量回显 + 解析，输出量大，上限给足避免截断导致 JSON 未闭合
+            max_tokens: 24000,
             response_format: { type: 'json_object' },
-            timeoutMs: 180_000,
+            timeoutMs: 240_000,
         })
 
         await logAiUsage(
@@ -281,66 +366,78 @@ export async function gradeStudynotesQuiz(
 
         const parsed = safeJsonParse<{
             results?: StudynotesQuizResult[]
-            score?: number
-            correctCount?: number
             comment?: string
             suggestions?: string[]
         } | null>(reply, null)
-        if (
-            !parsed ||
-            !Array.isArray(parsed.results) ||
-            parsed.results.length === 0
-        ) {
+        // 有主观题时必须依赖 AI 返回结果；全客观题时 AI 可只出解析，允许 results 为空
+        if (!parsed || (subjectiveQuestions.length > 0 && !Array.isArray(parsed.results))) {
             throw new Error('AI 返回的批改结果为空')
         }
 
-        // 空答案（空白/纯空格）强制判错得 0 分，不依赖 AI 判断，确保与前端空答案 XCircle 标记一致
-        // AI 仅返回判分结果（index/isCorrect/score/correctAnswer/explanation），question/studentAnswer 用库内数据补全
-        const questionByIndex = new Map(
-            questions.map((q) => [q.index, q.question]),
-        )
-        const results = parsed.results
-            .map((r) => {
-                const idx = Number(r.index)
-                // index 不合法（非整数/越界）直接跳过，避免 answers[idx-1] 取到 undefined 造成判分错位
-                if (
-                    !Number.isInteger(idx) ||
-                    idx < 1 ||
-                    idx > questions.length
-                ) {
-                    return null
+        const aiResultByIndex = new Map<number, StudynotesQuizResult>()
+        for (const r of parsed.results ?? []) {
+            const idx = Number(r.index)
+            if (Number.isInteger(idx)) aiResultByIndex.set(idx, r)
+        }
+
+        // 装配每道题结果：客观题用本地判分（isCorrect/score 以本地为准），解析回填 AI 输出；
+        // 主观题用 AI 判分，缺失则该题跳过（沿用现有容错）
+        const results = questions
+            .map((q, i): StudynotesQuizResult | null => {
+                const studentAnswer = answers[i] ?? ''
+                const aiRes = aiResultByIndex.get(q.index)
+                if (q.type === 'single' || q.type === 'multi') {
+                    const local = objectiveByIndex.get(q.index) ?? {
+                        isCorrect: false,
+                        score: 0,
+                    }
+                    const explanation = String(aiRes?.explanation ?? '').trim()
+                    return {
+                        index: q.index,
+                        question: q.question,
+                        studentAnswer,
+                        isCorrect: local.isCorrect,
+                        score: local.score,
+                        correctAnswer: q.answer ?? String(aiRes?.correctAnswer ?? ''),
+                        // AI 未回填解析时用本地兜底文案，保证批改结果可读
+                        explanation:
+                            explanation || `正确答案是${q.answer ?? ''}`,
+                    }
                 }
-                const isAnswerEmpty = !(answers[idx - 1] ?? '').trim()
-                // 该题得分（0-10，可含一位小数）；空答案强制 0 分，避免 AI 误判
-                const aiScore = Number(r.score)
+                // 主观题：必须依赖 AI，缺失则跳过，避免错位
+                if (!aiRes) return null
+                const isAnswerEmpty = !studentAnswer.trim()
+                // AI 返回 0-10 比例分 → 按该题 points 换算实分
+                const aiScore = Number(aiRes.score)
                 const rawScore = Number.isFinite(aiScore) ? aiScore : 0
-                const score = isAnswerEmpty
+                const ratioScore = isAnswerEmpty
                     ? 0
                     : Math.min(10, Math.max(0, Math.round(rawScore * 10) / 10))
+                const points = Number.isFinite(q.points) && q.points > 0
+                    ? q.points
+                    : 10
+                const score = Math.round(points * (ratioScore / 10) * 10) / 10
                 return {
-                    index: idx,
-                    question:
-                        questionByIndex.get(idx) ??
-                        String(r.question ?? '').trim(),
-                    studentAnswer:
-                        answers[idx - 1] ?? String(r.studentAnswer ?? ''),
+                    index: q.index,
+                    question: q.question,
+                    studentAnswer,
                     // 仅当显式为 true 或字符串 'true' 才算正确，避免 Boolean('false') === true 的失真
                     isCorrect:
                         !isAnswerEmpty &&
-                        score === 10 &&
-                        (r.isCorrect === true ||
-                            String(r.isCorrect) === 'true'),
+                        ratioScore === 10 &&
+                        (aiRes.isCorrect === true ||
+                            String(aiRes.isCorrect) === 'true'),
                     score,
-                    correctAnswer: String(r.correctAnswer ?? ''),
-                    explanation: String(r.explanation ?? ''),
+                    correctAnswer: String(aiRes.correctAnswer ?? ''),
+                    explanation: String(aiRes.explanation ?? ''),
                 }
             })
             .filter((r): r is StudynotesQuizResult => r !== null)
-        // 答对数 = 完全正确的题数；百分制总分 = Σ每题得分 ÷ 实际判分题数满分 × 100
-        // 分母用 results.length（已过滤非法/越界题），与 correctCount 口径一致，避免漏判题被压低总分
+        // 答对数 = 完全正确的题数；总分 = Σ每题实得分（Σpoints 恒为 100，故为百分制）
         const correctCount = results.filter((r) => r.isCorrect).length
-        const totalScore = results.reduce((sum, r) => sum + r.score, 0)
-        const score = Math.round((totalScore / (results.length * 10)) * 100 * 10) / 10
+        const score = Math.round(
+            results.reduce((sum, r) => sum + r.score, 0) * 10,
+        ) / 10
 
         return {
             results,

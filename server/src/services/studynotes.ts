@@ -17,7 +17,7 @@ type StudyNoteRow = typeof studyNotes.$inferSelect
 type StudyQuizRow = typeof studyQuiz.$inferSelect
 
 const QUIZ_ANSWER_MAX_LEN = 5000
-const QUIZ_SIZE = 10
+const QUIZ_SIZE = 20
 // 学科白名单需与原路由保持一致：基础学科来自 shared，science/custom 为兼容历史数据额外允许
 const STUDYNOTE_SUBJECTS = new Set<string>([
     ...studynotesSubjectValues,
@@ -27,7 +27,8 @@ const STUDYNOTE_SUBJECTS = new Set<string>([
 
 // === 纯函数（数据转换/校验，无副作用） ===
 
-// 入库前清洗：剔除 index>10 越界题与空题干，重排 index 为连续 1..N，杜绝脏数据入库
+// 入库前清洗：剔除 index>20 越界题、空题干、非法题型与分值缺省的题目，重排 index 为连续 1..N，
+// 并对总分兜底为 100（AI 给的 points 之和不为 100 时按题数平均分配），杜绝脏数据入库
 export function sanitizeQuizQuestions(
     questions: StudynotesQuizQuestion[],
 ): StudynotesQuizQuestion[] {
@@ -35,9 +36,43 @@ export function sanitizeQuizQuestions(
         if (!Number.isInteger(q.index) || q.index > QUIZ_SIZE) return false
         const text = q.question.trim()
         if (!text) return false
+        // 题型必须合法（缺省按 essay 兼容旧数据）
+        const type = q.type ?? 'essay'
+        if (type !== 'single' && type !== 'multi' && type !== 'essay') {
+            return false
+        }
+        // 客观题必须提供选项与答案，否则无法本地判分
+        if (type === 'single' || type === 'multi') {
+            if (!Array.isArray(q.options) || q.options.length < 2) {
+                return false
+            }
+            if (!String(q.answer ?? '').trim()) return false
+        }
+        // 分值必须为正整数，缺失/非法剔除
+        if (!Number.isInteger(q.points) || (q.points ?? 0) <= 0) return false
         return true
     })
-    return kept.map((q, i) => ({ ...q, index: i + 1 }))
+    const normalized = kept.map((q, i) => ({ ...q, index: i + 1 }))
+    // 总分兜底：Σpoints ≠ 100 时按题数平均分配，余数逐题补 1，保证题库总分恒为 100
+    const total = normalized.reduce((sum, q) => sum + (q.points ?? 0), 0)
+    if (total !== 100 && normalized.length > 0) {
+        const base = Math.floor(100 / normalized.length)
+        let remainder = 100 - base * normalized.length
+        return normalized.map((q) => {
+            const points = remainder > 0 ? base + 1 : base
+            remainder -= 1
+            return { ...q, points }
+        })
+    }
+    return normalized
+}
+
+// 对外响应前剔除题目标准答案，防止作答态泄露答案；points 保留供前端展示分值
+export function toQuizPublicDTO(quiz: StudynotesQuiz): StudynotesQuiz {
+    return {
+        ...quiz,
+        questions: quiz.questions.map(({ answer: _answer, ...rest }) => rest),
+    }
 }
 
 // JSON 字段可能损坏（迁移异常/手工改库），解析失败时回退安全默认值，避免整个接口 500
@@ -406,7 +441,7 @@ export async function generateQuiz(
         .limit(1)
 
     if (pending[0]) {
-        return { quiz: mapQuizRow(pending[0]) }
+        return { quiz: toQuizPublicDTO(mapQuizRow(pending[0])) }
     }
 
     const questions = await generateStudynotesQuiz(buildCard(card))
@@ -445,7 +480,7 @@ export async function generateQuiz(
         throw new Error('生成测验失败')
     }
 
-    return { quiz: mapQuizRow(quizRow) }
+    return { quiz: toQuizPublicDTO(mapQuizRow(quizRow)) }
 }
 
 export async function saveQuizAnswers(
@@ -508,7 +543,7 @@ export async function submitQuiz(
         .where(eq(studyQuiz.id, quizId))
         .limit(1)
 
-    return { quiz: mapQuizRow(updated[0]) }
+    return { quiz: toQuizPublicDTO(mapQuizRow(updated[0])) }
 }
 
 export async function gradeQuiz(
@@ -598,7 +633,7 @@ export async function gradeQuiz(
         .where(eq(studyQuiz.id, quizId))
         .limit(1)
 
-    return { quiz: mapQuizRow(updated[0]) }
+    return { quiz: toQuizPublicDTO(mapQuizRow(updated[0])) }
 }
 
 export async function getLatestQuiz(
@@ -611,7 +646,7 @@ export async function getLatestQuiz(
         .orderBy(desc(studyQuiz.id))
         .limit(1)
 
-    return { quiz: rows[0] ? mapQuizRow(rows[0]) : null }
+    return { quiz: rows[0] ? toQuizPublicDTO(mapQuizRow(rows[0])) : null }
 }
 
 export type { StudynotesQuizResult, StudynotesQuizQuestion }

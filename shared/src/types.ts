@@ -27,9 +27,27 @@ export interface StudynotesItem {
     quizScore?: number | null
 }
 
+export type StudynotesQuizQuestionType = 'single' | 'multi' | 'essay'
+
+export const STUDYNODES_QUIZ_TYPE_LABELS: Record<
+    StudynotesQuizQuestionType,
+    string
+> = {
+    single: '单选题',
+    multi: '多选题',
+    essay: '简答题',
+}
+
 export interface StudynotesQuizQuestion {
     index: number
+    type: StudynotesQuizQuestionType
     question: string
+    /** 该题分值，正整数，全部题目之和必须等于 100 */
+    points: number
+    /** 单选/多选选项（3~4 个），简答无 */
+    options?: string[]
+    /** 标准答案（服务端内部使用，API 响应前必须剔除） */
+    answer?: string
 }
 
 export interface StudynotesQuizResult {
@@ -37,7 +55,7 @@ export interface StudynotesQuizResult {
     question: string
     studentAnswer: string
     isCorrect: boolean
-    /** 该题得分（0-10，可含一位小数；未作答/答非所问为 0） */
+    /** 该题实得分（0~该题 points，可含一位小数；未作答/答非所问为 0） */
     score: number
     correctAnswer: string
     explanation: string

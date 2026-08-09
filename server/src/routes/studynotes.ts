@@ -253,7 +253,7 @@ studynotesRouter.patch(
             const answers = validateAnswers(req.body?.answers)
             if (!answers) {
                 res.status(400).json({
-                    error: `答案必须为长度 10 的数组`,
+                    error: `答案必须为长度 20 的数组`,
                 })
                 return
             }
@@ -294,7 +294,7 @@ studynotesRouter.post(
             const answers = validateAnswers(req.body?.answers)
             if (!answers) {
                 res.status(400).json({
-                    error: `答案必须为长度 10 的数组`,
+                    error: `答案必须为长度 20 的数组`,
                 })
                 return
             }

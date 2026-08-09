@@ -5,6 +5,8 @@ import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { MarkdownView } from '@components/MarkdownView'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
+import { STUDYNODES_QUIZ_TYPE_LABELS } from '@shared/types'
+import { decodeMultiSelection, encodeMultiSelection } from '@shared/utils'
 import { useStudynotesQuiz } from './hooks/useStudynotesQuiz'
 import type {
     StudynotesQuiz,
@@ -143,7 +145,7 @@ function QuizBody({
     }, [results])
 
     // 仅「已有批改结果」或「批改进行中」展示只读答案区；
-    // 已提交未批改时保持 textarea 可查看，批改后才切换为只读结果视图
+    // 已提交未批改时保持可作答/可查看，批改后才切换为只读结果视图
     const isReadOnly = hasResults || status === 'grading'
 
     // 作答 textarea 自适应高度：内容或状态变化后按 scrollHeight 调整，避免固定行数浪费空间/内部滚动
@@ -260,8 +262,8 @@ function QuizHeader({
                 </div>
                 <div className="truncate text-xs text-gray-500">
                     {isSubmitted && hasResults
-                        ? `共 ${quiz?.questions.length ?? 10} 题 · 已完成作答`
-                        : `共 ${quiz?.questions.length ?? 10} 题待作答`}
+                        ? `共 ${quiz?.questions.length ?? 20} 题 · 满分 100 分`
+                        : `共 ${quiz?.questions.length ?? 20} 题 · 满分 100 分待作答`}
                 </div>
             </div>
             <div className="flex shrink-0 items-center gap-2.5">
@@ -274,7 +276,7 @@ function QuizHeader({
                                     <strong className="text-green-600">
                                         {quiz.correctCount}
                                     </strong>{' '}
-                                    / {quiz?.questions.length ?? 10}
+                                    / {quiz?.questions.length ?? 20}
                                 </span>
                                 <span className="h-4 w-px bg-gray-300" />
                                 <ScoreBadge score={quiz.score} />
@@ -369,6 +371,11 @@ function ReviewSuggestions({ suggestions }: { suggestions: string[] }) {
     )
 }
 
+/** 题目类型：旧数据无 type 时按简答兼容 */
+function getQuestionType(q: StudynotesQuizQuestion): 'single' | 'multi' | 'essay' {
+    return q.type ?? 'essay'
+}
+
 function QuizQuestionItem({
     question,
     result,
@@ -382,46 +389,142 @@ function QuizQuestionItem({
     isReadOnly: boolean
     onAnswerChange: (index: number, value: string) => void
 }) {
-    // 空答案（空白/纯空格）一律按错误标记，避免 AI 误判为正确时出现绿勾红叉矛盾
-    const isAnswerEmpty = !answer.trim()
-    const answerTone = isAnswerEmpty
-        ? 'bg-red-50 text-red-600'
-        : !result
-          ? 'text-gray-600'
-          : result.isCorrect
-            ? 'bg-green-50 text-green-700'
-            : 'bg-red-50 text-red-600'
+    const type = getQuestionType(question)
+    const points = question.points ?? 10
     return (
         <div className="rounded-lg border border-gray-200 p-3">
             <div className="mb-2 flex items-start gap-2">
                 <span className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-primary">
                     {question.index}
                 </span>
-                <MarkdownView content={question.question} />
+                <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-1.5">
+                        <span className="rounded bg-blue-50 px-1.5 py-0.5 text-xs font-medium text-blue-700">
+                            {STUDYNODES_QUIZ_TYPE_LABELS[type]}
+                        </span>
+                        <span className="rounded bg-amber-50 px-1.5 py-0.5 text-xs font-medium text-amber-700">
+                            本题 {formatScore(points)} 分
+                        </span>
+                    </div>
+                    <MarkdownView content={question.question} />
+                </div>
             </div>
 
-            {isReadOnly ? (
-                <div className="space-y-2 pl-8">
-                    <p
-                        className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-sm ${answerTone}`}>
-                        {result &&
-                            (isAnswerEmpty || !result.isCorrect ? (
-                                <XCircle className="mt-0.5 size-4 shrink-0" />
-                            ) : (
-                                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
-                            ))}
+            {type === 'single' || type === 'multi' ? (
+                <ObjectiveAnswer
+                    question={question}
+                    result={result}
+                    answer={answer}
+                    isReadOnly={isReadOnly}
+                    onAnswerChange={onAnswerChange}
+                />
+            ) : (
+                <EssayAnswer
+                    question={question}
+                    result={result}
+                    answer={answer}
+                    isReadOnly={isReadOnly}
+                    onAnswerChange={onAnswerChange}
+                />
+            )}
+        </div>
+    )
+}
 
+/** 客观题（单选/多选）作答与只读结果视图 */
+function ObjectiveAnswer({
+    question,
+    result,
+    answer,
+    isReadOnly,
+    onAnswerChange,
+}: {
+    question: StudynotesQuizQuestion
+    result: StudynotesQuizResult | null
+    answer: string
+    isReadOnly: boolean
+    onAnswerChange: (index: number, value: string) => void
+}) {
+    const isMulti = question.type === 'multi'
+    const selected = decodeMultiSelection(answer)
+    // 批改结果中 correctAnswer 为标准答案（字母串，如 "B" / "A,C"），本地判分时已由服务端写入
+    const correct = result ? decodeMultiSelection(result.correctAnswer) : []
+
+    const handleToggle = (letter: string) => {
+        if (isMulti) {
+            const next = selected.includes(letter)
+                ? selected.filter((s) => s !== letter)
+                : [...selected, letter]
+            onAnswerChange(question.index - 1, encodeMultiSelection(next))
+        } else {
+            // 单选：点击已选项则清空，否则选中该字母
+            onAnswerChange(
+                question.index - 1,
+                selected[0] === letter ? '' : letter,
+            )
+        }
+    }
+
+    return (
+        <div className="space-y-1.5 pl-8">
+            {(question.options ?? []).map((opt, i) => {
+                const letter = String.fromCharCode(65 + i)
+                const isSelected = selected.includes(letter)
+                const isCorrectOpt = correct.includes(letter)
+                // 只读态配色：选中且正确=绿，选中且错误=红，漏选正确=蓝描边，其余普通
+                const optionTone = !isReadOnly
+                    ? 'border-gray-200 bg-white hover:bg-gray-50'
+                    : isSelected && isCorrectOpt
+                      ? 'border-green-400 bg-green-50'
+                      : isSelected
+                        ? 'border-red-400 bg-red-50'
+                        : isCorrectOpt
+                          ? 'border-blue-300 bg-blue-50'
+                          : 'border-gray-200 bg-white'
+                return (
+                    <label
+                        key={letter}
+                        className={`flex cursor-pointer items-start gap-2 rounded-md border px-2.5 py-1.5 text-sm ${optionTone} ${
+                            isReadOnly ? 'cursor-default' : ''
+                        }`}>
+                        <input
+                            type={isMulti ? 'checkbox' : 'radio'}
+                            name={`quiz-option-${question.index}`}
+                            disabled={isReadOnly}
+                            checked={isSelected}
+                            onChange={() => handleToggle(letter)}
+                            className="mt-0.5 size-3.5 shrink-0 accent-blue-600"
+                        />
+                        <span className="text-gray-800">
+                            <span className="font-medium">{letter}.</span>{' '}
+                            {opt}
+                        </span>
+                    </label>
+                )
+            })}
+
+            {isReadOnly && (
+                <div className="space-y-2 pt-1">
+                    <p
+                        className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-sm ${
+                            !answer.trim() || !result?.isCorrect
+                                ? 'bg-red-50 text-red-600'
+                                : 'bg-green-50 text-green-700'
+                        }`}>
+                        {!answer.trim() || !result?.isCorrect ? (
+                            <XCircle className="mt-0.5 size-4 shrink-0" />
+                        ) : (
+                            <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                        )}
                         <span>
                             <span>答：</span>
-                            <span
-                                className={
-                                    result ? 'font-medium' : 'text-gray-800'
-                                }>
+                            <span className="font-medium">
                                 {answer || '（未作答）'}
                             </span>
                             {result && (
                                 <span className="shrink-0 font-semibold">
-                                    （{formatScore(result.score)}分）
+                                    （得 {formatScore(result.score)} / 满分{' '}
+                                    {formatScore(question.points ?? 10)} 分）
                                 </span>
                             )}
                         </span>
@@ -451,6 +554,87 @@ function QuizQuestionItem({
                         </div>
                     )}
                 </div>
+            )}
+        </div>
+    )
+}
+
+/** 主观题（简答）作答与只读结果视图（沿用原 textarea 逻辑） */
+function EssayAnswer({
+    question,
+    result,
+    answer,
+    isReadOnly,
+    onAnswerChange,
+}: {
+    question: StudynotesQuizQuestion
+    result: StudynotesQuizResult | null
+    answer: string
+    isReadOnly: boolean
+    onAnswerChange: (index: number, value: string) => void
+}) {
+    // 空答案（空白/纯空格）一律按错误标记，避免 AI 误判为正确时出现绿勾红叉矛盾
+    const isAnswerEmpty = !answer.trim()
+    const answerTone = isAnswerEmpty
+        ? 'bg-red-50 text-red-600'
+        : !result
+          ? 'text-gray-600'
+          : result.isCorrect
+            ? 'bg-green-50 text-green-700'
+            : 'bg-red-50 text-red-600'
+    return (
+        <div className="space-y-2 pl-8">
+            {isReadOnly ? (
+                <>
+                    <p
+                        className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-sm ${answerTone}`}>
+                        {result &&
+                            (isAnswerEmpty || !result.isCorrect ? (
+                                <XCircle className="mt-0.5 size-4 shrink-0" />
+                            ) : (
+                                <CheckCircle2 className="mt-0.5 size-4 shrink-0" />
+                            ))}
+                        <span>
+                            <span>答：</span>
+                            <span
+                                className={
+                                    result ? 'font-medium' : 'text-gray-800'
+                                }>
+                                {answer || '（未作答）'}
+                            </span>
+                            {result && (
+                                <span className="shrink-0 font-semibold">
+                                    （得 {formatScore(result.score)} / 满分{' '}
+                                    {formatScore(question.points ?? 10)} 分）
+                                </span>
+                            )}
+                        </span>
+                    </p>
+                    {result && (
+                        <div className="space-y-2">
+                            <div className="flex rounded-md bg-blue-50 p-2">
+                                <span className="font-extrabold text-sm text-blue-800">
+                                    参考答案：
+                                </span>
+                                <MarkdownView
+                                    content={result.correctAnswer}
+                                    className="text-sm! text-blue-800!"
+                                />
+                            </div>
+                            {result.explanation && (
+                                <div className="flex rounded-md bg-amber-50 p-2">
+                                    <span className="font-extrabold text-sm text-amber-800">
+                                        解析：
+                                    </span>
+                                    <MarkdownView
+                                        content={result.explanation}
+                                        className="text-sm! text-amber-800!"
+                                    />
+                                </div>
+                            )}
+                        </div>
+                    )}
+                </>
             ) : (
                 <textarea
                     value={answer}
@@ -482,8 +666,8 @@ function ScoreBadge({ score }: { score: number | null }) {
     )
 }
 
-// 题目得分格式化：整数显示整数，非整数保留一位小数（如 5.5 分）
+// 分数格式化：整数显示整数，非整数保留一位小数（如 5.5 分）
 function formatScore(score: number): string {
-    const clamped = Math.min(10, Math.max(0, score))
-    return Number.isInteger(clamped) ? String(clamped) : clamped.toFixed(1)
+    const safe = Number.isFinite(score) ? score : 0
+    return Number.isInteger(safe) ? String(safe) : safe.toFixed(1)
 }
