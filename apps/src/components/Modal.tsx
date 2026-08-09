@@ -48,13 +48,13 @@ export const Modal: FC<ModalProps> = ({
     size = 'md',
 }) => {
     useEffect(() => {
-        if (isScroll && open) {
+        if (open) {
             document.body.classList.add('overflow-hidden')
         }
         return () => {
             document.body.classList.remove('overflow-hidden')
         }
-    }, [isScroll, open])
+    }, [open])
 
     if (!open) return null
 
@@ -65,7 +65,7 @@ export const Modal: FC<ModalProps> = ({
                 onClick={onCancel}
             />
             <div
-                className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} mx-4 max-h-[90vh] flex flex-col`}>
+                className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} mx-4 max-h-[90vh] h-full flex flex-col`}>
                 <header className="flex items-center justify-between p-6 pb-3 shrink-0 border-b border-gray-200">
                     <h3>{title}</h3>
                     <button

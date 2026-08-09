@@ -13,27 +13,27 @@ vi.mock('../src/services/ai', async () => {
     return buildAiMock()
 })
 
-describe('全链路：学习心得 → AI 评估 → 测验 → 批改', () => {
+describe('全链路：学习管理 → AI 评估 → 测验 → 批改', () => {
     beforeAll(async () => {
         await initRequest()
         await pushSchema()
     })
 
     it('创建心得后可评估（满分门槛通过）并生成测验、提交批改', async () => {
-        // 1. 创建学习心得
-        const createRes = await api().post('/api/studynotes').send(makeStudyNote())
+        // 1. 创建学习管理
+        const createRes = await api().post('/api/study').send(makeStudyNote())
         expect(createRes.status).toBe(200)
         const cardId = createRes.body.id
         expect(cardId).toBeDefined()
 
         // 2. AI 评估（mock 返回 completenessScore=90，满足 80 门槛）
-        const evalRes = await api().post(`/api/studynotes/${cardId}/evaluate`)
+        const evalRes = await api().post(`/api/study/${cardId}/evaluate`)
         expect(evalRes.status).toBe(200)
         expect(evalRes.body.evaluation.completenessScore).toBe(90)
         expect(evaluateStudynotesReflection).toHaveBeenCalledOnce()
 
         // 3. 生成测验（mock 返回 10 题）
-        const quizRes = await api().post(`/api/studynotes/${cardId}/quiz`)
+        const quizRes = await api().post(`/api/study/${cardId}/quiz`)
         expect(quizRes.status).toBe(200)
         expect(quizRes.body.quiz.questions).toHaveLength(10)
         const quizId = quizRes.body.quiz.id
@@ -41,7 +41,7 @@ describe('全链路：学习心得 → AI 评估 → 测验 → 批改', () => {
 
         // 4. 提交批改（mock 返回全部正确，score=100）
         const submitRes = await api()
-            .post(`/api/studynotes/${cardId}/quiz/${quizId}/submit`)
+            .post(`/api/study/${cardId}/quiz/${quizId}/submit`)
             .send({
                 answers: Array.from({ length: 10 }, (_, i) => `答案${i + 1}`),
             })
@@ -51,7 +51,7 @@ describe('全链路：学习心得 → AI 评估 → 测验 → 批改', () => {
         expect(gradeStudynotesQuiz).toHaveBeenCalledOnce()
 
         // 5. 再次查询心得，quizScore 应被回写
-        const detailRes = await api().get(`/api/studynotes/${cardId}`)
+        const detailRes = await api().get(`/api/study/${cardId}`)
         expect(detailRes.status).toBe(200)
         expect(detailRes.body.quizScore).toBe(100)
     })
@@ -69,14 +69,14 @@ describe('全链路：学习心得 → AI 评估 → 测验 → 批改', () => {
             }),
         )
 
-        const createRes = await api().post('/api/studynotes').send(makeStudyNote())
+        const createRes = await api().post('/api/study').send(makeStudyNote())
         const cardId = createRes.body.id
 
-        const evalRes = await api().post(`/api/studynotes/${cardId}/evaluate`)
+        const evalRes = await api().post(`/api/study/${cardId}/evaluate`)
         expect(evalRes.status).toBe(200)
         expect(evalRes.body.evaluation.completenessScore).toBe(50)
 
-        const quizRes = await api().post(`/api/studynotes/${cardId}/quiz`)
+        const quizRes = await api().post(`/api/study/${cardId}/quiz`)
         expect(quizRes.status).toBe(403)
     })
 })

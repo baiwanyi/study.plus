@@ -123,7 +123,7 @@ app.use('/api/options', requireApiKey, rulesRouter)
 app.use('/api/videos', requireApiKey, videosRouter)
 app.use('/api/rss', requireApiKey, rssRouter)
 app.use('/api/weekly', requireApiKey, weeklyRouter)
-app.use('/api/studynotes', requireApiKey, studynotesRouter)
+app.use('/api/study', requireApiKey, studynotesRouter)
 
 // List images in public/images/ directory for share background picker
 app.get('/api/images', async (_req: Request, res: Response) => {

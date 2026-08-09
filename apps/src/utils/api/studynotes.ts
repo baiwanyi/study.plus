@@ -37,14 +37,14 @@ export const studynotesApi = {
                       ),
                   ).toString()
                 : ''
-        return request<StudynotesItem[]>(`/studynotes${qs}`)
+        return request<StudynotesItem[]>(`/study${qs}`)
     },
     get: (id: number) => {
-        assertPositiveInt(id, '学习心得 ID')
-        return request<StudynotesItem>(`/studynotes/${id}`)
+        assertPositiveInt(id, '学习管理 ID')
+        return request<StudynotesItem>(`/study/${id}`)
     },
     create: (data: StudynotesCreateRequest) =>
-        request<StudynotesItem>('/studynotes', {
+        request<StudynotesItem>('/study', {
             method: 'POST',
             body: JSON.stringify(data),
         }),
@@ -54,43 +54,43 @@ export const studynotesApi = {
             memoryHook?: string | null
         },
     ) => {
-        assertPositiveInt(id, '学习心得 ID')
-        return request<StudynotesItem>(`/studynotes/${id}`, {
+        assertPositiveInt(id, '学习管理 ID')
+        return request<StudynotesItem>(`/study/${id}`, {
             method: 'PUT',
             body: JSON.stringify(data),
         })
     },
     delete: (id: number) => {
-        assertPositiveInt(id, '学习心得 ID')
-        return request<{ success: boolean }>(`/studynotes/${id}`, {
+        assertPositiveInt(id, '学习管理 ID')
+        return request<{ success: boolean }>(`/study/${id}`, {
             method: 'DELETE',
         })
     },
     evaluate: (id: number) => {
-        assertPositiveInt(id, '学习心得 ID')
+        assertPositiveInt(id, '学习管理 ID')
         return request<{
             evaluation: StudynotesEvaluation
             evaluatedAt: string
-        }>(`/studynotes/${id}/evaluate`, { method: 'POST' })
+        }>(`/study/${id}/evaluate`, { method: 'POST' })
     },
     generateQuiz: (id: number) => {
-        assertPositiveInt(id, '学习心得 ID')
-        return request<{ quiz: StudynotesQuiz }>(`/studynotes/${id}/quiz`, {
+        assertPositiveInt(id, '学习管理 ID')
+        return request<{ quiz: StudynotesQuiz }>(`/study/${id}/quiz`, {
             method: 'POST',
         })
     },
     getLatestQuiz: (id: number) => {
-        assertPositiveInt(id, '学习心得 ID')
+        assertPositiveInt(id, '学习管理 ID')
         return request<{ quiz: StudynotesQuiz | null }>(
-            `/studynotes/${id}/quiz/latest`,
+            `/study/${id}/quiz/latest`,
         )
     },
     saveQuizAnswers: (id: number, quizId: number, answers: string[]) => {
-        assertPositiveInt(id, '学习心得 ID')
+        assertPositiveInt(id, '学习管理 ID')
         assertPositiveInt(quizId, '测验 ID')
         assertStringArray(answers, '答案')
         return request<{ success: boolean }>(
-            `/studynotes/${id}/quiz/${quizId}/answers`,
+            `/study/${id}/quiz/${quizId}/answers`,
             {
                 method: 'PATCH',
                 body: JSON.stringify({ answers }),
@@ -98,11 +98,11 @@ export const studynotesApi = {
         )
     },
     submitQuiz: (id: number, quizId: number, answers: string[]) => {
-        assertPositiveInt(id, '学习心得 ID')
+        assertPositiveInt(id, '学习管理 ID')
         assertPositiveInt(quizId, '测验 ID')
         assertStringArray(answers, '答案')
         return request<{ quiz: StudynotesQuiz }>(
-            `/studynotes/${id}/quiz/${quizId}/submit`,
+            `/study/${id}/quiz/${quizId}/submit`,
             {
                 method: 'POST',
                 body: JSON.stringify({ answers }),
@@ -110,10 +110,10 @@ export const studynotesApi = {
         )
     },
     gradeQuiz: (id: number, quizId: number) => {
-        assertPositiveInt(id, '学习心得 ID')
+        assertPositiveInt(id, '学习管理 ID')
         assertPositiveInt(quizId, '测验 ID')
         return request<{ quiz: StudynotesQuiz }>(
-            `/studynotes/${id}/quiz/${quizId}/grade`,
+            `/study/${id}/quiz/${quizId}/grade`,
             { method: 'POST' },
         )
     },

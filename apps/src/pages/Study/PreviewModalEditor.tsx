@@ -142,7 +142,7 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
             isLoading={saving || analyzing}
             title={lesson ? `课前预习 · ${lesson.topic}` : '课前预习'}
             size="full">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden h-full -m-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-0 overflow-hidden min-h-full -m-6">
                 {/* ===== Left: 预习表单 ===== */}
                 <div
                     ref={formContainerRef}

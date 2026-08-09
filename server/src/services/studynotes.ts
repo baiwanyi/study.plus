@@ -52,7 +52,7 @@ export function safeJsonParse<T>(
         return JSON.parse(raw) as T
     } catch (error) {
         console.warn(
-            '学习心得 JSON 字段解析失败，已回退默认值:',
+            '学习管理 JSON 字段解析失败，已回退默认值:',
             (error as Error).message,
         )
         return fallback as T | null

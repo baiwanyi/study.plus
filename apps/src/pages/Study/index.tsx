@@ -109,7 +109,7 @@ export const Studynotes: FC = () => {
                 setShareCard(card)
             } catch {
                 setShareCard(null)
-                showSnackbar('加载心得失败，请重试', 'error')
+                showSnackbar('加载学习管理失败，请重试', 'error')
             }
         },
         [showSnackbar],
@@ -230,7 +230,7 @@ export const Studynotes: FC = () => {
                 isLoading={deleting}>
                 <p className="text-sm text-gray-600">
                     确定要删除课程「{deleteTarget?.topic}
-                    」吗？该课程下的预习、心得和测验将一并删除，此操作不可恢复。
+                    」吗？该课程下的预习、学习管理和测验将一并删除，此操作不可恢复。
                 </p>
             </Modal>
         </div>

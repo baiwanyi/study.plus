@@ -38,7 +38,7 @@ studynotesRouter.get('/', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error listing studyNotes cards:', message)
-        res.status(500).json({ error: '获取学习心得列表失败' })
+        res.status(500).json({ error: '获取学习管理列表失败' })
     }
 })
 
@@ -53,7 +53,7 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
 
         const note = await getStudyNote(id)
         if (!note) {
-            res.status(404).json({ error: '学习心得未找到' })
+            res.status(404).json({ error: '学习管理未找到' })
             return
         }
 
@@ -61,7 +61,7 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error getting studyNotes card:', message)
-        res.status(500).json({ error: '获取学习心得失败' })
+        res.status(500).json({ error: '获取学习管理失败' })
     }
 })
 
@@ -111,7 +111,7 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error creating studyNotes card:', message)
-        res.status(500).json({ error: '创建学习心得失败' })
+        res.status(500).json({ error: '创建学习管理失败' })
     }
 })
 
@@ -168,7 +168,7 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
             memoryHook,
         })
         if (!note) {
-            res.status(404).json({ error: '学习心得未找到' })
+            res.status(404).json({ error: '学习管理未找到' })
             return
         }
 
@@ -176,7 +176,7 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error updating studyNotes card:', message)
-        res.status(500).json({ error: '更新学习心得失败' })
+        res.status(500).json({ error: '更新学习管理失败' })
     }
 })
 
@@ -191,7 +191,7 @@ studynotesRouter.delete('/:id', async (req: Request, res: Response) => {
 
         const ok = await deleteStudyNote(id)
         if (!ok) {
-            res.status(404).json({ error: '学习心得未找到' })
+            res.status(404).json({ error: '学习管理未找到' })
             return
         }
 
@@ -199,7 +199,7 @@ studynotesRouter.delete('/:id', async (req: Request, res: Response) => {
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error deleting studyNotes card:', message)
-        res.status(500).json({ error: '删除学习心得失败' })
+        res.status(500).json({ error: '删除学习管理失败' })
     }
 })
 
@@ -217,7 +217,7 @@ studynotesRouter.post(
 
             const result = await evaluateStudyNote(id)
             if (!result) {
-                res.status(404).json({ error: '学习心得未找到' })
+                res.status(404).json({ error: '学习管理未找到' })
                 return
             }
 
@@ -249,7 +249,7 @@ studynotesRouter.post(
 
             const result = await generateQuiz(id)
             if (!result) {
-                res.status(404).json({ error: '学习心得未找到' })
+                res.status(404).json({ error: '学习管理未找到' })
                 return
             }
 

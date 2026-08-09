@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { CheckCircle2, Lock, Share2 } from 'lucide-react'
+import { CheckCircle2, Lock } from 'lucide-react'
 import { isAdmin, paginate, getPageSize } from '@apps/utils/client'
 import { DataTable } from '@components/DataTable'
 import { Loading } from '@components/Loading'
@@ -204,7 +204,6 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
                             <button
                                 onClick={() => onShare(record)}
                                 className="btn btn-outline btn-sm">
-                                <Share2 className="size-3" />
                                 分享
                             </button>
                         )}

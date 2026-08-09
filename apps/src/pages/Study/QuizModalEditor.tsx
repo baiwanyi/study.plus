@@ -176,7 +176,7 @@ function QuizBody({
 function LockedState() {
     return (
         <div className="flex h-full items-center justify-center p-6 text-center text-sm text-gray-500">
-            AI 评估未达 80 分，暂不能开始测验。请先完善学习心得并重新评估。
+            AI 评估未达 80 分，暂不能开始测验。请先完善学习管理并重新评估。
         </div>
     )
 }

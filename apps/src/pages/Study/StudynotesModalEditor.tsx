@@ -133,7 +133,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                     setEvaluation(null)
                     setEvaluationError(false)
                     formSnapshotRef.current = null
-                    showSnackbar('加载学习心得失败', 'error')
+                    showSnackbar('加载学习管理失败', 'error')
                 })
                 .finally(() => {
                     if (myReq === requestIdRef.current) setLoadingCard(false)

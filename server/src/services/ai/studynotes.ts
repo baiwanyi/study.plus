@@ -55,7 +55,7 @@ export async function evaluateStudynotesReflection(
         await logAiUsage(
             'studynotes-evaluate',
             usage,
-            `学习心得评估：${topic || subject}`,
+            `学习管理评估：${topic || subject}`,
         )
 
         const parsed = safeJsonParse<Record<string, unknown> | null>(
@@ -202,7 +202,7 @@ export async function generateStudynotesQuiz(
         await logAiUsage(
             'studynotes-quiz-generate',
             usage,
-            `学习心得出题：${card.topic || card.subject}`,
+            `学习管理出题：${card.topic || card.subject}`,
         )
 
         const parsed = safeJsonParse<{
@@ -276,7 +276,7 @@ export async function gradeStudynotesQuiz(
         await logAiUsage(
             'studynotes-quiz-grade',
             usage,
-            `学习心得批改：${card.topic || card.subject}`,
+            `学习管理批改：${card.topic || card.subject}`,
         )
 
         const parsed = safeJsonParse<{
