@@ -20,7 +20,7 @@
 - **积分兑换与预支**：支持兑娱乐时间、现金等奖励，支持积分预支与分期还款
 - **AI 智能辅助**：AI 评分、AI 起名、AI 出题，全链路智能支持
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
-- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可进行智能测验，AI 出10道题逐题检验知识掌握程度（每道回答后即时分析），答完后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议），支持分享
+- **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可进行智能测验，AI 出20道混合题型题（单选/多选/简答，总分100分自动分配）检验知识掌握程度，答完后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议），支持分享
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 - **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
@@ -91,11 +91,11 @@
 | 周报对话     | 针对周报内容与 AI 进行追问对话                                                                                                |
 | 作业对话     | 在作业编辑器中与 AI 对话，支持生成示范作业与答疑                                                                              |
 | 学习心得评估 | AI 评估学习心得完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议）                                                                |
-| 学习心得测验 | 基于心得内容进行10题智能测验（每题即时分析，答完后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议）） |
+| 学习心得测验 | 基于心得内容进行20题智能测验（单选/多选/简答混合，总分100分自动分配；客观题本地判分 + AI 出解析，简答题 AI 判分；生成总结报告（错题回顾 + 掌握程度评分 + 复习建议）） |
 
 - 集成 DeepSeek API（deepseek-v4-flash 模型），评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
-- 支持 AI 使用记录查询与 Token 用量统计（按 AI评分/AI起名/AI出题/**AI作业对话**/周报分析/周报对话/学习心得评估/学习心得测验 分类）
+- 支持 AI 使用记录查询与 Token 用量统计（按 作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改 分类）
 
 #### 1.3 评分标准（统一作业评分）
 
@@ -210,7 +210,7 @@
 #### 3.5 AI 使用记录
 
 - DeepSeek API 调用记录（使用项目/任务名称/使用时间/Token 用量）
-- 按项目汇总统计（AI评分/AI起名/AI出题/AI作业对话/周报分析/周报对话/学习心得评估/学习心得测验）
+- 按项目汇总统计（作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改）
 - 总调用次数与总 Token 消耗概览
 
 #### 3.6 规则配置
@@ -267,7 +267,7 @@
 
 - **课前预习**：填写导学案三部分——本节课内容、已有旧知识、课前思考题。保存后可一键生成 AI 预习建议与课堂注意事项；内容变更会自动作废旧分析、触发重新分析（接口限流每小时 30 次）。
 - **学习心得**：以费曼四问引导填写——①一句话概括核心知识 ②举自己的例子 ③哪里卡住了（可留空）④复习锚点「记忆钩子」（选填）。保存即生成 AI 完整度评估报告，评估失败可二次重试而不重复保存。
-- **智能测验**：围绕课程自动生成专属测验，作答后由 AI 逐题评分（每题 10 分，含参考答案与解析、总体评语与复习建议）。**权限门控**：心得评估得分 ≥ 80 分方可开始测验，否则锁定提示。成绩精确到小数，支持「重新测试」覆盖。
+- **智能测验**：围绕课程自动生成 20 道专属测验（简答题固定 10 道，单选/多选自由分配且各至少 1 道），总分 100 分由 AI 按题型难度自动分配至每题。作答后批改：客观题（单选/多选）本地预判正误并按分值计分，AI 仅生成解析；主观题（简答）由 AI 判分并换算实分。结果含每题得分/参考答案/解析、总体评语与复习建议。**权限门控**：心得评估得分 ≥ 80 分方可开始测验，否则锁定提示。成绩精确到小数，支持「重新测试」覆盖。
 - **分享卡片**：将学习心得与 AI 评估报告渲染为卡片，一键导出 PNG 长图用于分享。
 
 ## 数据结构设计
@@ -290,10 +290,10 @@ weekly_conversations-> id, weeklyReportId(FK, unique), createdAt, updatedAt
 weekly_messages     -> id, conversationId(FK), role(user/assistant), content, createdAt
 task_conversations  -> id, taskId(FK, unique), createdAt, updatedAt
 task_messages       -> id, conversationId(FK), role(user/assistant), content, createdAt
-study_notes         -> id, subject, topic, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, quizScore(REAL), lessonId?(FK), createdAt, updatedAt
-study_lessons       -> id, subject,(FK unique-ish), topic, createdAt, updatedAt   # 课程（学科/主题，subject+topic 唯一）
+study_notes         -> id, summary, example, stuckPoints, memoryHook?, evaluation?, evaluatedAt?, quizScore(REAL), lessonId(FK, notNull), createdAt, updatedAt
+study_lessons       -> id, subject, topic, createdAt, updatedAt   # 课程（学科/主题，subject+topic 唯一索引）
 study_previews      -> id, lessonId(FK, unique), content, oldKnowledge, questions, aiAnalysis?, aiAnalyzedAt?, createdAt, updatedAt   # 课前导学案
-study_quiz          -> id, studynoteId(FK, unique), questionsJson, answersJson?, resultsJson?, score(REAL), correctCount?, comment, suggestionsJson, generatedAt, submittedAt?, createdAt   # 智能测验结果（成绩为小数 REAL）
+study_quiz          -> id, studyId(FK), questionsJson, answersJson?, resultsJson?, score(REAL), correctCount?, comment, suggestionsJson, generatedAt, submittedAt?, createdAt   # 智能测验（同一课程未提交测验唯一；成绩为小数 REAL）
 ```
 
 ### 积分流转全景
@@ -318,10 +318,10 @@ study.webian.dev/
 ├── apps/                         # ★ 前端 (React + Vite)
 │   ├── public/                   # 静态资源（图标/字体/图片/帮助文档）
 │   ├── src/
-│   │   ├── main.tsx             # 前端入口（路由定义 + 渲染挂载）
+│   │   ├── main.tsx             # 前端入口（路由定义 + React.lazy 页面级代码分割 + 渲染挂载）
 │   │   ├── utils/
-│   │   │   ├── api/             # HTTP 客户端（14 个 API 模块）
-│   │   │   ├── client.ts        # Axios 实例
+│   │   │   ├── api/             # HTTP 客户端（15 个 API 模块，含 request/system）
+│   │   │   ├── client.ts        # Axios 实例 + 运行时配置加载（loadConfig）
 │   │   │   └── vite-env.d.ts    # Vite 环境类型声明
 │   │   ├── components/          # 通用 UI 组件
 │   │   │   ├── Layout.tsx      # 主布局（侧边栏 + 内容区 + 随机名言）
@@ -332,9 +332,9 @@ study.webian.dev/
 │   │   │   ├── RulesPage.tsx   # 规则页面包装器
 │   │   │   ├── Loading.tsx     # 加载指示器
 │   │   │   └── AiChatPanel.tsx # AI 聊天面板
-│   │   ├── pages/               # 页面组件（12 个页面目录，共 54 个 .tsx 文件）
+│   │   ├── pages/               # 页面组件（12 个页面目录，共 61 个 .tsx 文件）
 │   │   │   ├── Dashboard/       # 首页看板（WidgetStats/Balance/PendingTasks 等 11 个组件）
-│   │   │   ├── Tasks/           # 作业管理（BookNoteEditor/TaskEditor/TaskListTable 等 9 个组件）
+│   │   │   ├── Tasks/           # 作业管理（BookNoteEditor/TaskEditor/TaskListTable 等 10 个组件）
 │   │   │   ├── Points/          # 积分记录
 │   │   │   ├── Exchanges/       # 兑换记录
 │   │   │   ├── Borrow/          # 积分预支
@@ -352,10 +352,10 @@ study.webian.dev/
 │   │   │   │   ├── PreviewAnalysisReport.tsx # 课前导学 AI 分析报告
 │   │   │   │   ├── StudynotesModalEditor.tsx  # 学习心得费曼四问编辑 + AI 评估
 │   │   │   │   ├── EvaluationReport.tsx       # AI 评估报告结构化展示
-│   │   │   │   ├── QuizModalEditor.tsx       # 智能测验作答/批改/结果反馈
+│   │   │   │   ├── QuizModalEditor.tsx       # 智能测验作答/批改/结果反馈（单选/多选/简答 + 分值/得分展示）
 │   │   │   │   ├── StudynotesModalShare.tsx   # 心得分享卡片（导出 PNG 长图）
 │   │   │   │   ├── StudynotesSubjectFilter.tsx # 学科筛选（写入 URL query）
-│   │   │   │   └── hooks/                   # useLessons / useStudynotesQuiz
+│   │   │   │   └── hooks/                   # useLessons / useStudynotesQuiz（20 题答案状态 + 自动保存）
 │   │   │   └── ...                # 每个页面目录均包含 index.tsx 入口及子组件
 │   │   └── styles/              # 全局样式
 │   │       ├── index.css        # Tailwind 4 + 自定义色板
@@ -381,7 +381,7 @@ study.webian.dev/
 │   │   │   ├── ai-usage.ts     # AI 使用记录
 │   │   │   ├── videos.ts       # 视频管理（扫描/流播/收藏）
 │   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
-│   │   │   ├── studynotes.ts   # 学习心得（CRUD + AI 评估 + 智能测验对话）
+│   │   │   ├── studynotes.ts   # 学习心得（CRUD + AI 评估 + 测验生成/作答/批改）
 │   │   │   ├── lessons.ts      # 课程管理（含课前导学 AI 分析）
 │   │   │   ├── rss.ts          # 科普 RSS 阅读器
 │   │   │   ├── rules-loader.ts # 规则加载与初始化
@@ -393,7 +393,7 @@ study.webian.dev/
 │   │       │   ├── core.ts    # DeepSeek API 封装（callDeepSeek/safeJsonParse）
 │   │       │   ├── task.ts    # 作业评分/起名/出题 AI
 │   │       │   ├── weekly.ts  # 周报分析 AI
-│   │       │   └── studynotes.ts # 学习心得评估 AI + 智能测验 AI
+│   │       │   └── studynotes.ts # 心得评估 AI + 测验出题 AI + 测验批改 AI（客观题本地判分）+ 预习分析 AI
 │   │       └── points.ts       # 积分计算引擎
 │   ├── package.json
 │   └── tsconfig.json
@@ -490,9 +490,9 @@ study.webian.dev/
 - [x] 学习心得 CRUD（subject/topic/summary/example/stuckPoints/memoryHook）
 - [x] AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议 + 总体评价）
 - [x] AI 评估报告组件（EvaluationReport，lucide 图标替代 emoji）
-- [x] AI 智能测验（10题逐题检验：出题 → 学生回答 → 即时分析对错 → 出下一题，第10题答完后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议））
+- [x] AI 智能测验（20题混合题型：单选/多选/简答，总分100分自动分配；客观题本地判分 + AI 出解析、主观题 AI 判分，批改后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议））
 - [x] 测验评分门槛：评估分达80分后方可使用测验
-- [x] 以用户提问数量控制测验结束（累计10个回答后结束）
+- [x] 测验支持「重新测试」覆盖（已批改后方可重新生成新题，未批改内容不丢弃）
 - [x] 保存时自动评估（内容无变更跳过）：保存前先清空旧评分，AI 评分生成后再写入；评分失败标记错误，可点击「保存并评分」二次评分（仅重评不重复保存）
 - [x] 编辑表单 textarea 自适应高度：每次打开/加载完成（含再次打开同一卡片）均按内容重设高度
 - [x] 问题三可留空

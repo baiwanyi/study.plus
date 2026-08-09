@@ -24,6 +24,7 @@ export {
     toPointType,
     toTaskType,
 } from '@shared/utils'
+import { systemAPI } from './api/system'
 
 export type {
     ExchangeStatus,
@@ -81,7 +82,7 @@ let _configLoaded = false
 export async function loadConfig(): Promise<void> {
     if (_configLoaded) return
     try {
-        const { systemAPI } = await import('@apps/utils/api')
+        // 静态导入（API 桶已被 Layout 等静态引用，动态导入无法产生独立 chunk，属无效分割）
         _runtimeConfig = await systemAPI.get()
         _configLoaded = true
     } catch {

@@ -18,9 +18,25 @@ export default defineConfig({
         emptyOutDir: true,
         rollupOptions: {
             output: {
+                // 手动分包：把体积大的第三方依赖拆成独立 chunk，缓解主包 >500 kB 告警
                 manualChunks(id) {
-                    if (id.includes('react-dom')) {
+                    if (id.includes('node_modules/react-dom')) {
                         return 'react-dom'
+                    }
+                    if (
+                        id.includes('node_modules/@uiw/react-md-editor') ||
+                        id.includes('node_modules/@uiw/react-markdown-preview') ||
+                        id.includes('node_modules/react-markdown') ||
+                        id.includes('node_modules/remark-') ||
+                        id.includes('node_modules/rehype-')
+                    ) {
+                        return 'markdown'
+                    }
+                    if (
+                        id.includes('node_modules/axios') ||
+                        id.includes('node_modules/@tanstack')
+                    ) {
+                        return 'vendor-http'
                     }
                 },
             },
