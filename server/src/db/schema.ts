@@ -226,6 +226,48 @@ export const studynotes = sqliteTable('studynotes', {
     evaluation: text('evaluation'),
     evaluatedAt: text('evaluated_at'),
     quizScore: integer('quiz_score'),
+    lessonId: integer('lesson_id').references(() => studyLessons.id, {
+        onDelete: 'cascade',
+    }),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+    updatedAt: text('updated_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const studyLessons = sqliteTable(
+    'study_lessons',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        subject: text('subject').notNull(),
+        topic: text('topic').notNull(),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+        updatedAt: text('updated_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        subjectTopicUnique: uniqueIndex(
+            'study_lessons_subject_topic_unique',
+        ).on(table.subject, table.topic),
+    }),
+)
+
+export const studyPreviews = sqliteTable('study_previews', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    lessonId: integer('lesson_id')
+        .notNull()
+        .unique()
+        .references(() => studyLessons.id, { onDelete: 'cascade' }),
+    content: text('content').notNull().default(''),
+    oldKnowledge: text('old_knowledge').notNull().default(''),
+    questions: text('questions').notNull().default(''),
+    aiAnalysis: text('ai_analysis'),
+    aiAnalyzedAt: text('ai_analyzed_at'),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),

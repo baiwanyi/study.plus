@@ -20,6 +20,7 @@ export interface StudynotesItem {
     memoryHook: string | null
     evaluation: string | null
     evaluatedAt: string | null
+    lessonId?: number | null
     createdAt: string
     updatedAt: string
     quizCount?: number
@@ -75,6 +76,61 @@ export interface StudynotesCreateRequest {
     example: string
     stuckPoints: string
     memoryHook?: string
+    lessonId?: number
+}
+
+// ===== Study Lesson / Preview Types =====
+export interface StudyLesson {
+    id: number
+    subject: string
+    topic: string
+    createdAt: string
+    updatedAt: string
+}
+
+export interface StudyLessonWithStatus extends StudyLesson {
+    /** 预习是否已填写（三问任一有内容） */
+    previewDone: boolean
+    /** 预习是否已 AI 分析 */
+    previewAnalyzed: boolean
+    /** 预习分析完整度评分（弱化展示） */
+    previewScore: number | null
+    /** 关联心得 ID（一对一） */
+    studynoteId: number | null
+    /** 心得评估完整度评分 */
+    studynoteScore: number | null
+    /** 心得专属测验最新分数 */
+    quizScore: number | null
+}
+
+export interface PreviewAnalysis {
+    completenessScore: number
+    completenessComment: string
+    /** 做得好的地方 */
+    strengths: string[]
+    /** 预习不足 / 理解偏差 */
+    gaps: string[]
+    /** 课堂注意事项：正式课上需要重点听的知识点 */
+    classFocusPoints: string[]
+    overallComment: string
+}
+
+export interface StudyPreview {
+    id: number
+    lessonId: number
+    content: string
+    oldKnowledge: string
+    questions: string
+    aiAnalysis: string | null
+    aiAnalyzedAt: string | null
+    createdAt: string
+    updatedAt: string
+}
+
+export interface StudyPreviewCreateRequest {
+    content: string
+    oldKnowledge: string
+    questions: string
 }
 
 export interface StudynotesMessage {

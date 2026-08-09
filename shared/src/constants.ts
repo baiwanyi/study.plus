@@ -247,3 +247,57 @@ export const promptStudynotesQuizGrade =
     '  "suggestions": ["建议1", "建议2"]\n' +
     '}\n' +
     '（results 数量必须与题目数完全一致，index 从 1 开始连续，缺一不可）\n'
+
+// ===== 课前预习 =====
+// 预习表单三问（认知科学依据：SQ3R Survey + 生成性学习 + 先行组织者 + K-W-L 策略）
+export const previewStudyQuestions: Array<{
+    key: 'content' | 'oldKnowledge' | 'questions'
+    title: string
+    hint: string
+    placeholder: string
+}> = [
+    {
+        key: 'content',
+        title: '问题一：预习笔记',
+        hint: '先浏览课本的标题、小标题、图表和例题，再用自己的话写下：这节课会讲什么？（不能用课本原话）',
+        placeholder: '如：这节课要学分数的约分，就是把一个分数变成更简单但大小不变的分数',
+    },
+    {
+        key: 'oldKnowledge',
+        title: '问题二：联系旧知',
+        hint: '想一想，以前学过什么和这节课相关的内容？它和新知识可能有什么联系？',
+        placeholder: '如：以前学过公因数，约分就是同时除以分子和分母的公因数',
+    },
+    {
+        key: 'questions',
+        title: '问题三：我的疑问',
+        hint: '预习中你最好奇、最想弄明白的问题是什么？',
+        placeholder: '如：为什么约分到最简分数时，一定要除以最大公因数？',
+    },
+]
+
+// 预习 AI 分析：弱化评分、强化引导
+export const promptAnalyzePreview =
+    '你是一位温和的辅导老师，请分析小学生的课前预习内容，帮助他带着清晰的目标走进课堂。\n' +
+    '学科：{subject}，课题：{topic}\n' +
+    '学生写的预习内容：\n' +
+    '- 预习笔记：{content}\n' +
+    '- 联系旧知：{oldKnowledge}\n' +
+    '- 我的疑问：{questions}\n' +
+    '\n' +
+    '分析要求：\n' +
+    '1. 判断预习是否认真、是否覆盖了这节课的核心知识，是否有理解偏差或遗漏。\n' +
+    '2. strengths：列出学生做得好的地方（1-3 条），用"你"称呼，具体描述。\n' +
+    '3. gaps：指出预习的不足或理解偏差（1-3 条），用提示的方式引导（"你还可以想想..."），不要直接给答案。\n' +
+    '4. classFocusPoints：最重要的部分——列出正式课上需要重点听的知识点（2-4 条），针对性回应学生的疑问和不足，让孩子带着任务听课。\n' +
+    '5. completenessScore：预习完整度评分（0-100），仅供家长参考，语气温和鼓励。\n' +
+    '6. overallComment：总体评语，以鼓励为主（不超过 80 字）。\n' +
+    '请只返回如下 JSON（不要输出其他内容）：\n' +
+    '{\n' +
+    '  "completenessScore": 数字(0-100),\n' +
+    '  "completenessComment": "预习质量评价",\n' +
+    '  "strengths": ["做得好的地方1", "做得好的地方2"],\n' +
+    '  "gaps": ["预习不足或理解偏差1", "预习不足或理解偏差2"],\n' +
+    '  "classFocusPoints": ["课堂注意事项1", "课堂注意事项2"],\n' +
+    '  "overallComment": "总体鼓励评语"\n' +
+    '}'

@@ -190,8 +190,15 @@ studynotesRouter.get('/:id', async (req: Request, res: Response) => {
 // Create studynotes card
 studynotesRouter.post('/', async (req: Request, res: Response) => {
     try {
-        const { subject, topic, summary, example, stuckPoints, memoryHook } =
-            req.body
+        const {
+            subject,
+            topic,
+            summary,
+            example,
+            stuckPoints,
+            memoryHook,
+            lessonId,
+        } = req.body
 
         // Validate required fields: must be non-empty strings (reject arrays/objects)
         if (
@@ -212,6 +219,18 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
             return
         }
 
+        const normalizedLessonId =
+            lessonId == null || lessonId === ''
+                ? null
+                : Number(lessonId)
+        if (
+            normalizedLessonId !== null &&
+            (!Number.isInteger(normalizedLessonId) || normalizedLessonId <= 0)
+        ) {
+            res.status(400).json({ error: '无效的课程 ID' })
+            return
+        }
+
         const rows = await db
             .insert(studynotes)
             .values({
@@ -221,6 +240,7 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
                 example,
                 stuckPoints,
                 memoryHook: typeof memoryHook === 'string' ? memoryHook : null,
+                lessonId: normalizedLessonId,
             })
             .returning()
 

@@ -3,6 +3,7 @@
 export { advancesApi } from './advances'
 export { aiUsageApi } from './aiUsage'
 export { exchangesApi } from './exchanges'
+export { lessonsApi } from './lessons'
 export { studynotesApi } from './studynotes'
 export { imagesApi } from './images'
 export { optionsAPI, remarkApi, quotesApi } from './options'

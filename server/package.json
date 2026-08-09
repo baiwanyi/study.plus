@@ -8,6 +8,7 @@
         "start": "tsx src/index.ts",
         "db:generate": "drizzle-kit generate",
         "db:migrate": "tsx src/db/migrate.ts",
+        "db:lessons-migrate": "tsx src/db/migrate-lessons-from-studynotes.ts",
         "db:push": "drizzle-kit push"
     },
     "dependencies": {

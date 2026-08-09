@@ -768,6 +768,53 @@ async function migrate(): Promise<void> {
   `)
     console.log('Created studynote_quiz table.')
 
+    // ===== 课程维度学习中心：study_lessons / study_previews =====
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS study_lessons (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      subject TEXT NOT NULL,
+      topic TEXT NOT NULL,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created study_lessons table.')
+
+    // 学科+课题 唯一索引，防止重复建课
+    try {
+        await client.execute(
+            'CREATE UNIQUE INDEX IF NOT EXISTS study_lessons_subject_topic_unique ON study_lessons(subject, topic)',
+        )
+        console.log('Created unique index on study_lessons(subject, topic).')
+    } catch (e) {
+        console.warn('创建课程唯一索引跳过:', (e as Error).message)
+    }
+
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS study_previews (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lesson_id INTEGER NOT NULL UNIQUE REFERENCES study_lessons(id) ON DELETE CASCADE,
+      content TEXT NOT NULL DEFAULT '',
+      old_knowledge TEXT NOT NULL DEFAULT '',
+      questions TEXT NOT NULL DEFAULT '',
+      ai_analysis TEXT,
+      ai_analyzed_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created study_previews table.')
+
+    // studynotes 表增加 lesson_id（幂等：列已存在时 ALTER 抛错跳过）
+    try {
+        await client.execute(
+            'ALTER TABLE studynotes ADD COLUMN lesson_id INTEGER REFERENCES study_lessons(id) ON DELETE CASCADE',
+        )
+        console.log('Added lesson_id column to studynotes table.')
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
     console.log('Migration completed successfully!')
 }
 

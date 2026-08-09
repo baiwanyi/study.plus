@@ -10,6 +10,7 @@ import { options } from './db/schema'
 import { isFirstDayOfMonth, repayActiveAdvances } from './routes/advance-helper'
 import { aiUsageRouter } from './routes/ai-usage'
 import { exchangesRouter } from './routes/exchanges'
+import { lessonsRouter } from './routes/lessons'
 import { rulesRouter } from './routes/options'
 import { pointsRouter } from './routes/points'
 import { rssRouter } from './routes/rss'
@@ -98,6 +99,7 @@ app.use('/api/studynotes/evaluate', aiLimiter)
 app.use('/api/tasks', tasksRouter)
 app.use('/api/points', pointsRouter)
 app.use('/api/exchanges', exchangesRouter)
+app.use('/api/lessons', lessonsRouter)
 app.use('/api/ai-usage', aiUsageRouter)
 app.use('/api/options', rulesRouter)
 app.use('/api/videos', videosRouter)

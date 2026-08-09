@@ -1,5 +1,6 @@
 import {
     defaultPromptEvaluateStudynotes,
+    promptAnalyzePreview,
     promptStudynotesQuizGenerate,
     promptStudynotesQuizGrade,
 } from '@shared/constants'
@@ -75,6 +76,71 @@ export async function evaluateStudynotesReflection(
             missingPoints: [],
             errors: [],
             improvementSuggestions: ['请稍后重试评估'],
+            overallComment: '',
+        })
+    }
+}
+
+export async function analyzePreview(
+    subject: string,
+    topic: string,
+    content: string,
+    oldKnowledge: string,
+    questions: string,
+): Promise<string> {
+    if (!DEEPSEEK_API_KEY) {
+        return JSON.stringify({
+            completenessScore: 0,
+            completenessComment: 'AI 分析未配置，请设置 DEEPSEEK_API_KEY',
+            strengths: [],
+            gaps: [],
+            classFocusPoints: [],
+            overallComment: '',
+        })
+    }
+
+    const prompt = promptAnalyzePreview
+        .replace(
+            '{subject}',
+            studynotesSubjectLabels[subject] || subject || '未填写学科',
+        )
+        .replace('{topic}', topic || '未填写课题')
+        .replace('{content}', content || '未填写')
+        .replace('{oldKnowledge}', oldKnowledge || '未填写')
+        .replace('{questions}', questions || '未填写')
+
+    try {
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 2000,
+            response_format: { type: 'json_object' },
+        })
+
+        await logAiUsage(
+            'studynotes-preview-analyze',
+            usage,
+            `课前预习分析：${topic || subject}`,
+        )
+
+        const parsed = safeJsonParse<Record<string, unknown> | null>(
+            reply,
+            null,
+        )
+        if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) {
+            throw new Error('Invalid preview analysis response format')
+        }
+
+        return reply
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('AI preview analysis error:', message)
+        return JSON.stringify({
+            completenessScore: 0,
+            completenessComment: `分析出错：${message}`,
+            strengths: [],
+            gaps: [],
+            classFocusPoints: [],
             overallComment: '',
         })
     }

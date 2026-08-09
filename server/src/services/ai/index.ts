@@ -7,6 +7,7 @@ export {
 } from './task'
 export { analyzeWeeklyReport, chatAboutWeeklyReport } from './weekly'
 export {
+    analyzePreview,
     evaluateStudynotesReflection,
     generateStudynotesQuiz,
     gradeStudynotesQuiz,

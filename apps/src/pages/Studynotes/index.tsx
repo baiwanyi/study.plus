@@ -1,34 +1,51 @@
 'use client'
 
-import { useState, type FC } from 'react'
+import { useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { studynotesApi } from '@apps/utils/api'
+import { lessonsApi, studynotesApi } from '@apps/utils/api'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
+import { useLessons } from './hooks/useLessons'
+import { LessonModalCreate } from './LessonModalCreate'
+import { LessonModalEdit } from './LessonModalEdit'
+import { LessonsListTable } from './LessonsListTable'
+import { PreviewModalEditor } from './PreviewModalEditor'
+import { QuizModal } from './QuizModal'
 import { StudynotesModalEditor } from './StudynotesModalEditor'
-import { StudynotesListTable } from './StudynotesListTable'
 import { StudynotesModalShare } from './StudynotesModalShare'
 import { StudynotesSubjectFilter } from './StudynotesSubjectFilter'
-import { useStudynotes } from './hooks/useStudynotes'
-import type { StudynotesItem } from '@shared/types'
+import type { StudyLessonWithStatus, StudynotesItem } from '@shared/types'
+import type { FC } from 'react'
 
 export const Studynotes: FC = () => {
     const { showSnackbar } = useSnackbar()
     const [searchParams, setSearchParams] = useSearchParams()
     const subject = searchParams.get('subject') || ''
     const {
-        data: notes = [],
+        data: lessons = [],
         isLoading: loading,
         isError: hasError,
         refetch,
-    } = useStudynotes(subject)
+    } = useLessons(subject)
 
-    const [modalNoteId, setModalNoteId] = useState<number | null | undefined>(
-        undefined,
+    const [showCreate, setShowCreate] = useState(false)
+    const [editLesson, setEditLesson] = useState<StudyLessonWithStatus | null>(
+        null,
     )
-    const [deleteTargetId, setDeleteTargetId] = useState<number | null>(null)
+    const [editSaving, setEditSaving] = useState(false)
+    const [previewLesson, setPreviewLesson] =
+        useState<StudyLessonWithStatus | null>(null)
+    const [reflectionLesson, setReflectionLesson] =
+        useState<StudyLessonWithStatus | null>(null)
+    const [reflectionCardId, setReflectionCardId] = useState<number | null>(
+        null,
+    )
+    const [quizLesson, setQuizLesson] =
+        useState<StudyLessonWithStatus | null>(null)
+    const [shareCard, setShareCard] = useState<StudynotesItem | null>(null)
+    const [deleteTarget, setDeleteTarget] =
+        useState<StudyLessonWithStatus | null>(null)
     const [deleting, setDeleting] = useState(false)
-    const [shareNote, setShareNote] = useState<StudynotesItem | null>(null)
 
     const handleSubjectChange = (value: string) => {
         if (value) {
@@ -38,29 +55,91 @@ export const Studynotes: FC = () => {
         }
     }
 
-    const handleDelete = async () => {
-        if (deleteTargetId == null) return
+    const handleCreate = useCallback(
+        async (subject: string, topic: string) => {
+            try {
+                await lessonsApi.create({ subject, topic })
+                showSnackbar('课程创建成功')
+                setShowCreate(false)
+                refetch()
+            } catch (err) {
+                const message =
+                    err instanceof Error ? err.message : '创建失败'
+                showSnackbar(message, 'error')
+            }
+        },
+        [showSnackbar, refetch],
+    )
+
+    const handleEditSave = useCallback(
+        async (subject: string, topic: string) => {
+            if (!editLesson) return
+            setEditSaving(true)
+            try {
+                await lessonsApi.update(editLesson.id, { subject, topic })
+                showSnackbar('保存成功')
+                setEditLesson(null)
+                refetch()
+            } catch (err) {
+                const message =
+                    err instanceof Error ? err.message : '保存失败'
+                showSnackbar(message, 'error')
+            } finally {
+                setEditSaving(false)
+            }
+        },
+        [editLesson, showSnackbar, refetch],
+    )
+
+    const handleOpenReflection = useCallback(
+        (lesson: StudyLessonWithStatus) => {
+            setReflectionLesson(lesson)
+            setReflectionCardId(lesson.studynoteId)
+        },
+        [],
+    )
+
+    const handleOpenShare = useCallback(
+        async (lesson: StudyLessonWithStatus) => {
+            if (lesson.studynoteId == null) return
+            setShareCard(null)
+            try {
+                const card = await studynotesApi.get(lesson.studynoteId)
+                setShareCard(card)
+            } catch {
+                showSnackbar('加载心得失败，请重试', 'error')
+            }
+        },
+        [showSnackbar],
+    )
+
+    const handleDelete = useCallback(async () => {
+        if (!deleteTarget) return
         setDeleting(true)
         try {
-            await studynotesApi.delete(deleteTargetId)
+            await lessonsApi.delete(deleteTarget.id)
             showSnackbar('删除成功')
-            setDeleteTargetId(null)
+            setDeleteTarget(null)
             refetch()
         } catch {
             showSnackbar('删除失败，请重试', 'error')
         } finally {
             setDeleting(false)
         }
-    }
+    }, [deleteTarget, showSnackbar, refetch])
+
+    // 打开测验时使用列表最新数据，避免测验完成回写后操作列状态陈旧
+    const activeQuizLesson =
+        lessons.find((l) => l.id === quizLesson?.id) ?? quizLesson
 
     return (
         <div className="space-y-6">
             <div className="flex items-center justify-between">
-                <h2>学习心得</h2>
+                <h2>学习中心</h2>
                 <button
-                    onClick={() => setModalNoteId(null)}
+                    onClick={() => setShowCreate(true)}
                     className="btn btn-primary">
-                    添加心得
+                    添加课程
                 </button>
             </div>
 
@@ -69,34 +148,71 @@ export const Studynotes: FC = () => {
                 onSubjectChange={handleSubjectChange}
             />
 
-            <StudynotesListTable
+            <LessonsListTable
                 loading={loading}
                 hasError={hasError}
-                notes={notes}
-                onCardClick={(id) => setModalNoteId(id)}
-                onShare={(card) => setShareNote(card)}
-                onDelete={(id) => setDeleteTargetId(id)}
+                lessons={lessons}
+                onEdit={setEditLesson}
+                onPreview={setPreviewLesson}
+                onReflection={handleOpenReflection}
+                onQuiz={setQuizLesson}
+                onShare={handleOpenShare}
+                onDelete={setDeleteTarget}
+            />
+
+            <LessonModalCreate
+                open={showCreate}
+                onCancel={() => setShowCreate(false)}
+                onConfirm={handleCreate}
+            />
+
+            <LessonModalEdit
+                open={editLesson != null}
+                lesson={editLesson}
+                onCancel={() => setEditLesson(null)}
+                onConfirm={handleEditSave}
+                isLoading={editSaving}
+            />
+
+            <PreviewModalEditor
+                open={previewLesson != null}
+                lesson={previewLesson}
+                onClose={() => setPreviewLesson(null)}
+                onSaved={() => refetch()}
             />
 
             <StudynotesModalEditor
-                open={modalNoteId !== undefined}
-                cardId={modalNoteId ?? null}
+                open={reflectionLesson != null}
+                cardId={reflectionCardId}
+                lessonId={reflectionLesson?.id ?? null}
                 onClose={() => {
-                    setModalNoteId(undefined)
+                    setReflectionLesson(null)
+                    setReflectionCardId(null)
                     refetch()
                 }}
                 onSaved={() => refetch()}
             />
 
+            <QuizModal
+                open={quizLesson != null}
+                cardId={activeQuizLesson?.studynoteId ?? null}
+                canQuiz={
+                    activeQuizLesson?.studynoteId != null &&
+                    activeQuizLesson.studynoteScore != null &&
+                    activeQuizLesson.studynoteScore >= 80
+                }
+                onClose={() => setQuizLesson(null)}
+            />
+
             <StudynotesModalShare
-                open={shareNote != null}
-                card={shareNote}
-                onCancel={() => setShareNote(null)}
+                open={shareCard != null}
+                card={shareCard}
+                onCancel={() => setShareCard(null)}
             />
 
             <Modal
-                open={deleteTargetId != null}
-                onCancel={() => setDeleteTargetId(null)}
+                open={deleteTarget != null}
+                onCancel={() => setDeleteTarget(null)}
                 title="确认删除"
                 size="sm"
                 danger
@@ -104,7 +220,8 @@ export const Studynotes: FC = () => {
                 onConfirm={handleDelete}
                 isLoading={deleting}>
                 <p className="text-sm text-gray-600">
-                    确定要删除这张学习心得吗？此操作不可恢复。
+                    确定要删除课程「{deleteTarget?.topic}
+                    」吗？该课程下的预习、心得和测验将一并删除，此操作不可恢复。
                 </p>
             </Modal>
         </div>

@@ -7,12 +7,13 @@ import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { studynotesSubjectLabels, studynotesSubjectValues } from '@shared/utils'
 import { EvaluationReport } from './EvaluationReport'
-import { StudynotesQuizPanel } from './StudynotesQuizPanel'
 import type { StudynotesItem, StudynotesEvaluation } from '@shared/types'
 
 interface StudynotesModalEditorProps {
     open: boolean
     cardId: number | null
+    /** 关联的课程 ID（新建心得时传入） */
+    lessonId: number | null
     onClose: () => void
     onSaved: () => void
 }
@@ -20,6 +21,7 @@ interface StudynotesModalEditorProps {
 export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     open,
     cardId,
+    lessonId,
     onClose,
     onSaved,
 }) => {
@@ -44,8 +46,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     )
     const [currentCard, setCurrentCard] = useState<StudynotesItem | null>(null)
 
-    const canFollowUp = evaluation != null && evaluation.completenessScore >= 80
-
     const mountedRef = useRef(false)
     const formContainerRef = useRef<HTMLDivElement>(null)
     const formSnapshotRef = useRef<{
@@ -58,8 +58,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
     } | null>(null)
 
     // Resize all form textareas to fit content immediately after DOM mounts or values change.
-    // Depends on `open`/`loadingCard` too: re-opening a card keeps the same field values,
-    // so the fields remount at default rows unless we re-measure when the form becomes visible.
     useLayoutEffect(() => {
         if (!open || loadingCard) return
         const container = formContainerRef.current
@@ -191,6 +189,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         : await studynotesApi.create({
                               ...baseData,
                               ...(memoryHook ? { memoryHook } : {}),
+                              ...(lessonId != null ? { lessonId } : {}),
                           })
 
                 setCurrentCard(card)
@@ -239,7 +238,7 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
         } finally {
             setSaving(false)
         }
-    }, [cardId, currentCard, evaluationError, subject, topic, summary, example, stuckPoints, memoryHook, showSnackbar, onSaved])
+    }, [cardId, currentCard, evaluationError, lessonId, subject, topic, summary, example, stuckPoints, memoryHook, showSnackbar, onSaved])
 
     function getConfirmLabel(): string {
         if (evaluating) return '评估中...'
@@ -297,19 +296,6 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                                 />
                             </div>
                         </div>
-
-                        {/* AI 评估报告 */}
-                        {(evaluation || evaluating) && (
-                            <div className="bg-white rounded-xl border border-gray-200 p-5">
-                                {evaluation ? (
-                                    <EvaluationReport evaluation={evaluation} />
-                                ) : (
-                                    <p className="text-sm text-gray-500">
-                                        AI 评分生成中...
-                                    </p>
-                                )}
-                            </div>
-                        )}
 
                         {/* Q1: Summary */}
                         <div className="bg-white rounded-xl border border-gray-200 p-5">
@@ -380,12 +366,23 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         </div>
                     </div>
 
-                    {/* ===== Right: 专属测验 ===== */}
-                    <div className="flex flex-col h-full min-h-0 max-h-[calc(90vh-9rem)] border-l border-gray-200">
-                        <StudynotesQuizPanel
-                            cardId={currentCard?.id ?? null}
-                            canQuiz={canFollowUp}
-                        />
+                    {/* ===== Right: AI 评估报告 ===== */}
+                    <div className="overflow-y-auto max-h-[calc(90vh-9rem)] border-l border-gray-200 p-5">
+                        {evaluating ? (
+                            <p className="text-sm text-gray-500">
+                                AI 评分生成中...
+                            </p>
+                        ) : evaluation ? (
+                            <EvaluationReport evaluation={evaluation} />
+                        ) : (
+                            <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
+                                <p className="text-sm text-gray-600">
+                                    {evaluationError
+                                        ? 'AI 评估失败，请点击"保存并评分"重试'
+                                        : '保存并评分后，这里会显示完整度评估报告'}
+                                </p>
+                            </div>
+                        )}
                     </div>
                 </div>
             )}
