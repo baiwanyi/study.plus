@@ -152,12 +152,25 @@ async function callDeepSeek(
             finishReason !== 'content_filter'
             && retryCount < MAX_RETRIES
         ) {
-            const delay = 1000 * (retryCount + 1)
+            // 指数退避（1s/2s/4s），比线性退避更贴合服务端偶发故障的恢复曲线
+            const delay = 1000 * 2 ** retryCount
             console.warn(
-                `[DeepSeek Empty Response] 重试 ${retryCount + 1}/${MAX_RETRIES}（等待 ${delay}ms）`,
+                `[DeepSeek Empty Response] 重试 ${retryCount + 1}/${MAX_RETRIES}（等待 ${delay}ms）${finishReason === 'length' ? '，检测到 max_tokens 截断，扩容重试' : ''}`,
             )
             await new Promise((r) => setTimeout(r, delay))
-            return callDeepSeek(options, retryCount + 1)
+            // finish_reason='length' 说明输出被 max_tokens 截断，同样的限制重试必然再次截断；
+            // 自动提高 max_tokens（1.5 倍，封顶 32000）再重试，避免无效重试
+            const nextOptions: CallDeepSeekOptions =
+                finishReason === 'length'
+                    ? {
+                          ...options,
+                          max_tokens: Math.min(
+                              32000,
+                              Math.round((max_tokens ?? 8000) * 1.5),
+                          ),
+                      }
+                    : options
+            return callDeepSeek(nextOptions, retryCount + 1)
         }
 
         // 最终失败：记录完整诊断信息

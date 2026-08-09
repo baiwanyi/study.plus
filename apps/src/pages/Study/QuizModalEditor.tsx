@@ -505,7 +505,8 @@ function ObjectiveAnswer({
                             className="mt-0.5 size-3.5 shrink-0 accent-blue-600"
                         />
                         <span className="text-gray-800">
-                            <span className="font-medium">{letter}.</span> {opt}
+                            <span className="font-medium">{letter}.</span>{' '}
+                            {stripOptionPrefix(opt)}
                         </span>
                     </label>
                 )
@@ -527,7 +528,7 @@ function ObjectiveAnswer({
                         <span>
                             <span>答：</span>
                             <span className="font-medium">
-                                {answer || '（未作答）'}
+                                {formatObjectiveAnswer(question, answer)}
                             </span>
                             {result && (
                                 <span className="shrink-0 font-semibold">
@@ -678,4 +679,30 @@ function ScoreBadge({ score }: { score: number | null }) {
 function formatScore(score: number): string {
     const safe = Number.isFinite(score) ? score : 0
     return Number.isInteger(safe) ? String(safe) : safe.toFixed(1)
+}
+
+// 剥离选项文本自带的字母序号前缀（AI 出题可能返回 "A. 选项" 这类带前缀文本，
+// 前端渲染时已追加 {letter}. 前缀，不剥离会显示成 "A.A. 选项" 的重复序号）
+function stripOptionPrefix(opt: string): string {
+    return opt.replace(/^[A-Za-z]\.\s*/, '').trim()
+}
+
+// 只读态「答：」展示：把答案字母编码映射为可读选项文本（如 "A,C" -> "A. 选项1；C. 选项2"），
+// 避免直接显示 "A,C" 与选项列表的字母序号语义重复
+function formatObjectiveAnswer(
+    question: StudynotesQuizQuestion,
+    answer: string,
+): string {
+    const letters = decodeMultiSelection(answer)
+    if (letters.length === 0) {
+        return '（未作答）'
+    }
+    const options = question.options ?? []
+    return letters
+        .map((letter) => {
+            const idx = letter.charCodeAt(0) - 65
+            const text = options[idx]
+            return text ? `${letter}. ${stripOptionPrefix(text)}` : letter
+        })
+        .join('；')
 }

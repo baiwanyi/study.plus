@@ -202,8 +202,9 @@ export async function generateStudynotesQuiz(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.7,
-            // 20 题含题干/选项/答案/分值，输出量大，上限给足避免 JSON 截断
-            max_tokens: 8000,
+            // 20 题含题干/选项/答案/分值，输出量大，上限给足避免 JSON 截断；
+            // 若仍偶发截断，callDeepSeek 检测到 finish_reason=length 会自动扩容重试
+            max_tokens: 12000,
             response_format: { type: 'json_object' },
             timeoutMs: 120_000,
         })
