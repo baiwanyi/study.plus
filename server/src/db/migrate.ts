@@ -87,11 +87,11 @@ async function migrate(): Promise<void> {
     }
 
     try {
-        await client.execute(
-            'ALTER TABLE tasks ADD COLUMN updated_at TEXT',
-        )
+        await client.execute('ALTER TABLE tasks ADD COLUMN updated_at TEXT')
         console.log('Added updated_at column to tasks table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     const subFKResult = await client.execute(
         'PRAGMA foreign_key_list(submissions)',
@@ -228,65 +228,80 @@ async function migrate(): Promise<void> {
                 await client.execute('DROP TABLE exchanges_old')
                 console.log('Exchanges table migrated successfully.')
             }
-        } catch {}
+        } catch (e) {
+            console.warn(
+                '迁移步骤跳过（通常因对象已存在）:',
+                (e as Error).message,
+            )
+        }
     }
 
     try {
         await client.execute('ALTER TABLE tasks DROP COLUMN points')
         console.log('Dropped unused column: tasks.points')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
     try {
         await client.execute('ALTER TABLE tasks DROP COLUMN deadline')
         console.log('Dropped unused column: tasks.deadline')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     try {
         await client.execute('ALTER TABLE submissions DROP COLUMN self_grade')
         console.log('Dropped unused column: submissions.self_grade')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     try {
         await client.execute(
             'ALTER TABLE submissions ADD COLUMN scored_at TEXT',
         )
         console.log('Added scored_at column to submissions table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     try {
         await client.execute(
             'ALTER TABLE submissions ADD COLUMN updated_at TEXT',
         )
         console.log('Added updated_at column to submissions table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     // Ensure task_id unique index (one submission per task)
     try {
         await client.execute(
-            "SELECT name FROM sqlite_master WHERE type='index' AND name='submissions_task_id_unique'",
+            'CREATE UNIQUE INDEX IF NOT EXISTS submissions_task_id_unique ON submissions(task_id)',
         )
-    } catch {
-        try {
-            await client.execute(
-                'CREATE UNIQUE INDEX IF NOT EXISTS submissions_task_id_unique ON submissions(task_id)',
-            )
-        } catch {}
+    } catch (e) {
+        console.warn('创建 submissions 唯一索引跳过:', (e as Error).message)
     }
 
     try {
         await client.execute('ALTER TABLE exchanges DROP COLUMN expires_at')
         console.log('Dropped unused column: exchanges.expires_at')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
     try {
         await client.execute('ALTER TABLE exchanges DROP COLUMN revoked_at')
         console.log('Dropped unused column: exchanges.revoked_at')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     try {
-        await client.execute(
-            'ALTER TABLE exchanges ADD COLUMN updated_at TEXT',
-        )
+        await client.execute('ALTER TABLE exchanges ADD COLUMN updated_at TEXT')
         console.log('Added updated_at column to exchanges table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS options (
@@ -315,7 +330,9 @@ async function migrate(): Promise<void> {
             'ALTER TABLE point_advances ADD COLUMN updated_at TEXT',
         )
         console.log('Added updated_at column to point_advances table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS month_summary (
@@ -360,14 +377,18 @@ async function migrate(): Promise<void> {
             'ALTER TABLE ai_usage_logs ADD COLUMN task_title TEXT',
         )
         console.log('Added task_title column to ai_usage_logs table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     try {
         await client.execute(
             'ALTER TABLE ai_usage_logs ADD COLUMN task_id INTEGER',
         )
         console.log('Added task_id column to ai_usage_logs table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS ai_score_logs (
@@ -617,13 +638,17 @@ async function migrate(): Promise<void> {
             'ALTER TABLE videos ADD COLUMN resume_time INTEGER NOT NULL DEFAULT 0',
         )
         console.log('Added resume_time column to videos table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
     try {
         await client.execute(
             'ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0',
         )
         console.log('Added favorite column to videos table.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS weekly_reports (
@@ -643,7 +668,9 @@ async function migrate(): Promise<void> {
             'CREATE UNIQUE INDEX IF NOT EXISTS week_year_unique ON weekly_reports(year, week_number)',
         )
         console.log('Created week_year_unique index on weekly_reports.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS task_conversations (
@@ -660,7 +687,9 @@ async function migrate(): Promise<void> {
             'CREATE UNIQUE INDEX IF NOT EXISTS task_conversations_task_id_unique ON task_conversations(task_id)',
         )
         console.log('Created unique index on task_conversations.task_id.')
-    } catch {}
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS task_messages (
@@ -686,8 +715,12 @@ async function migrate(): Promise<void> {
         await client.execute(
             'CREATE UNIQUE INDEX IF NOT EXISTS weekly_conversations_report_id_unique ON weekly_conversations(weekly_report_id)',
         )
-        console.log('Created unique index on weekly_conversations.weekly_report_id.')
-    } catch {}
+        console.log(
+            'Created unique index on weekly_conversations.weekly_report_id.',
+        )
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
 
     await client.execute(`
     CREATE TABLE IF NOT EXISTS weekly_messages (
@@ -710,48 +743,30 @@ async function migrate(): Promise<void> {
       memory_hook TEXT,
       evaluation TEXT,
       evaluated_at TEXT,
-      follow_up_score INTEGER,
+      quiz_score INTEGER,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
     console.log('Created studynotes table.')
 
-    try {
-        await client.execute(
-            'ALTER TABLE studynotes ADD COLUMN follow_up_score INTEGER',
-        )
-        console.log('Added follow_up_score column to studynotes table.')
-    } catch {}
-
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS studynote_conversations (
+    CREATE TABLE IF NOT EXISTS studynote_quiz (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
-      studynote_id INTEGER NOT NULL UNIQUE REFERENCES studynotes(id) ON DELETE CASCADE,
-      created_at TEXT NOT NULL DEFAULT (datetime('now')),
-      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `)
-    console.log('Created studynote_conversations table.')
-
-    // Ensure studynote_id unique index for existing tables
-    try {
-        await client.execute(
-            'CREATE UNIQUE INDEX IF NOT EXISTS studynote_conversations_note_id_unique ON studynote_conversations(studynote_id)',
-        )
-        console.log('Created unique index on studynote_conversations.studynote_id.')
-    } catch {}
-
-    await client.execute(`
-    CREATE TABLE IF NOT EXISTS studynote_messages (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      conversation_id INTEGER NOT NULL REFERENCES studynote_conversations(id) ON DELETE CASCADE,
-      role TEXT NOT NULL CHECK(role IN ('user', 'assistant')),
-      content TEXT NOT NULL,
+      studynote_id INTEGER NOT NULL REFERENCES studynotes(id) ON DELETE CASCADE,
+      questions_json TEXT NOT NULL,
+      answers_json TEXT,
+      results_json TEXT,
+      score INTEGER,
+      correct_count INTEGER,
+      comment TEXT NOT NULL DEFAULT '',
+      suggestions_json TEXT NOT NULL DEFAULT '[]',
+      generated_at TEXT NOT NULL,
+      submitted_at TEXT,
       created_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
   `)
-    console.log('Created studynote_messages table.')
+    console.log('Created studynote_quiz table.')
 
     console.log('Migration completed successfully!')
 }

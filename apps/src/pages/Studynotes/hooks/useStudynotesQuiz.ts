@@ -8,7 +8,13 @@ const QUIZ_SIZE = 10
 const AUTO_SAVE_INTERVAL_MS = 30_000
 const AUTO_SAVE_DEBOUNCE_MS = 1_000
 
-type QuizStatus = 'idle' | 'generating' | 'answering' | 'grading' | 'graded' | 'error'
+type QuizStatus =
+    | 'idle'
+    | 'generating'
+    | 'answering'
+    | 'grading'
+    | 'graded'
+    | 'error'
 
 interface QuizState {
     status: QuizStatus
@@ -43,9 +49,16 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
                 ...state,
                 quiz: action.quiz,
                 answers: action.quiz?.answers
-                    ? [...action.quiz.answers, ...Array(QUIZ_SIZE).fill('')].slice(0, QUIZ_SIZE)
+                    ? [
+                          ...action.quiz.answers,
+                          ...Array(QUIZ_SIZE).fill(''),
+                      ].slice(0, QUIZ_SIZE)
                     : Array(QUIZ_SIZE).fill(''),
-                status: action.quiz ? (action.quiz.submittedAt ? 'graded' : 'answering') : 'idle',
+                status: action.quiz
+                    ? action.quiz.submittedAt
+                        ? 'graded'
+                        : 'answering'
+                    : 'idle',
             }
         case 'GENERATE_START':
             return { ...state, status: 'generating', errorMsg: '' }
@@ -57,6 +70,14 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
                 status: 'answering',
             }
         case 'SET_ANSWER': {
+            // 越界下标直接丢弃，避免稀疏数组/错位污染后续提交
+            if (
+                !Number.isInteger(action.index) ||
+                action.index < 0 ||
+                action.index >= state.answers.length
+            ) {
+                return state
+            }
             const answers = [...state.answers]
             answers[action.index] = action.value
             return { ...state, answers }
@@ -72,34 +93,58 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
     }
 }
 
-export function useStudynotesQuiz(cardId: number | null, canQuiz: boolean) {
+export function useStudynotesQuiz(
+    cardId: number | null,
+    canQuiz: boolean,
+    onAutoSaveSuccess?: () => void,
+) {
     const [state, dispatch] = useReducer(reducer, initialState)
     const savedSnapshotRef = useRef<string>('')
     const lastEditedAtRef = useRef<number>(0)
+    // 用 ref 持有最新值，使 doAutoSave / 定时器不随每次输入或状态切换重建，避免闭包陈旧与定时器抖动
+    const latestRef = useRef({
+        cardId,
+        quiz: state.quiz,
+        answers: state.answers,
+        status: state.status,
+    })
+    latestRef.current = {
+        cardId,
+        quiz: state.quiz,
+        answers: state.answers,
+        status: state.status,
+    }
 
-    // 仅在「已出题、未提交、且答案有变化」时保存
+    // 仅在「已出题、未提交、且答案有变化」时保存；完全基于 ref 读取，避免依赖 state.status 闭包
     const shouldAutoSave = useCallback((): boolean => {
-        if (!state.quiz || state.quiz.submittedAt) return false
-        if (state.status !== 'answering') return false
-        const current = JSON.stringify(state.answers)
+        const { quiz, answers, status } = latestRef.current
+        if (!quiz || quiz.submittedAt) return false
+        if (status !== 'answering') return false
+        const current = JSON.stringify(answers)
         return current !== savedSnapshotRef.current
-    }, [state.quiz, state.status, state.answers])
+    }, [])
 
     const doAutoSave = useCallback(async (): Promise<void> => {
-        if (!state.quiz || !cardId || !shouldAutoSave()) return
+        const { cardId: id, quiz, answers } = latestRef.current
+        if (!quiz || !id || !shouldAutoSave()) return
         try {
-            await studynotesApi.saveQuizAnswers(cardId, state.quiz.id, state.answers)
-            savedSnapshotRef.current = JSON.stringify(state.answers)
+            await studynotesApi.saveQuizAnswers(id, quiz.id, answers)
+            savedSnapshotRef.current = JSON.stringify(answers)
+            // 自动保存成功回调（如 showSnackbar 提示），由调用方决定如何体现
+            onAutoSaveSuccess?.()
         } catch (error: unknown) {
             // 自动保存失败不阻断用户，仅记录日志
-            const message = error instanceof Error ? error.message : String(error)
+            const message =
+                error instanceof Error ? error.message : String(error)
             console.warn('自动保存答题内容失败：', message)
         }
-    }, [cardId, shouldAutoSave, state.quiz, state.answers])
+    }, [shouldAutoSave, onAutoSaveSuccess])
 
     // 打开卡片时恢复现场
     useEffect(() => {
         if (!cardId) {
+            // 无卡片时清空快照，避免旧卡片残留污染
+            savedSnapshotRef.current = ''
             dispatch({ type: 'LOAD_SUCCESS', quiz: null })
             return
         }
@@ -110,13 +155,15 @@ export function useStudynotesQuiz(cardId: number | null, canQuiz: boolean) {
             .then(({ quiz }) => {
                 if (cancelled) return
                 dispatch({ type: 'LOAD_SUCCESS', quiz })
-                if (quiz && !quiz.submittedAt) {
-                    savedSnapshotRef.current = JSON.stringify(quiz.answers ?? Array(QUIZ_SIZE).fill(''))
-                }
+                // 恢复现场后重置快照为新卡片的已存答案，使后续比对以服务端为准
+                savedSnapshotRef.current = JSON.stringify(
+                    quiz?.answers ?? Array(QUIZ_SIZE).fill(''),
+                )
             })
             .catch((error: unknown) => {
                 if (cancelled) return
-                const message = error instanceof Error ? error.message : String(error)
+                const message =
+                    error instanceof Error ? error.message : String(error)
                 dispatch({ type: 'ERROR', message })
             })
         return () => {
@@ -124,7 +171,7 @@ export function useStudynotesQuiz(cardId: number | null, canQuiz: boolean) {
         }
     }, [cardId])
 
-    // 30 秒自动保存定时器
+    // 30 秒自动保存定时器：doAutoSave 现仅依赖 onAutoSaveSuccess（稳定），定时器仅在 cardId 变化时重建
     useEffect(() => {
         if (!cardId) return
         const timer = setInterval(() => {
@@ -136,41 +183,83 @@ export function useStudynotesQuiz(cardId: number | null, canQuiz: boolean) {
 
         return () => {
             clearInterval(timer)
-            // 卸载前做一次最终保存
+            // 卸载/切卡前做一次最终保存（doAutoSave 读取最新 ref，不会被旧闭包污染）
             void doAutoSave()
+            // 注意：快照清空已移至 LOAD effect（跟随新卡片数据），此处不再清空，
+            // 避免旧卡片慢速保存的 await 落库后误写回已被清空的 ref，造成快照污染
         }
     }, [cardId, doAutoSave])
 
+    // 仅依赖稳定的 dispatch / lastEditedAtRef，引用恒定，便于下游 React.memo 优化
     const setAnswer = useCallback((index: number, value: string) => {
         lastEditedAtRef.current = Date.now()
         dispatch({ type: 'SET_ANSWER', index, value })
     }, [])
 
     const generate = useCallback(async (): Promise<void> => {
-        if (!cardId) return
+        const { cardId: id } = latestRef.current
+        // 防重入：正在生成或已有未提交测验时拒绝重复生成，避免重复 AI 调用
+        if (
+            !id ||
+            state.status === 'generating' ||
+            (state.quiz && !state.quiz.submittedAt)
+        )
+            return
         dispatch({ type: 'GENERATE_START' })
         try {
-            const { quiz } = await studynotesApi.generateQuiz(cardId)
+            const { quiz } = await studynotesApi.generateQuiz(id)
             savedSnapshotRef.current = JSON.stringify(Array(QUIZ_SIZE).fill(''))
             dispatch({ type: 'GENERATE_SUCCESS', quiz })
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error)
+            const message =
+                error instanceof Error ? error.message : String(error)
             dispatch({ type: 'ERROR', message })
         }
-    }, [cardId])
+    }, [state.status, state.quiz])
 
-    const submit = useCallback(async (): Promise<void> => {
-        if (!cardId || !state.quiz) return
+    // 按当前模式批改旧记录：用库内已有题目+答案直接 AI 批改，不重新作答
+    const grade = useCallback(async (): Promise<void> => {
+        const { cardId: id, quiz } = latestRef.current
+        // 防重入：仅允许「已提交但未批改」的旧记录执行补批改
+        if (
+            !id ||
+            !quiz ||
+            !quiz.submittedAt ||
+            quiz.results ||
+            state.status === 'grading'
+        )
+            return
         dispatch({ type: 'GRADE_START' })
         try {
-            const { quiz } = await studynotesApi.submitQuiz(cardId, state.quiz.id, state.answers)
-            savedSnapshotRef.current = JSON.stringify(state.answers)
-            dispatch({ type: 'GRADE_SUCCESS', quiz })
+            const { quiz: updated } = await studynotesApi.gradeQuiz(id, quiz.id)
+            dispatch({ type: 'GRADE_SUCCESS', quiz: updated })
         } catch (error: unknown) {
-            const message = error instanceof Error ? error.message : String(error)
+            const message =
+                error instanceof Error ? error.message : String(error)
             dispatch({ type: 'ERROR', message })
         }
-    }, [cardId, state.quiz, state.answers])
+    }, [state.status])
+
+    const submit = useCallback(async (): Promise<void> => {
+        const { cardId: id, quiz, answers } = latestRef.current
+        // 防重入：已提交或正在批改时拒绝，避免重复 AI 批改（账单浪费）与竞态
+        if (!id || !quiz || quiz.submittedAt || state.status === 'grading')
+            return
+        dispatch({ type: 'GRADE_START' })
+        try {
+            const { quiz: updated } = await studynotesApi.submitQuiz(
+                id,
+                quiz.id,
+                answers,
+            )
+            savedSnapshotRef.current = JSON.stringify(answers)
+            dispatch({ type: 'GRADE_SUCCESS', quiz: updated })
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            dispatch({ type: 'ERROR', message })
+        }
+    }, [state.status])
 
     return {
         status: state.status,
@@ -182,6 +271,7 @@ export function useStudynotesQuiz(cardId: number | null, canQuiz: boolean) {
         isSubmitted: Boolean(state.quiz?.submittedAt),
         setAnswer,
         generate,
+        grade,
         submit,
     }
 }

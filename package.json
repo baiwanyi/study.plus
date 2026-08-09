@@ -4,9 +4,8 @@
     "private": true,
     "type": "module",
     "scripts": {
-        "dev": "concurrently \"pnpm --filter server dev\" \"pnpm --filter apps dev\"",
-        "dev:server": "pnpm --filter server dev",
-        "dev:apps": "pnpm --filter apps dev",
+        "dev:all": "concurrently \"pnpm --filter server dev\" \"pnpm --filter apps dev\"",
+        "dev": "pnpm --filter apps dev",
         "build": "pnpm --filter apps build",
         "db:migrate": "pnpm --filter server db:migrate",
         "start": "pnpm --filter server start",

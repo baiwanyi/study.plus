@@ -94,7 +94,7 @@ async function callDeepSeek(
     options: CallDeepSeekOptions,
     retryCount = 0,
 ): Promise<CallDeepSeekResult> {
-    const MAX_RETRIES = 2
+    const MAX_RETRIES = 3
 
     if (!DEEPSEEK_API_KEY) {
         throw new Error('DEEPSEEK_API_KEY 未配置，无法调用 DeepSeek API')
@@ -146,7 +146,21 @@ async function callDeepSeek(
     const finishReason = choice?.finish_reason
 
     if (!content) {
-        // 记录完整诊断信息辅助排查
+        // 非过滤类错误：自动重试（DeepSeek 服务端偶发空响应/网络抖动）。重试过程只打简洁日志，
+        // 成功路径不刷屏；仅重试耗尽（最终失败）才打印完整诊断信息辅助排查。
+        if (
+            finishReason !== 'content_filter'
+            && retryCount < MAX_RETRIES
+        ) {
+            const delay = 1000 * (retryCount + 1)
+            console.warn(
+                `[DeepSeek Empty Response] 重试 ${retryCount + 1}/${MAX_RETRIES}（等待 ${delay}ms）`,
+            )
+            await new Promise((r) => setTimeout(r, delay))
+            return callDeepSeek(options, retryCount + 1)
+        }
+
+        // 最终失败：记录完整诊断信息
         const diagnostic = {
             finish_reason: finishReason,
             has_choices: !!data.choices,
@@ -155,20 +169,7 @@ async function callDeepSeek(
             model: 'deepseek-v4-flash',
             retry_count: retryCount,
         }
-        console.warn('[DeepSeek Empty Response]', JSON.stringify(diagnostic))
-
-        // 非过滤类错误：自动重试（网络抖动/临时空响应）
-        if (
-            finishReason !== 'content_filter'
-            && retryCount < MAX_RETRIES
-        ) {
-            const delay = 1000 * (retryCount + 1)
-            console.warn(
-                `[DeepSeek Retry ${retryCount + 1}/${MAX_RETRIES}] waiting ${delay}ms`,
-            )
-            await new Promise((r) => setTimeout(r, delay))
-            return callDeepSeek(options, retryCount + 1)
-        }
+        console.warn('[DeepSeek Empty Response] 重试耗尽', JSON.stringify(diagnostic))
 
         if (finishReason === 'content_filter') {
             throw new Error(
@@ -186,12 +187,72 @@ async function callDeepSeek(
     return { content, usage: data.usage }
 }
 
+/** 提取 JSON 主体：去除 markdown 围栏、多余前后缀（AI 常有的不稳定输出） */
+function extractJsonBody(raw: string): string {
+    let s = raw.trim()
+    const fenceMatch = s.match(/^```(?:json)?\s*([\s\S]*?)\s*```$/)
+    if (fenceMatch) s = fenceMatch[1].trim()
+    const start = s.indexOf('{')
+    const end = s.lastIndexOf('}')
+    if (start >= 0 && end > start) s = s.slice(start, end + 1)
+    return s
+}
+
+/** 将字符串值内的裸换行/制表符转义为合法 JSON（AI 常忘记转义导致 JSON.parse 失败） */
+function escapeBareControlChars(json: string): string {
+    let result = ''
+    let inString = false
+    let escaped = false
+    for (const ch of json) {
+        if (inString) {
+            if (escaped) {
+                result += ch
+                escaped = false
+                continue
+            }
+            if (ch === '\\') {
+                result += ch
+                escaped = true
+                continue
+            }
+            if (ch === '"') {
+                inString = false
+                result += ch
+                continue
+            }
+            if (ch === '\n' || ch === '\r' || ch === '\t') {
+                result += ch === '\n' ? '\\n' : ch === '\r' ? '\\r' : '\\t'
+                continue
+            }
+            result += ch
+            continue
+        }
+        if (ch === '"') {
+            inString = true
+        }
+        result += ch
+    }
+    return result
+}
+
 function safeJsonParse<T>(json: string, fallback: T): T {
     try {
         return JSON.parse(json) as T
-    } catch {
-        console.warn('[AI JSON Parse Failed]', json.slice(0, 200))
-        return fallback
+    } catch (err) {
+        // 容错：修复 AI 常见的不稳定输出后重试解析
+        const repaired = escapeBareControlChars(extractJsonBody(json))
+        try {
+            return JSON.parse(repaired) as T
+        } catch (err2) {
+            console.warn('[AI JSON Parse Failed]', {
+                reason: err2 instanceof Error ? err2.message : String(err2),
+                rawLength: json.length,
+                repairedLength: repaired.length,
+                rawHead: json.slice(0, 200),
+                repairedHead: repaired.slice(0, 200),
+            })
+            return fallback
+        }
     }
 }
 

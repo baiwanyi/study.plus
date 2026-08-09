@@ -36,6 +36,8 @@ export interface StudynotesQuizResult {
     question: string
     studentAnswer: string
     isCorrect: boolean
+    /** 该题得分（0-10，可含一位小数；未作答/答非所问为 0） */
+    score: number
     correctAnswer: string
     explanation: string
 }
@@ -100,8 +102,9 @@ export type TaskAI =
     | 'task-chat'
     | 'weekly-analyze'
     | 'weekly-chat'
-    | 'studynotes-followup'
     | 'studynotes-evaluate'
+    | 'studynotes-quiz-generate'
+    | 'studynotes-quiz-grade'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =

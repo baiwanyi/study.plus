@@ -93,7 +93,6 @@ const aiLimiter = rateLimit({
     },
 })
 app.use('/api/studynotes/evaluate', aiLimiter)
-app.use('/api/studynotes/follow-up', aiLimiter)
 
 // API routes
 app.use('/api/tasks', tasksRouter)

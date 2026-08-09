@@ -152,21 +152,28 @@ export const videos = sqliteTable('videos', {
         .$defaultFn(() => new Date().toISOString()),
 })
 
-export const weeklyReports = sqliteTable('weekly_reports', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    weekNumber: integer('week_number').notNull(),
-    year: integer('year').notNull(),
-    content: text('content').notNull(),
-    analysis: text('analysis'),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-    updatedAt: text('updated_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-}, (table) => ({
-    weekYearUnique: uniqueIndex('week_year_unique').on(table.year, table.weekNumber),
-}))
+export const weeklyReports = sqliteTable(
+    'weekly_reports',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        weekNumber: integer('week_number').notNull(),
+        year: integer('year').notNull(),
+        content: text('content').notNull(),
+        analysis: text('analysis'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+        updatedAt: text('updated_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        weekYearUnique: uniqueIndex('week_year_unique').on(
+            table.year,
+            table.weekNumber,
+        ),
+    }),
+)
 
 export const weeklyConversations = sqliteTable('weekly_conversations', {
     id: integer('id').primaryKey({ autoIncrement: true }),
@@ -241,32 +248,6 @@ export const studynoteQuiz = sqliteTable('studynote_quiz', {
     suggestionsJson: text('suggestions_json').notNull().default('[]'),
     generatedAt: text('generated_at').notNull(),
     submittedAt: text('submitted_at'),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-})
-
-export const studynoteConversations = sqliteTable('studynote_conversations', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    studynoteId: integer('studynote_id')
-        .notNull()
-        .unique()
-        .references(() => studynotes.id, { onDelete: 'cascade' }),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-    updatedAt: text('updated_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-})
-
-export const studynoteMessages = sqliteTable('studynote_messages', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    conversationId: integer('conversation_id')
-        .notNull()
-        .references(() => studynoteConversations.id, { onDelete: 'cascade' }),
-    role: text('role', { enum: ['user', 'assistant'] }).notNull(),
-    content: text('content').notNull(),
     createdAt: text('created_at')
         .notNull()
         .$defaultFn(() => new Date().toISOString()),

@@ -63,9 +63,25 @@ function parseTaskId(id: string): number | null {
     return Number.isInteger(taskId) && taskId > 0 ? taskId : null
 }
 
+function buildTask(row: typeof tasks.$inferSelect): Task {
+    return {
+        id: row.id,
+        title: row.title,
+        type: row.type as TaskType,
+        status: row.status as TaskStatus,
+        createdAt: row.createdAt,
+        submission: null,
+        submittedAt: null,
+        gradedAt: null,
+        pointsEarned: null,
+        aiSuggestions: [],
+        aiComment: null,
+    }
+}
+
 async function fetchTaskById(taskId: number): Promise<Task | null> {
     const rows = await db.select().from(tasks).where(eq(tasks.id, taskId))
-    return (rows[0] as Task) ?? null
+    return rows[0] ? buildTask(rows[0]) : null
 }
 
 async function fetchSubmissionByTaskId(
@@ -122,24 +138,21 @@ router.get('/', async (req: Request, res: Response) => {
             ? (rawType as TaskType)
             : undefined
 
-    let taskRows: Task[]
+    let taskRows: (typeof tasks.$inferSelect)[]
     if (status) {
-        taskRows = (await db
+        taskRows = await db
             .select()
             .from(tasks)
             .where(eq(tasks.status, status))
-            .orderBy(desc(tasks.createdAt))) as Task[]
+            .orderBy(desc(tasks.createdAt))
     } else if (type) {
-        taskRows = (await db
+        taskRows = await db
             .select()
             .from(tasks)
             .where(eq(tasks.type, type))
-            .orderBy(desc(tasks.createdAt))) as Task[]
+            .orderBy(desc(tasks.createdAt))
     } else {
-        taskRows = (await db
-            .select()
-            .from(tasks)
-            .orderBy(desc(tasks.createdAt))) as Task[]
+        taskRows = await db.select().from(tasks).orderBy(desc(tasks.createdAt))
     }
 
     const taskIds = taskRows.map((t) => t.id)
@@ -194,7 +207,7 @@ router.get('/', async (req: Request, res: Response) => {
         }>(sub?.aiScore ?? null, { comment: null, suggestions: [] })
 
         return {
-            ...task,
+            ...buildTask(task),
             submission: sub
                 ? {
                       id: sub.id,
@@ -235,7 +248,7 @@ router.post(
             .insert(tasks)
             .values({ title, type })
             .returning()
-        res.json(result[0] as Task)
+        res.json(buildTask(result[0]))
     },
 )
 
@@ -278,7 +291,7 @@ router.put(
             res.status(404).json({ error: 'Task not found' })
             return
         }
-        res.json(result[0] as Task)
+        res.json(buildTask(result[0]))
     },
 )
 
