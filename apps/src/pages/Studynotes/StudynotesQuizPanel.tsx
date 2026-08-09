@@ -173,8 +173,8 @@ function QuizHeader({
                 </div>
                 <div className="truncate text-xs text-gray-500">
                     {isSubmitted && hasResults
-                        ? '共 10 题 · 已完成作答'
-                        : '共 10 题待作答'}
+                        ? `共 ${quiz?.questions.length ?? 10} 题 · 已完成作答`
+                        : `共 ${quiz?.questions.length ?? 10} 题待作答`}
                 </div>
             </div>
             <div className="flex shrink-0 items-center gap-2.5">
@@ -187,7 +187,7 @@ function QuizHeader({
                                     <strong className="text-green-600">
                                         {quiz.correctCount}
                                     </strong>{' '}
-                                    / 10
+                                    / {quiz.questions.length}
                                 </span>
                                 <span className="h-4 w-px bg-gray-300" />
                                 <ScoreBadge score={quiz.score} />
