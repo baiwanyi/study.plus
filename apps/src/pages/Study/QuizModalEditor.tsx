@@ -348,7 +348,10 @@ function ResultFeedback({
                 <div className="space-y-3">
                     {quiz.comment && (
                         <div className="border-l-2 border-blue-300 bg-blue-50/60 p-3 leading-relaxed text-gray-700">
-                            <MarkdownView content={quiz.comment ?? ''} />
+                            <MarkdownView
+                                content={quiz.comment ?? ''}
+                                className="bg-transparent!"
+                            />
                         </div>
                     )}
                     <ReviewSuggestions suggestions={quiz.suggestions} />
