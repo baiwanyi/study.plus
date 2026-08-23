@@ -112,9 +112,13 @@ export function buildAiMock() {
 
     const generateStudynotesQuiz = vi.fn(
         async (_card: unknown) =>
-            Array.from({ length: 10 }, (_, i) => ({
+            Array.from({ length: 20 }, (_, i) => ({
                 index: i + 1,
                 question: `学习心得测验第${i + 1}题`,
+                type: 'single',
+                options: ['A', 'B'],
+                answer: 'A',
+                points: 5,
             })),
     )
 

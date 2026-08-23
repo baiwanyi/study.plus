@@ -67,11 +67,29 @@ lessonsRouter.get('/', async (req: Request, res: Response) => {
                 id: studyNotes.id,
                 lessonId: studyNotes.lessonId,
                 evaluation: studyNotes.evaluation,
-                quizScore: studyNotes.quizScore,
             })
             .from(studyNotes)
             .where(inArray(studyNotes.lessonId, lessonIds))
         const noteMap = new Map(notes.map((n) => [n.lessonId, n]))
+
+        // 聚合测验分数：统一取自 study_quiz.score，不再使用 study_notes.quiz_score。
+        // study_quiz.study_id 关联 lesson.id，直接按课程聚合最新一条测验分数（quizId 最大者为最新）。
+        const quizzes = await db
+            .select({
+                lessonId: studyQuiz.studyId,
+                score: studyQuiz.score,
+                quizId: studyQuiz.id,
+            })
+            .from(studyQuiz)
+            .where(inArray(studyQuiz.studyId, lessonIds))
+        // 每个课程仅保留最新一条测验分数（quizId 最大者为最新）
+        const latestQuizByLesson = new Map<number, { quizId: number; score: number | null }>()
+        for (const q of quizzes) {
+            const cur = latestQuizByLesson.get(q.lessonId)
+            if (!cur || (q.quizId ?? 0) > cur.quizId) {
+                latestQuizByLesson.set(q.lessonId, { quizId: q.quizId ?? 0, score: q.score })
+            }
+        }
 
         const result = lessons.map((lesson) => {
             const preview = previewMap.get(lesson.id)
@@ -129,7 +147,7 @@ lessonsRouter.get('/', async (req: Request, res: Response) => {
                 previewScore,
                 studynoteId: note?.id ?? null,
                 studynoteScore,
-                quizScore: note?.quizScore ?? null,
+                quizScore: latestQuizByLesson.get(lesson.id)?.score ?? null,
             }
         })
 

@@ -131,6 +131,18 @@ export function validateAnswers(raw: unknown): string[] | null {
 
 // === 业务函数（含 DB 操作，路由层仅负责参数解析与响应格式化） ===
 
+// 由卡片 ID 解析其所属课程 ID。
+// 路由/前端统一以卡片 ID 作为参数，而 study_quiz.study_id 关联的是 lesson.id（外键），
+// 故所有涉及 study_quiz 的查询都需先将卡片 ID 转换为 lessonId，避免跨 id 空间匹配失败。
+export async function resolveLessonId(cardId: number): Promise<number | null> {
+    const [row] = await db
+        .select({ lessonId: studyNotes.lessonId })
+        .from(studyNotes)
+        .where(eq(studyNotes.id, cardId))
+        .limit(1)
+    return row?.lessonId ?? null
+}
+
 export async function listStudyNotes(params: {
     subject?: string
     search?: string
@@ -193,7 +205,9 @@ export async function listStudyNotes(params: {
 
 export async function getStudyNote(
     id: number,
-): Promise<(StudyNoteRow & { subject: string; topic: string }) | null> {
+): Promise<
+    (StudyNoteRow & { subject: string; topic: string; quizScore: number | null }) | null
+> {
     const [row] = await db
         .select({
             note: studyNotes,
@@ -207,10 +221,19 @@ export async function getStudyNote(
     if (!row) {
         return null
     }
+    // 分数统一取自 study_quiz.score（取该卡片所属课程的最新一条测验分数）。
+    // study_quiz.study_id 关联的是 lesson.id，故用卡片的 lessonId 查询。
+    const [latestQuiz] = await db
+        .select({ score: studyQuiz.score })
+        .from(studyQuiz)
+        .where(eq(studyQuiz.studyId, row.note.lessonId))
+        .orderBy(desc(studyQuiz.id))
+        .limit(1)
     return {
         ...row.note,
         subject: row.subject,
         topic: row.topic,
+        quizScore: latestQuiz?.score ?? null,
     }
 }
 
@@ -415,7 +438,9 @@ export interface GenerateQuizResult {
 export async function generateQuiz(
     id: number,
 ): Promise<GenerateQuizResult | null> {
-    // id 此处语义为 lesson.id：quiz 直接关联 study_lessons，笔记经 lessonId 回溯
+    // id 此处语义为 study_notes.id（卡片 ID，由路由/前端传入）。
+    // study_quiz.study_id 关联的是 lesson.id（外键指向 study_lessons.id），
+    // 故先由卡片解析出其所属 lessonId，再用于测验的查询与写入。
     const [noteRow] = await db
         .select({
             note: studyNotes,
@@ -424,10 +449,11 @@ export async function generateQuiz(
         })
         .from(studyNotes)
         .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
-        .where(eq(studyNotes.lessonId, id))
+        .where(eq(studyNotes.id, id))
         .orderBy(asc(studyNotes.id))
         .limit(1)
     if (!noteRow) return null
+    const lessonId = noteRow.note.lessonId
 
     const card = {
         ...noteRow.note,
@@ -452,7 +478,7 @@ export async function generateQuiz(
         .from(studyQuiz)
         .where(
             and(
-                eq(studyQuiz.studyId, id),
+                eq(studyQuiz.studyId, lessonId),
                 sql`${studyQuiz.submittedAt} IS NULL`,
                 sql`json_valid(${studyQuiz.questionsJson}) = 1 AND json_array_length(${studyQuiz.questionsJson}) > 0`,
             ),
@@ -481,7 +507,7 @@ export async function generateQuiz(
     await db
         .insert(studyQuiz)
         .values({
-            studyId: id,
+            studyId: lessonId,
             questionsJson: JSON.stringify(sanitized),
             generatedAt: now,
         })
@@ -492,7 +518,7 @@ export async function generateQuiz(
         .from(studyQuiz)
         .where(
             and(
-                eq(studyQuiz.studyId, id),
+                eq(studyQuiz.studyId, lessonId),
                 sql`${studyQuiz.submittedAt} IS NULL`,
                 sql`json_valid(${studyQuiz.questionsJson}) = 1 AND json_array_length(${studyQuiz.questionsJson}) > 0`,
             ),
@@ -513,10 +539,12 @@ export async function saveQuizAnswers(
     quizId: number,
     answers: string[],
 ): Promise<{ success: true } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
     const existing = await db
         .select()
         .from(studyQuiz)
-        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, id)))
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, lessonId)))
         .limit(1)
 
     if (!existing[0]) return null
@@ -540,10 +568,12 @@ export async function submitQuiz(
     quizId: number,
     answers: string[],
 ): Promise<{ quiz: StudynotesQuiz } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
     const existing = await db
         .select()
         .from(studyQuiz)
-        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, id)))
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, lessonId)))
         .limit(1)
 
     if (!existing[0]) return null
@@ -576,10 +606,12 @@ export async function gradeQuiz(
     quizId: number,
     latestAnswers?: string[],
 ): Promise<{ quiz: StudynotesQuiz } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
     const existing = await db
         .select()
         .from(studyQuiz)
-        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, id)))
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, lessonId)))
         .limit(1)
 
     if (!existing[0]) return null
@@ -627,7 +659,6 @@ export async function gradeQuiz(
 
     const grade = await gradeStudynotesQuiz(buildCard(card), questions, answers)
 
-    const now = new Date().toISOString()
     await db
         .update(studyQuiz)
         .set({
@@ -643,15 +674,6 @@ export async function gradeQuiz(
         })
         .where(eq(studyQuiz.id, quizId))
 
-    // 回写最新分数快照到卡片（id 此处为 lesson.id，经 lessonId 关联）
-    await db
-        .update(studyNotes)
-        .set({
-            quizScore: grade.score,
-            updatedAt: now,
-        })
-        .where(eq(studyNotes.lessonId, id))
-
     const updated = await db
         .select()
         .from(studyQuiz)
@@ -664,10 +686,12 @@ export async function gradeQuiz(
 export async function getLatestQuiz(
     id: number,
 ): Promise<{ quiz: StudynotesQuiz | null }> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return { quiz: null }
     const rows = await db
         .select()
         .from(studyQuiz)
-        .where(eq(studyQuiz.studyId, id))
+        .where(eq(studyQuiz.studyId, lessonId))
         .orderBy(desc(studyQuiz.id))
         .limit(1)
 

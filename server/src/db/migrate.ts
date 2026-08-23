@@ -784,7 +784,6 @@ export async function migrate(): Promise<void> {
       memory_hook TEXT,
       evaluation TEXT,
       evaluated_at TEXT,
-      quiz_score REAL,
       created_at TEXT NOT NULL DEFAULT (datetime('now')),
       updated_at TEXT NOT NULL DEFAULT (datetime('now'))
     )
@@ -894,7 +893,7 @@ export async function migrate(): Promise<void> {
         console.warn('创建 weekly_messages 索引跳过:', (e as Error).message)
     }
 
-    // ===== 成绩精度修复：score/quiz_score 列由 INTEGER 改为 REAL，并重算历史成绩 =====
+    // ===== 成绩精度修复：study_quiz.score 列由 INTEGER 改为 REAL，并重算历史成绩 =====
     // SQLite 的 INTEGER 列亲和性会把插入的浮点分取整，导致 99.5 存成 100。
     // 通过 rename → add(REAL) → 回填 → drop 旧列 的方式改变列亲和性（幂等）。
     const colIsInteger = async (
@@ -954,7 +953,6 @@ export async function migrate(): Promise<void> {
     }
 
     await changeColumnToReal('study_quiz', 'score')
-    await changeColumnToReal('study_notes', 'quiz_score')
 
     // 基于已存的 results_json 重新计算百分制成绩（保留一位小数），修正被取整的历史数据
     try {
@@ -993,10 +991,6 @@ export async function migrate(): Promise<void> {
             await client.execute({
                 sql: 'UPDATE study_quiz SET score = ? WHERE id = ?',
                 args: [newScore, q.id],
-            })
-            await client.execute({
-                sql: 'UPDATE study_notes SET quiz_score = ? WHERE id = ?',
-                args: [newScore, q.study_id],
             })
             recalculated++
         }

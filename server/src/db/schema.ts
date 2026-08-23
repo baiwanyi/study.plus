@@ -234,7 +234,6 @@ export const studyNotes = sqliteTable('study_notes', {
     memoryHook: text('memory_hook'),
     evaluation: text('evaluation'),
     evaluatedAt: text('evaluated_at'),
-    quizScore: real('quiz_score'),
     lessonId: integer('lesson_id')
         .notNull()
         .references(() => studyLessons.id, {

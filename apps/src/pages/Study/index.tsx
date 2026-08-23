@@ -200,7 +200,7 @@ export const Studynotes: FC = () => {
 
             <QuizModalEditor
                 open={quizLesson != null}
-                cardId={activeQuizLesson?.id ?? null}
+                cardId={activeQuizLesson?.studynoteId ?? null}
                 lessonTopic={activeQuizLesson?.topic ?? ''}
                 canQuiz={
                     activeQuizLesson?.id != null &&

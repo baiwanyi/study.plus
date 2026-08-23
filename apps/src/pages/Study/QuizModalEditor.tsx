@@ -546,7 +546,7 @@ function ObjectiveAnswer({
                                 </span>
                                 <MarkdownView
                                     content={result.correctAnswer}
-                                    className="text-sm! text-blue-800!"
+                                    className="text-sm! text-blue-800! bg-transparent!"
                                 />
                             </div>
                             {result.explanation && (
@@ -556,7 +556,7 @@ function ObjectiveAnswer({
                                     </span>
                                     <MarkdownView
                                         content={result.explanation}
-                                        className="text-sm! text-amber-800!"
+                                        className="text-sm! text-amber-800! bg-transparent!"
                                     />
                                 </div>
                             )}
@@ -627,7 +627,7 @@ function EssayAnswer({
                                 </span>
                                 <MarkdownView
                                     content={result.correctAnswer}
-                                    className="text-sm! text-blue-800!"
+                                    className="text-sm! text-blue-800! bg-transparent!"
                                 />
                             </div>
                             {result.explanation && (
@@ -637,7 +637,7 @@ function EssayAnswer({
                                     </span>
                                     <MarkdownView
                                         content={result.explanation}
-                                        className="text-sm! text-amber-800!"
+                                        className="text-sm! text-amber-800! bg-transparent!"
                                     />
                                 </div>
                             )}
