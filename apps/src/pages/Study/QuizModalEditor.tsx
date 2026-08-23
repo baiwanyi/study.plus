@@ -418,7 +418,10 @@ function QuizQuestionItem({
                             本题 {formatScore(points)} 分
                         </span>
                     </div>
-                    <MarkdownView content={question.question} />
+                    <MarkdownView
+                        content={question.question}
+                        className="bg-transparent!"
+                    />
                 </div>
             </div>
 
