@@ -31,25 +31,25 @@ export const app = express()
 const PORT = Number(process.env.PORT) || 3006
 const isMain = import.meta.main
 
-// Security headers via helmet (covers CSP, X-Content-Type-Options,
-// X-Frame-Options, Referrer-Policy). HSTS is NOT managed by helmet here —
-// it is set by a dedicated middleware below only when the actual connection
-// is already TLS, so an HTTP/LAN deployment never locks the browser into
-// HTTPS (which would otherwise break frame navigations on plain HTTP).
+// Security headers via helmet (covers X-Content-Type-Options,
+// X-Frame-Options, Referrer-Policy, etc.). HSTS is NOT managed by helmet
+// here — it is set by a dedicated middleware below only when the actual
+// connection is already TLS, so an HTTP/LAN deployment never locks the
+// browser into HTTPS (which would otherwise break frame navigations on
+// plain HTTP).
+// CSP is also NOT managed by helmet: helmet v8 hardcodes
+// `upgrade-insecure-requests` into its default CSP, which forces the
+// browser to rewrite every http:// resource reference to https://. On a
+// pure-LAN HTTP deployment (http://192.168.x.x:3006, no TLS) that upgrade
+// makes the browser request https://192.168.x.x:3006/assets/* and fail
+// with ERR_SSL_PROTOCOL_ERROR. We therefore set CSP ourselves below
+// (without that directive) for full control.
 app.use(
     helmet({
         // 关闭 helmet 自带的 HSTS，改由下方手动中间件条件发送（仅真 TLS 时）。
         strictTransportSecurity: false,
-        contentSecurityPolicy: {
-            directives: {
-                defaultSrc: ["'self'"],
-                imgSrc: ["'self'", 'data:', 'blob:'],
-                styleSrc: ["'self'", "'unsafe-inline'"],
-                scriptSrc: ["'self'"],
-                connectSrc: ["'self'"],
-                frameAncestors: ["'none'"],
-            },
-        },
+        // 关闭 helmet 自动 CSP，改由下方中间件手动下发（不含 upgrade-insecure-requests）。
+        contentSecurityPolicy: false,
         // 禁用 COOP 和 Origin-Agent-Cluster：它们在 HTTP 非 localhost 源上
         // 被浏览器直接忽略（不可信源），且会触发控制台警告。
         crossOriginOpenerPolicy: false,
@@ -57,13 +57,36 @@ app.use(
     }),
 )
 
-// HSTS — only emit when the connection is genuinely TLS. On plain HTTP
-// (e.g. LAN access via http://192.168.x.x:3006) we must not send
-// Strict-Transport-Security, otherwise the browser upgrades every request
-// to HTTPS and frame navigations fail with a protocol mismatch.
+// 手动 CSP 中间件：内容与原本 directives 一致，但明确不含
+// upgrade-insecure-requests，避免局域网 HTTP 下静态资源被强制升级为 https。
+const CONTENT_SECURITY_POLICY = [
+    "default-src 'self'",
+    "base-uri 'self'",
+    "font-src 'self' https: data:",
+    "form-action 'self'",
+    "frame-ancestors 'none'",
+    "img-src 'self' data: blob:",
+    "object-src 'none'",
+    "script-src 'self'",
+    "style-src 'self' 'unsafe-inline'",
+    "connect-src 'self'",
+].join('; ')
+app.use((_req: Request, res: Response, next: NextFunction) => {
+    res.setHeader('Content-Security-Policy', CONTENT_SECURITY_POLICY)
+    next()
+})
+
+// HSTS — 仅在显式开启且连接确为 TLS 时下发。
+// 本项目为纯局域网 HTTP 部署（http://192.168.x.x:3006），不启用 HTTPS，
+// 因此默认关闭 HSTS。否则浏览器一旦记下该主机的 HSTS 策略，会把后续
+// http://IP:3006 请求强制升级为 https，撞上无 TLS 的 server 而报
+// ERR_SSL_PROTOCOL_ERROR，局域网直连即无法访问。
+// 仅在确有真实 TLS 终端（如前置代理终止 HTTPS）时，将 ENABLE_HSTS=true
+// 打开；此时仍要求请求本身携带 https 标记，避免对明文回源误发 HSTS。
+const ENABLE_HSTS = process.env.ENABLE_HSTS === 'true'
 app.use((req: Request, res: Response, next: NextFunction) => {
     const isSecure = req.secure || req.headers['x-forwarded-proto'] === 'https'
-    if (isSecure) {
+    if (ENABLE_HSTS && isSecure) {
         res.setHeader(
             'Strict-Transport-Security',
             'max-age=31536000; includeSubDomains',
