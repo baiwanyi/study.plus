@@ -34,6 +34,7 @@ export const Studynotes: FC = () => {
     } = useLessons(subject)
 
     const [showCreate, setShowCreate] = useState(false)
+    const [creating, setCreating] = useState(false)
     const [editLesson, setEditLesson] = useState<StudyLessonWithStatus | null>(
         null,
     )
@@ -67,6 +68,8 @@ export const Studynotes: FC = () => {
 
     const handleCreate = useCallback(
         async (subject: string, topic: string) => {
+            // loading 守卫禁用确认按钮，防止耗时期间重复点击创建同名课程
+            setCreating(true)
             try {
                 await lessonsApi.create({ subject, topic })
                 showSnackbar('课程创建成功')
@@ -75,6 +78,8 @@ export const Studynotes: FC = () => {
             } catch (err) {
                 const message = err instanceof Error ? err.message : '创建失败'
                 showSnackbar(message, 'error')
+            } finally {
+                setCreating(false)
             }
         },
         [showSnackbar, refetch],
@@ -130,8 +135,10 @@ export const Studynotes: FC = () => {
             showSnackbar('删除成功')
             setDeleteTarget(null)
             refetch()
-        } catch {
-            showSnackbar('删除失败，请重试', 'error')
+        } catch (err) {
+            // 与创建/编辑保持一致：透传服务端面向用户的错误信息
+            const message = err instanceof Error ? err.message : '删除失败'
+            showSnackbar(message, 'error')
         } finally {
             setDeleting(false)
         }
@@ -181,6 +188,7 @@ export const Studynotes: FC = () => {
                 lesson={null}
                 onCancel={() => setShowCreate(false)}
                 onConfirm={handleCreate}
+                isLoading={creating}
             />
 
             <LessonModalEditor

@@ -1,5 +1,10 @@
 'use client'
-
+/**
+ * 学习心得弹窗组件：三问预习回顾表单（概括/举例/卡点+记忆钩子）的编辑、保存与 AI 评估报告展示。
+ * 复用约定：数据经 studynotesApi 读写；评估报告复用 EvaluationReport；表单快照比对复用 ref。
+ * 关键约束：加载经请求序号防跨卡片串扰；内容快照用于去重提交与二次评分判定；
+ * 评分失败保留已保存内容并允许仅重评（isRetry 链路），错误信息透传服务端详情。
+ */
 import {
     useCallback,
     useEffect,
@@ -118,11 +123,11 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                         try {
                             setEvaluation(JSON.parse(card.evaluation))
                         } catch {
-                            /* empty */
+                            // 历史数据格式异常时降级为未评估状态，不阻断表单使用
                         }
                     }
                 })
-                .catch(() => {
+                .catch((err: unknown) => {
                     if (myReq !== requestIdRef.current) return
                     // 加载失败：复位为空白表单，避免显示上一卡片残留内容（含旧评估报告）
                     setSummary('')
@@ -133,7 +138,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                     setEvaluation(null)
                     setEvaluationError(false)
                     formSnapshotRef.current = null
-                    showSnackbar('加载学习管理失败', 'error')
+                    // 透传服务端面向用户的错误信息（与其它写操作处理一致）
+                    const message =
+                        err instanceof Error ? err.message : '加载学习管理失败'
+                    showSnackbar(message, 'error')
                 })
                 .finally(() => {
                     if (myReq === requestIdRef.current) setLoadingCard(false)
@@ -242,8 +250,10 @@ export const StudynotesModalEditor: React.FC<StudynotesModalEditorProps> = ({
                     'error',
                 )
             }
-        } catch {
-            showSnackbar('保存失败，请重试', 'error')
+        } catch (err) {
+            // 与加载/评分错误处理一致：透传服务端面向用户的错误信息
+            const message = err instanceof Error ? err.message : '保存失败'
+            showSnackbar(message, 'error')
         } finally {
             setSaving(false)
         }

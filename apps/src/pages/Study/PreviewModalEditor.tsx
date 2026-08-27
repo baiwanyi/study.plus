@@ -1,5 +1,11 @@
 'use client'
-
+/**
+ * 课前预习弹窗组件：预习三问表单（SQ3R/K-W-L）的编辑、保存与 AI 分析报告展示。
+ * 复用约定：表单题项复用 @shared/constants 的 previewStudyQuestions；分析报告复用
+ * PreviewAnalysisReport；保存与分析链路复用 lessonsApi。
+ * 关键约束：加载以课程 ID 为依赖（对象引用随列表刷新变化，不得作为依赖清空输入）；
+ * 请求序号防跨课程数据串扰；内容为空时禁用提交。
+ */
 import {
     useCallback,
     useEffect,
@@ -56,8 +62,11 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
         })
     }, [open, content, oldKnowledge, questions])
 
+    // 依赖课程 ID 而非 lesson 对象：列表 refetch 会重建 lesson 引用（如窗口聚焦自动刷新），
+    // 若依赖对象引用，正在输入的表单会被静默清空重载，造成输入丢失
+    const lessonId = lesson?.id
     useEffect(() => {
-        if (!open || !lesson) return
+        if (!open || lessonId == null) return
         const myReq = ++requestIdRef.current
         setAnalysis(null)
         setAnalysisError(false)
@@ -66,7 +75,7 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
         setQuestions('')
 
         lessonsApi
-            .getPreview(lesson.id)
+            .getPreview(lessonId)
             .then(({ preview }) => {
                 // 仅最新一次请求可写入，丢弃过期响应，避免课程切换时的数据串扰
                 if (myReq !== requestIdRef.current) return
@@ -77,7 +86,7 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
                     try {
                         setAnalysis(JSON.parse(preview.aiAnalysis))
                     } catch {
-                        /* empty */
+                        // 历史数据格式异常时降级为未分析状态，不阻断表单使用
                     }
                 }
             })
@@ -88,7 +97,7 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
                 setAnalysisError(false)
                 showSnackbar('加载预习内容失败', 'error')
             })
-    }, [open, lesson, showSnackbar])
+    }, [open, lessonId, showSnackbar])
 
     const handleSaveAndAnalyze = useCallback(async () => {
         if (!lesson) return
@@ -119,8 +128,10 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
             } finally {
                 setAnalyzing(false)
             }
-        } catch {
-            showSnackbar('保存失败，请重试', 'error')
+        } catch (err) {
+            // 与其它写操作一致：透传服务端面向用户的错误信息
+            const message = err instanceof Error ? err.message : '保存失败'
+            showSnackbar(message, 'error')
         } finally {
             setSaving(false)
         }
@@ -130,6 +141,19 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
         if (analyzing) return '分析中...'
         if (saving) return '保存中...'
         return '保存并分析'
+    }
+
+    // 表单题项的值/写入器映射：避免渲染层的嵌套三元（规范禁止）
+    type QuestionKey = (typeof previewStudyQuestions)[number]['key']
+    function getFieldValue(key: QuestionKey): string {
+        if (key === 'content') return content
+        if (key === 'oldKnowledge') return oldKnowledge
+        return questions
+    }
+    function setFieldValue(key: QuestionKey, value: string): void {
+        if (key === 'content') setContent(value)
+        else if (key === 'oldKnowledge') setOldKnowledge(value)
+        else setQuestions(value)
     }
 
     return (
@@ -158,20 +182,10 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
                                 {q.hint}
                             </p>
                             <textarea
-                                value={
-                                    q.key === 'content'
-                                        ? content
-                                        : q.key === 'oldKnowledge'
-                                          ? oldKnowledge
-                                          : questions
+                                value={getFieldValue(q.key)}
+                                onChange={(e) =>
+                                    setFieldValue(q.key, e.target.value)
                                 }
-                                onChange={(e) => {
-                                    const value = e.target.value
-                                    if (q.key === 'content') setContent(value)
-                                    else if (q.key === 'oldKnowledge')
-                                        setOldKnowledge(value)
-                                    else setQuestions(value)
-                                }}
                                 placeholder={q.placeholder}
                                 rows={1}
                                 className="form-textarea w-full border border-gray-200 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary resize-none overflow-hidden"

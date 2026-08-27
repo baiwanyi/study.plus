@@ -11,6 +11,7 @@ import { studynotesSubjectLabels } from '@shared/utils'
 import { useStudynotesQuizWrongAll } from '../hooks/useStudynotesQuiz'
 import { WrongQuestionCard } from './QuizSidePanel'
 import type { FC } from 'react'
+import { Loading } from '@apps/components/Loading'
 
 const PAGE_SIZE = 20
 const SEARCH_DEBOUNCE_MS = 300
@@ -56,12 +57,7 @@ export const WrongBookModal: FC<WrongBookModalProps> = ({ open, onClose }) => {
     }
 
     return (
-        <Modal
-            open={open}
-            onCancel={onClose}
-            title="错题本"
-            size="lg"
-            isScroll>
+        <Modal open={open} onCancel={onClose} title="错题本" size="lg" isScroll>
             <div className="space-y-4">
                 <div className="flex flex-wrap items-center gap-2">
                     <input
@@ -90,9 +86,7 @@ export const WrongBookModal: FC<WrongBookModalProps> = ({ open, onClose }) => {
                 </div>
 
                 {isLoading && items.length === 0 ? (
-                    <div className="flex justify-center py-12 text-sm text-gray-400">
-                        加载中…
-                    </div>
+                    <Loading />
                 ) : items.length === 0 ? (
                     <div className="flex justify-center py-12 text-sm text-gray-400">
                         没有找到错题，继续保持！

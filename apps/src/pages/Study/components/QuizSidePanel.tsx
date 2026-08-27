@@ -5,22 +5,12 @@
  * 错题卡片 WrongQuestionCard 导出供全局错题本复用；答案还原复用 @apps/utils/quizFormat。
  * 关键约束：历史列表仅展示已提交测验；点选历史条目仅回调通知父组件切换左侧内容。
  */
-import {
-    BookX,
-    ClipboardList,
-    History,
-    Loader2,
-    Timer,
-    X,
-} from 'lucide-react'
+import { BookX, ClipboardList, History, Loader2, Timer, X } from 'lucide-react'
 import { formatAnswerText, stripOptionPrefix } from '@apps/utils/quizFormat'
 import { MarkdownView } from '@components/MarkdownView'
 import { STUDYNODES_QUIZ_TYPE_LABELS } from '@shared/types'
 import { decodeMultiSelection, formatDate } from '@shared/utils'
-import type {
-    StudynotesQuizHistoryItem,
-    WrongQuestion,
-} from '@shared/types'
+import type { StudynotesQuizHistoryItem, WrongQuestion } from '@shared/types'
 import type { FC, ReactNode } from 'react'
 
 export type QuizSidePanelName = 'none' | 'history' | 'wrong'
@@ -134,7 +124,7 @@ function CountdownBadge({
 }) {
     return (
         <div
-            className={`flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium ${
+            className={`flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium border-primary ${
                 vertical ? 'flex-col' : ''
             } ${
                 isTimeUrgent
@@ -190,7 +180,7 @@ function HistoryList({
     return (
         <div className="max-h-[70vh] space-y-2 overflow-y-auto pr-1">
             {history.map((item) => {
-                const score = item.score ?? 0
+                // score 为 null 表示已提交但未批改，须显示「待批改」而非误兜底为 0 分
                 return (
                     <button
                         key={item.id}
@@ -205,17 +195,25 @@ function HistoryList({
                             <span className="truncate text-xs text-gray-600">
                                 {formatDate(item.submittedAt)}
                             </span>
-                            <span
-                                className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
-                                    score < 80
-                                        ? 'bg-red-50 text-red-700'
-                                        : 'bg-green-50 text-green-700'
-                                }`}>
-                                {score} 分
-                            </span>
+                            {item.score === null ? (
+                                <span className="shrink-0 rounded-full bg-gray-100 px-2 py-0.5 text-xs font-semibold text-gray-500">
+                                    待批改
+                                </span>
+                            ) : (
+                                <span
+                                    className={`shrink-0 rounded-full px-2 py-0.5 text-xs font-semibold ${
+                                        item.score < 80
+                                            ? 'bg-red-50 text-red-700'
+                                            : 'bg-green-50 text-green-700'
+                                    }`}>
+                                    {item.score} 分
+                                </span>
+                            )}
                         </div>
                         <div className="mt-1 text-xs text-gray-500">
-                            答对 {item.correctCount ?? 0} 题
+                            {item.score === null
+                                ? '已提交，等待批改'
+                                : `答对 ${item.correctCount ?? 0} 题`}
                         </div>
                     </button>
                 )
@@ -235,6 +233,14 @@ interface WrongQuestionCardProps {
     showSource?: boolean
 }
 
+/** 客观题选项配色：选对绿 / 选错红 / 漏选正确项蓝描边 / 其余普通 */
+function getOptionTone(isSelected: boolean, isCorrectOpt: boolean): string {
+    if (isSelected && isCorrectOpt) return 'border-green-400 bg-green-50'
+    if (isSelected) return 'border-red-400 bg-red-50'
+    if (isCorrectOpt) return 'border-blue-300 bg-blue-50'
+    return 'border-gray-200 bg-white'
+}
+
 /** 客观题全部选项列表：沿用测验只读态配色（我的选择红/绿、漏选正确项蓝描边、其余普通） */
 function WrongOptionList({
     options,
@@ -250,20 +256,13 @@ function WrongOptionList({
     return (
         <div className="space-y-1.5">
             {options.map((opt, i) => {
-                const letter = String.fromCharCode(65 + i)
+                const letter = String.fromCharCode('A'.charCodeAt(0) + i)
                 const isSelected = selected.includes(letter)
                 const isCorrectOpt = correct.includes(letter)
-                const tone = isSelected && isCorrectOpt
-                    ? 'border-green-400 bg-green-50'
-                    : isSelected
-                      ? 'border-red-400 bg-red-50'
-                      : isCorrectOpt
-                        ? 'border-blue-300 bg-blue-50'
-                        : 'border-gray-200 bg-white'
                 return (
                     <div
                         key={letter}
-                        className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-sm ${tone}`}>
+                        className={`flex items-start gap-2 rounded-md border px-2.5 py-1.5 text-sm ${getOptionTone(isSelected, isCorrectOpt)}`}>
                         <span className="font-medium text-gray-800">
                             {letter}.
                         </span>

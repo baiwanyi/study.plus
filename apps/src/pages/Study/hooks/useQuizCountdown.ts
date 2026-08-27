@@ -6,7 +6,9 @@
  */
 import { useEffect, useState } from 'react'
 
-/** 倒计时 hook：每秒 tick 返回剩余毫秒；deadline 为 null 或未激活时归零并停止 tick */
+/** 倒计时 hook：每秒 tick 返回剩余毫秒；deadline 为 null 或未激活时归零并停止 tick。
+ * 返回值可能为负数（已超过截止时刻），由调用方判定超时；deadline 生效后的首帧
+ * 返回 0（尚未 tick），调用方应以 >0 判断是否展示 */
 export function useQuizCountdown(
     deadlineAt: number | null,
     active: boolean,

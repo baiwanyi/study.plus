@@ -1,3 +1,10 @@
+'use client'
+/**
+ * 课程列表查询 Hook：按可选科目筛选获取含学习状态的课程列表（TanStack Query）。
+ * 复用约定：数据经 lessonsApi.list；queryKey 遵循 [resource, ...params, 'list'] 约定；
+ * 供学习中心页面与全局错题本弹窗等消费。
+ * 关键约束：subject 的 undefined 与空串须归一化后才可进入 queryKey，避免缓存键分裂。
+ */
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { lessonsApi } from '@apps/services'
 import type { StudyLessonWithStatus } from '@shared/types'

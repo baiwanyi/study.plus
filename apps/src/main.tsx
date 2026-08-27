@@ -6,6 +6,7 @@ import { Layout } from '@components/Layout'
 import { SnackbarProvider } from '@components/Snackbar'
 import { loadConfig, isAdmin } from '@apps/utils/client'
 import '@apps/styles/index.css'
+import { Loading } from './components/Loading'
 
 // 路由级代码分割：各页面独立 chunk，避免 12 个页面全部打进主包（主包 >500 kB 告警根源）。
 // 页面均为命名导出（export function X），需映射为 default 供 React.lazy 使用
@@ -51,15 +52,9 @@ loadConfig()
 
 const queryClient = new QueryClient()
 
-const RouteFallback = () => (
-    <div className="flex min-h-[60vh] items-center justify-center text-sm text-gray-500">
-        加载中…
-    </div>
-)
-
 const AppRoutes = () => (
     <SnackbarProvider>
-        <Suspense fallback={<RouteFallback />}>
+        <Suspense fallback={<Loading />}>
             <Routes>
                 <Route element={<Layout />}>
                     <Route index element={<Dashboard />} />

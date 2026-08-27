@@ -7,13 +7,7 @@
  * 答案还原复用 @apps/utils/quizFormat。
  * 关键约束：仅作答态（answering）计时，已提交/已批改停止；历史回看为纯只读，禁用作答与提交。
  */
-import {
-    useEffect,
-    useLayoutEffect,
-    useMemo,
-    useReducer,
-    useRef,
-} from 'react'
+import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { formatAnswerText, stripOptionPrefix } from '@apps/utils/quizFormat'
 import { MarkdownView } from '@components/MarkdownView'
@@ -25,10 +19,7 @@ import {
     encodeMultiSelection,
     formatDate,
 } from '@shared/utils'
-import {
-    QuizSidePanel,
-    WrongQuestionCard,
-} from './components/QuizSidePanel'
+import { QuizSidePanel, WrongQuestionCard } from './components/QuizSidePanel'
 import { useQuizCountdown } from './hooks/useQuizCountdown'
 import {
     useStudynotesQuiz,
@@ -44,6 +35,7 @@ import type {
     WrongQuestion,
 } from '@shared/types'
 import type { FC } from 'react'
+import { Loading } from '@apps/components/Loading'
 
 type QuizStatus =
     | 'idle'
@@ -155,6 +147,9 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
     }
 
     const handleClose = () => {
+        // 复位侧栏状态：selectedQuizId 指向当前课程的测验 ID，
+        // 残留到其它课程的弹窗会因归属校验 404 导致历史视图永久 Loading
+        dispatchSidePanel({ type: 'RESET' })
         onSaved?.()
         onClose()
     }
@@ -164,14 +159,10 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         sidePanelReducer,
         initialSidePanelState,
     )
-    const {
-        data: history = [],
-        isLoading: isHistoryLoading,
-    } = useStudynotesQuizHistory(cardId, open && sidePanel.panel === 'history')
-    const {
-        data: wrongQuestions = [],
-        isLoading: isWrongLoading,
-    } = useStudynotesQuizWrong(cardId, open && sidePanel.panel === 'wrong')
+    const { data: history = [], isLoading: isHistoryLoading } =
+        useStudynotesQuizHistory(cardId, open && sidePanel.panel === 'history')
+    const { data: wrongQuestions = [], isLoading: isWrongLoading } =
+        useStudynotesQuizWrong(cardId, open && sidePanel.panel === 'wrong')
     const isViewingHistory =
         sidePanel.panel === 'history' && sidePanel.selectedQuizId != null
     const { data: historyQuiz } = useStudynotesQuizDetail(
@@ -196,7 +187,9 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
     const isTimeUrgent = remainingMs > 0 && remainingMs <= QUIZ_URGENT_MS
 
     // 到点自动提交并批改：用当前时刻与 deadline 直接比较（remainingMs 初始为 0
-    // 不代表超时，避免打开瞬间误提交）；ref 防重复触发
+    // 不代表超时，避免打开瞬间误提交）；ref 防重复触发。
+    // 不可直接调 grade：其防重条件要求 submittedAt 非空，作答中超时会被直接拒绝，
+    // 故须先 submit（标记已提交）再 grade
     const autoSubmittedRef = useRef(false)
     useEffect(() => {
         if (!open || !isAnswering || deadlineAt === null) return
@@ -206,8 +199,14 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         }
         if (autoSubmittedRef.current) return
         autoSubmittedRef.current = true
-        void grade()
-    }, [open, isAnswering, deadlineAt, remainingMs, grade])
+        void (async () => {
+            const ok = await submit()
+            if (ok) {
+                showSnackbar('测验时间到，已自动提交并批改', 'info')
+                await grade()
+            }
+        })()
+    }, [open, isAnswering, deadlineAt, remainingMs, submit, grade])
 
     return (
         <Modal
@@ -230,7 +229,7 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
                             historyQuiz ? (
                                 <QuizHistoryView quiz={historyQuiz} />
                             ) : (
-                                <HistoryLoading />
+                                <Loading />
                             )
                         ) : sidePanel.panel === 'wrong' ? (
                             <WrongBookView
@@ -272,9 +271,7 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
                                 quizId,
                             })
                         }
-                        onShowQuiz={() =>
-                            dispatchSidePanel({ type: 'RESET' })
-                        }
+                        onShowQuiz={() => dispatchSidePanel({ type: 'RESET' })}
                     />
                 </div>
             )}
@@ -420,16 +417,6 @@ function EmptyState({
     )
 }
 
-/** 历史测验详情加载中占位 */
-function HistoryLoading() {
-    return (
-        <div className="flex h-full items-center justify-center gap-2 p-6 text-sm text-gray-400">
-            <Loader2 className="size-4 animate-spin" />
-            正在加载历史测验…
-        </div>
-    )
-}
-
 /** 左侧错题本视图：宽版展示该课程全部错题，复用 WrongQuestionCard（默认不带来源课程） */
 function WrongBookView({
     wrongQuestions,
@@ -441,15 +428,19 @@ function WrongBookView({
     return (
         <div className="flex flex-1 flex-col">
             <div className="border-b border-gray-200 bg-white px-4 pb-3">
-                <div className="text-sm font-semibold text-gray-800">错题本</div>
+                <div className="text-sm font-semibold text-gray-800">
+                    错题本
+                </div>
                 <div className="text-xs text-gray-500">
-                    {isLoading
-                        ? '加载中…'
-                        : `共 ${wrongQuestions.length} 道错题（按最近一次答错去重）`}
+                    {isLoading ? (
+                        <Loading />
+                    ) : (
+                        `共 ${wrongQuestions.length} 道错题（按最近一次答错去重）`
+                    )}
                 </div>
             </div>
             {isLoading ? (
-                <HistoryLoading />
+                <Loading />
             ) : wrongQuestions.length === 0 ? (
                 <div className="flex h-full items-center justify-center p-6 text-sm text-gray-500">
                     太棒了，当前没有错题！
@@ -487,7 +478,8 @@ function QuizHistoryView({ quiz }: { quiz: StudynotesQuiz }) {
             <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 pb-3">
                 <div className="min-w-0 space-y-1">
                     <div className="truncate text-sm font-semibold text-gray-800">
-                        历史测验 · {formatDate(quiz.submittedAt ?? quiz.generatedAt)}
+                        历史测验 ·{' '}
+                        {formatDate(quiz.submittedAt ?? quiz.generatedAt)}
                     </div>
                     <div className="truncate text-xs text-gray-500">
                         共 {quiz.questions.length} 题 · 满分 100 分（只读回看）
@@ -813,7 +805,9 @@ function ObjectiveAnswer({
                 )
             })}
 
-            {isReadOnly && (
+            {/* result 为 null（批改进行中）时不渲染结果区，避免误标红叉「答错」；
+                仅锁定作答等待批改完成 */}
+            {isReadOnly && result && (
                 <div className="space-y-2 pt-1">
                     <p
                         className={`flex items-start gap-1.5 rounded-md px-2 py-1.5 text-sm ${
@@ -829,7 +823,10 @@ function ObjectiveAnswer({
                         <span>
                             <span>答：</span>
                             <span className="font-medium">
-                                {formatAnswerText(question.options ?? [], answer)}
+                                {formatAnswerText(
+                                    question.options ?? [],
+                                    answer,
+                                )}
                             </span>
                             {result && (
                                 <span className="shrink-0 font-semibold">
@@ -845,10 +842,13 @@ function ObjectiveAnswer({
                                 <span className="font-extrabold text-sm text-blue-800">
                                     参考答案：
                                 </span>
-                                <MarkdownView
-                                    content={result.correctAnswer}
-                                    className="text-sm! text-blue-800! bg-transparent!"
-                                />
+                                {/* 客观题 correctAnswer 为字母串，与「答」行一致还原为可读选项文本 */}
+                                <span className="text-sm! text-blue-800!">
+                                    {formatAnswerText(
+                                        question.options ?? [],
+                                        result.correctAnswer,
+                                    )}
+                                </span>
                             </div>
                             {result.explanation && (
                                 <div className="flex rounded-md bg-amber-50 p-2">

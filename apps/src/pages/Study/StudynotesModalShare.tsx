@@ -1,9 +1,24 @@
 'use client'
-
+/**
+ * 学习笔记分享弹窗组件：整合课前预习与课后心得为长图并导出 PNG。
+ * 复用约定：数据由父组件注入（card），预习内容经 lessonsApi 拉取；评估/分析渲染复用
+ * EvaluationReport 与 PreviewAnalysisReport；图片生成复用 html-to-image 的 toPng。
+ * 关键约束：导出用容器不限制高度保证长图完整；学科主题色需覆盖全部枚举并带缺省回退；
+ * toPng 返回 data URL（非 blob URL），无需 revokeObjectURL 回收。
+ */
 import { toPng } from 'html-to-image'
 import { BookOpen, Sparkles } from 'lucide-react'
-import { useCallback, useEffect, useMemo, useRef, useState, type FC } from 'react'
+import {
+    useCallback,
+    useEffect,
+    useMemo,
+    useRef,
+    useState,
+    type FC,
+} from 'react'
+import { lessonsApi } from '@apps/services/lessons'
 import { Modal } from '@components/Modal'
+import { useSnackbar } from '@components/Snackbar'
 import { formatDate } from '@shared/utils'
 import type {
     StudynotesItem,
@@ -11,10 +26,9 @@ import type {
     StudyPreview,
     PreviewAnalysis,
 } from '@shared/types'
-import { useSnackbar } from '@components/Snackbar'
-import { lessonsApi } from '@apps/services/lessons'
 import { EvaluationReport } from './EvaluationReport'
 import { PreviewAnalysisReport } from './PreviewAnalysisReport'
+import { Loading } from '@apps/components/Loading'
 
 interface StudynotesModalShareProps {
     open: boolean
@@ -150,8 +164,7 @@ export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
             link.download = `学习笔记_${safeTitle}.png`
             link.href = dataUrl
             link.click()
-            // toPng 返回 base64 dataURL，延迟回收避免部分浏览器下载中断
-            setTimeout(() => URL.revokeObjectURL(dataUrl), 1000)
+            // toPng 返回 data URL（非 blob URL），revokeObjectURL 对其无效，交由 GC 回收
             showSnackbar('图片已生成', 'success')
         } catch (err) {
             console.error('导出图片失败:', err)
@@ -192,7 +205,8 @@ export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
                                     {createdDate}
                                 </span>
                             </div>
-                            <h2 className="text-xl font-bold text-white mt-2 leading-snug truncate">
+                            {/* 头部底色为 theme.soft 浅色系，标题须用深色保证对比度 */}
+                            <h2 className="text-xl font-bold text-gray-900 mt-2 leading-snug truncate">
                                 {card?.topic || '未命名主题'}
                             </h2>
                             <div className="mt-3 flex items-center gap-2">
@@ -220,9 +234,7 @@ export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
                             </div>
 
                             {previewLoading ? (
-                                <p className="text-sm text-gray-400">
-                                    预习内容加载中…
-                                </p>
+                                <Loading />
                             ) : preview ? (
                                 <div className="space-y-4">
                                     <div>

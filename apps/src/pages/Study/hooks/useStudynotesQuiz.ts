@@ -258,6 +258,13 @@ export function useStudynotesQuiz(
                 answers,
             )
             savedSnapshotRef.current = JSON.stringify(answers)
+            // 渲染前的后续调用（如自动链路）读 ref 而非 state，须同步维护，
+            // 否则读到旧 quiz（submittedAt/results 未变）导致防重误判或误发保存
+            latestRef.current = {
+                ...latestRef.current,
+                quiz: updated,
+                status: 'graded',
+            }
             dispatch({ type: 'GRADE_SUCCESS', quiz: updated })
         } catch (error: unknown) {
             const message =
@@ -280,6 +287,15 @@ export function useStudynotesQuiz(
                 answers,
             )
             savedSnapshotRef.current = JSON.stringify(answers)
+            // 关键时序：dispatch 的重渲染走 MessageChannel 宏任务，而调用方
+            // await submit() 的 continuation 是微任务——若不同步更新 ref，
+            // 紧随的 grade() 会读到旧 quiz（submittedAt 仍为 null）而被防重拒绝，
+            // 导致自动提交链路的批改静默失败
+            latestRef.current = {
+                ...latestRef.current,
+                quiz: updated,
+                status: 'graded',
+            }
             dispatch({ type: 'GRADE_SUCCESS', quiz: updated })
             return true
         } catch (error: unknown) {
