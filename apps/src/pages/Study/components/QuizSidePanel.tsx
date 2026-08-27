@@ -124,12 +124,12 @@ function CountdownBadge({
 }) {
     return (
         <div
-            className={`flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium border-primary ${
+            className={`flex items-center gap-1 rounded-md px-1.5 py-1 text-xs font-medium ${
                 vertical ? 'flex-col' : ''
             } ${
                 isTimeUrgent
                     ? 'animate-pulse bg-red-50 text-red-600'
-                    : 'bg-gray-100 text-gray-600'
+                    : 'bg-primary/10 text-primary'
             }`}>
             <Timer className="size-4" />
             <span>{remainingText}</span>

@@ -4,10 +4,10 @@
  * （以服务端 generatedAt 为基准续算，关闭重开不重置，到点自动提交批改）、
  * 右侧【历史测验】【错题本】操作栏、历史测验只读回看，以及错题本左栏宽版展示。
  * 复用约定：作答状态机复用 useStudynotesQuiz 及其查询 hooks；右侧栏复用 QuizSidePanel；
- * 答案还原复用 @apps/utils/quizFormat。
+ * 答案还原复用 @apps/utils/quizFormat；限时倒计时（含超时通知）完整封装于 useQuizCountdown。
  * 关键约束：仅作答态（answering）计时，已提交/已批改停止；历史回看为纯只读，禁用作答与提交。
  */
-import { useEffect, useLayoutEffect, useMemo, useReducer, useRef } from 'react'
+import { useLayoutEffect, useMemo, useReducer, useRef } from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
 import { formatAnswerText, stripOptionPrefix } from '@apps/utils/quizFormat'
 import { MarkdownView } from '@components/MarkdownView'
@@ -45,11 +45,6 @@ type QuizStatus =
     | 'graded'
     | 'error'
 
-// 测验限时 30 分钟：以服务端 generatedAt 为基准计算截止时刻，关闭弹窗重开仍正确续算
-const QUIZ_TIME_LIMIT_MS = 30 * 60 * 1000
-// 剩余时间不足 5 分钟标红提醒
-const QUIZ_URGENT_MS = 5 * 60 * 1000
-
 type SidePanelName = 'none' | 'history' | 'wrong'
 
 interface SidePanelState {
@@ -65,6 +60,32 @@ type SidePanelAction =
 const initialSidePanelState: SidePanelState = {
     panel: 'none',
     selectedQuizId: null,
+}
+
+type QuizConfirmAction = 'submit' | 'grade' | 'generate'
+
+// 确认栏文案按动作映射，避免渲染层嵌套三元
+const CONFIRM_LABELS: Record<QuizConfirmAction, string> = {
+    submit: '提交答案',
+    grade: '批改',
+    generate: '重新测验',
+}
+
+// 按测验状态与视图解析确认栏动作：作答=提交答案、已提交未批改=批改、已批改=重新测验；
+// 锁定/历史回看/错题本/空态视图返回 null（隐藏确认栏，空态由 EmptyState 自带按钮）
+function resolveConfirmAction(
+    canQuiz: boolean,
+    isViewingHistory: boolean,
+    panel: SidePanelName,
+    quiz: StudynotesQuiz | null,
+): QuizConfirmAction | null {
+    if (!canQuiz || isViewingHistory || panel === 'wrong') {
+        return null
+    }
+    if (!quiz) return null
+    if (quiz.results) return 'generate'
+    if (quiz.submittedAt) return 'grade'
+    return 'submit'
 }
 
 // 右侧操作栏状态机：面板切换互斥且重置选中项，收起/重开弹窗时复位
@@ -85,15 +106,6 @@ function sidePanelReducer(
         default:
             return state
     }
-}
-
-// 剩余时间展示：mm:ss
-function formatCountdown(ms: number): string {
-    const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
-    const minutes = Math.floor(totalSeconds / 60)
-    const seconds = totalSeconds % 60
-    const pad = (n: number) => String(n).padStart(2, '0')
-    return `${pad(minutes)}:${pad(seconds)}`
 }
 
 interface QuizModalEditorProps {
@@ -136,15 +148,11 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         },
     )
 
-    // 底部确认栏仅负责「提交答案」；批改按钮置于 QuizHeader。
-    // 批改前（含已提交未批改）均显示，允许反复提交直到批改；
-    // 历史只读回看时隐藏，避免误触当前测验的提交
-    const handleSubmit = async () => {
-        const ok = await submit()
-        if (ok) {
-            showSnackbar('已提交，请点击「批改」查看结果', 'info')
-        }
-    }
+    // === 右侧操作栏（历史测验/错题本）状态与数据 ===
+    const [sidePanel, dispatchSidePanel] = useReducer(
+        sidePanelReducer,
+        initialSidePanelState,
+    )
 
     const handleClose = () => {
         // 复位侧栏状态：selectedQuizId 指向当前课程的测验 ID，
@@ -153,12 +161,6 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         onSaved?.()
         onClose()
     }
-
-    // === 右侧操作栏（历史测验/错题本）状态与数据 ===
-    const [sidePanel, dispatchSidePanel] = useReducer(
-        sidePanelReducer,
-        initialSidePanelState,
-    )
     const { data: history = [], isLoading: isHistoryLoading } =
         useStudynotesQuizHistory(cardId, open && sidePanel.panel === 'history')
     const { data: wrongQuestions = [], isLoading: isWrongLoading } =
@@ -169,44 +171,47 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         cardId,
         isViewingHistory ? sidePanel.selectedQuizId : null,
     )
-    // 底部确认栏仅负责「提交答案」；历史回看/错题本视图下隐藏，避免误触当前测验的提交
-    const showSubmitConfirm =
-        !isViewingHistory &&
-        sidePanel.panel !== 'wrong' &&
-        Boolean(quiz) &&
-        quiz?.results == null
+    // 底部确认栏按测验状态承载核心动作（解析逻辑见模块级 resolveConfirmAction）
+    const confirmAction = resolveConfirmAction(
+        canQuiz,
+        isViewingHistory,
+        sidePanel.panel,
+        quiz,
+    )
 
-    // === 限时逻辑：以服务端 generatedAt 为锚，仅未提交且未批改的作答态计时 ===
-    const isAnswering = status === 'answering'
-    const deadlineAt = useMemo(() => {
-        if (!quiz || quiz.submittedAt || quiz.results) return null
-        return new Date(quiz.generatedAt).getTime() + QUIZ_TIME_LIMIT_MS
-    }, [quiz])
-    const remainingMs = useQuizCountdown(deadlineAt, open && isAnswering)
-    const remainingText = remainingMs > 0 ? formatCountdown(remainingMs) : null
-    const isTimeUrgent = remainingMs > 0 && remainingMs <= QUIZ_URGENT_MS
-
-    // 到点自动提交并批改：用当前时刻与 deadline 直接比较（remainingMs 初始为 0
-    // 不代表超时，避免打开瞬间误提交）；ref 防重复触发。
-    // 不可直接调 grade：其防重条件要求 submittedAt 非空，作答中超时会被直接拒绝，
-    // 故须先 submit（标记已提交）再 grade
-    const autoSubmittedRef = useRef(false)
-    useEffect(() => {
-        if (!open || !isAnswering || deadlineAt === null) return
-        if (Date.now() < deadlineAt) {
-            autoSubmittedRef.current = false
-            return
-        }
-        if (autoSubmittedRef.current) return
-        autoSubmittedRef.current = true
-        void (async () => {
+    const handleConfirm = async () => {
+        if (confirmAction === 'submit') {
             const ok = await submit()
             if (ok) {
-                showSnackbar('测验时间到，已自动提交并批改', 'info')
-                await grade()
+                showSnackbar('已提交，请点击「批改」查看结果', 'info')
             }
-        })()
-    }, [open, isAnswering, deadlineAt, remainingMs, submit, grade])
+            return
+        }
+        if (confirmAction === 'grade') {
+            await grade()
+            return
+        }
+        if (confirmAction === 'generate') {
+            await generate()
+        }
+    }
+
+    // === 限时逻辑：完整封装于 useQuizCountdown（截止时刻计算/每秒 tick/超时通知） ===
+    // 不可直接调 grade：其防重条件要求 submittedAt 非空，作答中超时会被直接拒绝，
+    // 故 onTimeUp 内须先 submit（标记已提交）再 grade
+    const { remainingText, isTimeUrgent } = useQuizCountdown({
+        quiz,
+        active: open && status === 'answering',
+        onTimeUp: () => {
+            void (async () => {
+                const ok = await submit()
+                if (ok) {
+                    showSnackbar('测验时间到，已自动提交并批改', 'info')
+                    await grade()
+                }
+            })()
+        },
+    })
 
     return (
         <Modal
@@ -215,9 +220,11 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
             title={lessonTopic ? `专属测验 · ${lessonTopic}` : '专属测验'}
             size="full"
             isScroll={true}
-            onConfirm={showSubmitConfirm ? handleSubmit : undefined}
-            confirmLabel="提交答案"
-            // 生成/批改中均禁用底部确认，避免 AI 流程中误提交旧答案
+            onConfirm={confirmAction ? handleConfirm : undefined}
+            confirmLabel={
+                confirmAction ? CONFIRM_LABELS[confirmAction] : undefined
+            }
+            // 批改中确认按钮转圈并禁用，防止重复触发 AI 流程
             isLoading={status === 'grading'}
             isDisabled={status === 'grading' || status === 'generating'}>
             {!canQuiz ? (
@@ -250,8 +257,6 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
                                 errorMsg={errorMsg}
                                 isSubmitted={isSubmitted}
                                 setAnswer={setAnswer}
-                                generate={generate}
-                                onGrade={() => void grade()}
                             />
                         )}
                     </div>
@@ -286,8 +291,6 @@ function QuizBody({
     errorMsg,
     isSubmitted,
     setAnswer,
-    generate,
-    onGrade,
 }: {
     status: QuizStatus
     quiz: StudynotesQuiz | null
@@ -295,8 +298,6 @@ function QuizBody({
     errorMsg: string | null
     isSubmitted: boolean
     setAnswer: (index: number, value: string) => void
-    generate: () => Promise<void> | void
-    onGrade: () => void
 }) {
     const results = quiz?.results ?? null
     const hasResults = results !== null
@@ -335,9 +336,6 @@ function QuizBody({
                 isSubmitted={isSubmitted}
                 hasResults={hasResults}
                 quiz={quiz}
-                status={status}
-                onGenerate={() => void generate()}
-                onGrade={onGrade}
             />
 
             <ResultFeedback
@@ -532,16 +530,10 @@ function QuizHeader({
     isSubmitted,
     hasResults,
     quiz,
-    status,
-    onGenerate,
-    onGrade,
 }: {
     isSubmitted: boolean
     hasResults: boolean
     quiz: StudynotesQuiz | null
-    status: QuizStatus
-    onGenerate: () => void
-    onGrade: () => void
 }) {
     return (
         <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 pb-3">
@@ -555,51 +547,20 @@ function QuizHeader({
                         : `共 ${quiz?.questions.length ?? 20} 题 · 满分 100 分待作答`}
                 </div>
             </div>
+            {/* 已批改结果摘要；批改/重新测验动作由底部确认栏按状态承载 */}
             <div className="flex shrink-0 items-center gap-2.5">
-                {isSubmitted && quiz && (
-                    <>
-                        {hasResults ? (
-                            <div className="flex items-center gap-2 text-sm">
-                                <span className="text-gray-600">
-                                    答对{' '}
-                                    <strong className="text-green-600">
-                                        {quiz.correctCount}
-                                    </strong>{' '}
-                                    / {quiz?.questions.length ?? 20}
-                                </span>
-                                <span className="h-4 w-px bg-gray-300" />
-                                <ScoreBadge score={quiz.score} />
-                            </div>
-                        ) : (
-                            <button
-                                type="button"
-                                disabled={
-                                    status === 'generating' ||
-                                    status === 'grading'
-                                }
-                                onClick={onGrade}
-                                className="btn btn-primary">
-                                {status === 'grading' ? (
-                                    <Loader2 className="size-4 animate-spin" />
-                                ) : null}
-                                批改
-                            </button>
-                        )}
-                        {/* 仅已批改后才允许重新测试：未批改（含已提交未批改）时重新生成会覆盖
-                            已提交内容（generate 内部已拒绝），按钮此时不可见避免用户误点 */}
-                        {hasResults && (
-                            <button
-                                type="button"
-                                disabled={
-                                    status === 'generating' ||
-                                    status === 'grading'
-                                }
-                                onClick={onGenerate}
-                                className="btn btn-outline">
-                                重新测验
-                            </button>
-                        )}
-                    </>
+                {isSubmitted && quiz && hasResults && (
+                    <div className="flex items-center gap-2 text-sm">
+                        <span className="text-gray-600">
+                            答对{' '}
+                            <strong className="text-green-600">
+                                {quiz.correctCount}
+                            </strong>{' '}
+                            / {quiz?.questions.length ?? 20}
+                        </span>
+                        <span className="h-4 w-px bg-gray-300" />
+                        <ScoreBadge score={quiz.score} />
+                    </div>
                 )}
             </div>
         </div>
@@ -733,6 +694,19 @@ function QuizQuestionItem({
     )
 }
 
+/** 客观题选项配色：可作答一律普通；只读态选对绿 / 选错红 / 漏选正确项蓝描边 / 其余普通 */
+function getOptionTone(
+    isReadOnly: boolean,
+    isSelected: boolean,
+    isCorrectOpt: boolean,
+): string {
+    if (!isReadOnly) return 'border-gray-200 bg-white hover:bg-gray-50'
+    if (isSelected && isCorrectOpt) return 'border-green-400 bg-green-50'
+    if (isSelected) return 'border-red-400 bg-red-50'
+    if (isCorrectOpt) return 'border-blue-300 bg-blue-50'
+    return 'border-gray-200 bg-white'
+}
+
 /** 客观题（单选/多选）作答与只读结果视图 */
 function ObjectiveAnswer({
     question,
@@ -770,19 +744,14 @@ function ObjectiveAnswer({
     return (
         <div className="space-y-1.5 pl-8">
             {(question.options ?? []).map((opt, i) => {
-                const letter = String.fromCharCode(65 + i)
+                const letter = String.fromCharCode('A'.charCodeAt(0) + i)
                 const isSelected = selected.includes(letter)
                 const isCorrectOpt = correct.includes(letter)
-                // 只读态配色：选中且正确=绿，选中且错误=红，漏选正确=蓝描边，其余普通
-                const optionTone = !isReadOnly
-                    ? 'border-gray-200 bg-white hover:bg-gray-50'
-                    : isSelected && isCorrectOpt
-                      ? 'border-green-400 bg-green-50'
-                      : isSelected
-                        ? 'border-red-400 bg-red-50'
-                        : isCorrectOpt
-                          ? 'border-blue-300 bg-blue-50'
-                          : 'border-gray-200 bg-white'
+                const optionTone = getOptionTone(
+                    isReadOnly,
+                    isSelected,
+                    isCorrectOpt,
+                )
                 return (
                     <label
                         key={letter}

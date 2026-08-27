@@ -154,8 +154,13 @@ async function callDeepSeek(
         ) {
             // 指数退避（1s/2s/4s），比线性退避更贴合服务端偶发故障的恢复曲线
             const delay = 1000 * 2 ** retryCount
+            // 截断（可自愈，预算问题）与真空响应（疑似服务端故障）用不同前缀，便于日志区分
+            const logTag =
+                finishReason === 'length'
+                    ? '[DeepSeek Truncated]'
+                    : '[DeepSeek Empty Response]'
             console.warn(
-                `[DeepSeek Empty Response] 重试 ${retryCount + 1}/${MAX_RETRIES}（等待 ${delay}ms）${finishReason === 'length' ? '，检测到 max_tokens 截断，扩容重试' : ''}`,
+                `${logTag} 重试 ${retryCount + 1}/${MAX_RETRIES}（等待 ${delay}ms）${finishReason === 'length' ? '，检测到 max_tokens 截断，扩容重试' : ''}`,
             )
             await new Promise((r) => setTimeout(r, delay))
             // finish_reason='length' 说明输出被 max_tokens 截断，同样的限制重试必然再次截断；
