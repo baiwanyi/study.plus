@@ -1,6 +1,6 @@
 'use client'
 /**
- * 测验倒计时 Hook：完整封装测验 30 分钟限时的计时、展示与超时通知。
+ * 测验倒计时 Hook：完整封装测验 45 分钟限时的计时、展示与超时通知。
  * 职责：从测验的 generatedAt 计算截止时刻（已提交/已批改视为无倒计时）、每秒 tick、
  * 派生剩余展示文案与紧急态，并在「未超时 → 超时」跃迁时触发一次 onTimeUp 业务回调。
  * 复用约定：quiz 类型来自 @shared/types；展示格式化与超时判定不对外暴露，
@@ -12,8 +12,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import type { StudynotesQuiz } from '@shared/types'
 
-// 测验限时 30 分钟：以服务端 generatedAt 为基准计算截止时刻，关闭弹窗重开仍正确续算
-const QUIZ_TIME_LIMIT_MS = 30 * 60 * 1000
+// 测验限时 45 分钟：以服务端 generatedAt 为基准计算截止时刻，关闭弹窗重开仍正确续算
+const QUIZ_TIME_LIMIT_MS = 45 * 60 * 1000
 // 剩余时间不足 5 分钟标红提醒
 const QUIZ_URGENT_MS = 5 * 60 * 1000
 
