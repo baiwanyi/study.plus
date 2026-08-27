@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/utils/api'
+import { optionsAPI } from '@apps/services'
 import { pointColors, pointSymbol } from '@apps/utils/client'
 import { parseExamData } from '@apps/pages/Options/OptionsRulesExam'
 import { DataTable, type Column } from '@components/DataTable'

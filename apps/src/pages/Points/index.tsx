@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { pointsApi, optionsAPI } from '@apps/utils/api'
+import { pointsApi, optionsAPI } from '@apps/services'
 import {
     getCurrentMonth,
     isAdmin,

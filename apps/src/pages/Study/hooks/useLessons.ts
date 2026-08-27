@@ -1,5 +1,5 @@
 import { useQuery, type UseQueryResult } from '@tanstack/react-query'
-import { lessonsApi } from '@apps/utils/api'
+import { lessonsApi } from '@apps/services'
 import type { StudyLessonWithStatus } from '@shared/types'
 
 export function useLessons(

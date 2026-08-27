@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { advancesApi } from '@apps/utils/api'
+import { advancesApi } from '@apps/services'
 import type { AdvanceSummary } from '@shared/types'
 
 export function WidgetAdvanceStats() {

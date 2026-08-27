@@ -1,5 +1,14 @@
+/**
+ * 学习管理（Studynotes）业务服务模块：负责心得卡片 CRUD、AI 评估、测验生成/提交/批改，
+ * 以及历史测验查询与错题本聚合能力。
+ * 复用约定：数据访问统一使用 Drizzle 查询构建器参数化查询；JSON 字段解析复用 safeJsonParse；
+ * 内存分页复用 @shared/utils 的 paginate。
+ * 关键约束：study_quiz.study_id 关联课程 lessonId，卡片 ID 须经 resolveLessonId 转换；
+ * AI 生成题目入库前必须经 sanitizeQuizQuestions 清洗；对外响应必须经 toQuizPublicDTO 剔除标准答案，
+ * 防止作答态泄露参考答案。
+ */
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
-import { studynotesSubjectValues } from '@shared/utils'
+import { paginate, studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
 import { studyNotes, studyQuiz, studyLessons } from '../db/schema'
 import {
@@ -9,8 +18,11 @@ import {
 } from './ai'
 import type {
     StudynotesQuiz,
+    StudynotesQuizHistoryItem,
     StudynotesQuizQuestion,
     StudynotesQuizResult,
+    WrongQuestion,
+    WrongQuestionPage,
 } from '@shared/types'
 
 type StudyNoteRow = typeof studyNotes.$inferSelect
@@ -18,6 +30,8 @@ type StudyQuizRow = typeof studyQuiz.$inferSelect
 
 const QUIZ_ANSWER_MAX_LEN = 5000
 const QUIZ_SIZE = 20
+// 内存搜索关键词统一截断长度，防止超长输入拖慢内存过滤
+const SEARCH_KEYWORD_MAX_LEN = 100
 // 学科白名单需与原路由保持一致：基础学科来自 shared，science/custom 为兼容历史数据额外允许
 const STUDYNOTE_SUBJECTS = new Set<string>([
     ...studynotesSubjectValues,
@@ -129,6 +143,59 @@ export function validateAnswers(raw: unknown): string[] | null {
     return raw.map((item) => item.slice(0, QUIZ_ANSWER_MAX_LEN))
 }
 
+// 从已提交测验行提取错题（isCorrect=false）并附带提交时间；
+// options/type 由 questionsJson 按 index 对齐补充，供前端把字母答案还原为可读文本
+type WrongQuizRow = Pick<
+    StudyQuizRow,
+    'studyId' | 'questionsJson' | 'resultsJson' | 'submittedAt'
+>
+
+function extractWrongQuestions(
+    rows: WrongQuizRow[],
+): Omit<WrongQuestion, 'studyTopic'>[] {
+    const wrongs: Omit<WrongQuestion, 'studyTopic'>[] = []
+    for (const row of rows) {
+        if (!row.resultsJson || !row.submittedAt) continue
+        const results = safeJsonParse<StudynotesQuizResult[]>(
+            row.resultsJson,
+            [],
+        )
+        const questions = safeJsonParse<StudynotesQuizQuestion[]>(
+            row.questionsJson,
+            [],
+        )
+        const questionMap = new Map(questions.map((q) => [q.index, q] as const))
+        for (const r of results) {
+            if (r.isCorrect) continue
+            const q = questionMap.get(r.index)
+            wrongs.push({
+                question: r.question,
+                type: q?.type ?? 'essay',
+                options: q?.options ?? [],
+                studentAnswer: r.studentAnswer,
+                correctAnswer: r.correctAnswer,
+                explanation: r.explanation,
+                submittedAt: row.submittedAt,
+                studyId: row.studyId,
+            })
+        }
+    }
+    return wrongs
+}
+
+// 按题干去重（入参行已按 id DESC 排序，首次出现即最近一次答错记录），避免同一题跨测验重复堆积
+function dedupeByQuestion(
+    items: Omit<WrongQuestion, 'studyTopic'>[],
+): Omit<WrongQuestion, 'studyTopic'>[] {
+    const map = new Map<string, Omit<WrongQuestion, 'studyTopic'>>()
+    for (const item of items) {
+        if (!map.has(item.question)) {
+            map.set(item.question, item)
+        }
+    }
+    return [...map.values()]
+}
+
 // === 业务函数（含 DB 操作，路由层仅负责参数解析与响应格式化） ===
 
 // 由卡片 ID 解析其所属课程 ID。
@@ -190,7 +257,9 @@ export async function listStudyNotes(params: {
     }))
 
     if (params.search && typeof params.search === 'string') {
-        const keyword = params.search.toLowerCase()
+        const keyword = params.search
+            .slice(0, SEARCH_KEYWORD_MAX_LEN)
+            .toLowerCase()
         return result.filter(
             (r) =>
                 r.topic.toLowerCase().includes(keyword) ||
@@ -206,7 +275,12 @@ export async function listStudyNotes(params: {
 export async function getStudyNote(
     id: number,
 ): Promise<
-    (StudyNoteRow & { subject: string; topic: string; quizScore: number | null }) | null
+    | (StudyNoteRow & {
+          subject: string
+          topic: string
+          quizScore: number | null
+      })
+    | null
 > {
     const [row] = await db
         .select({
@@ -647,7 +721,9 @@ export async function gradeQuiz(
         })
         .from(studyNotes)
         .innerJoin(studyLessons, eq(studyNotes.lessonId, studyLessons.id))
-        .where(eq(studyNotes.lessonId, id))
+        // 批改上下文必须取自测验所属课程（lessonId），不得用卡片 ID 误配 lessonId 列，
+        // 否则撞号时会基于错误课程的笔记内容批改
+        .where(eq(studyNotes.lessonId, lessonId))
         .orderBy(asc(studyNotes.id))
         .limit(1)
     if (!noteRow) return null
@@ -696,6 +772,144 @@ export async function getLatestQuiz(
         .limit(1)
 
     return { quiz: rows[0] ? toQuizPublicDTO(mapQuizRow(rows[0])) : null }
+}
+
+export async function getQuizHistory(
+    id: number,
+): Promise<{ history: StudynotesQuizHistoryItem[] } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
+    const rows = await db
+        .select({
+            id: studyQuiz.id,
+            score: studyQuiz.score,
+            correctCount: studyQuiz.correctCount,
+            submittedAt: studyQuiz.submittedAt,
+            generatedAt: studyQuiz.generatedAt,
+        })
+        .from(studyQuiz)
+        .where(
+            and(
+                eq(studyQuiz.studyId, lessonId),
+                sql`${studyQuiz.submittedAt} IS NOT NULL`,
+            ),
+        )
+        .orderBy(desc(studyQuiz.id))
+    // SQL 已限定 submittedAt 非空，类型守卫仅用于收窄联合类型
+    return {
+        history: rows.filter(
+            (row): row is StudynotesQuizHistoryItem => row.submittedAt !== null,
+        ),
+    }
+}
+
+export async function getQuizDetail(
+    id: number,
+    quizId: number,
+): Promise<{ quiz: StudynotesQuiz } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
+    const rows = await db
+        .select()
+        .from(studyQuiz)
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, lessonId)))
+        .limit(1)
+    // 历史回看仅限已提交记录；进行中的测验由 latest 接口负责恢复现场
+    if (!rows[0] || !rows[0].submittedAt) return null
+    return { quiz: toQuizPublicDTO(mapQuizRow(rows[0])) }
+}
+
+export async function getWrongQuestions(
+    id: number,
+): Promise<{ wrongQuestions: WrongQuestion[] } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
+    const [lesson] = await db
+        .select({ topic: studyLessons.topic })
+        .from(studyLessons)
+        .where(eq(studyLessons.id, lessonId))
+        .limit(1)
+    const rows = await db
+        .select({
+            studyId: studyQuiz.studyId,
+            questionsJson: studyQuiz.questionsJson,
+            resultsJson: studyQuiz.resultsJson,
+            submittedAt: studyQuiz.submittedAt,
+        })
+        .from(studyQuiz)
+        .where(
+            and(
+                eq(studyQuiz.studyId, lessonId),
+                sql`${studyQuiz.submittedAt} IS NOT NULL`,
+            ),
+        )
+        .orderBy(desc(studyQuiz.id))
+    const wrongQuestions = dedupeByQuestion(extractWrongQuestions(rows)).map(
+        (item) => ({
+            ...item,
+            studyTopic: lesson?.topic ?? '',
+        }),
+    )
+    return { wrongQuestions }
+}
+
+export interface WrongQuestionsAllParams {
+    page: number
+    pageSize: number
+    search?: string
+    /** 按科目筛选（白名单见 STUDYNOTE_SUBJECTS），缺省为全部科目 */
+    subject?: string
+}
+
+export async function getWrongQuestionsAll(
+    params: WrongQuestionsAllParams,
+): Promise<WrongQuestionPage> {
+    // 筛选维度为科目（lessons.subject），经 join 课程表在 SQL 层完成过滤；
+    // 同一查询顺带取回 topic 供错题卡展示来源，避免额外全表查询
+    const filters = [sql`${studyQuiz.submittedAt} IS NOT NULL`]
+    if (params.subject && STUDYNOTE_SUBJECTS.has(params.subject)) {
+        filters.push(eq(studyLessons.subject, params.subject))
+    }
+    const rows = await db
+        .select({
+            studyId: studyQuiz.studyId,
+            questionsJson: studyQuiz.questionsJson,
+            resultsJson: studyQuiz.resultsJson,
+            submittedAt: studyQuiz.submittedAt,
+            lessonTopic: studyLessons.topic,
+        })
+        .from(studyQuiz)
+        .innerJoin(studyLessons, eq(studyQuiz.studyId, studyLessons.id))
+        .where(and(...filters))
+        .orderBy(desc(studyQuiz.id))
+
+    const topicMap = new Map(
+        rows.map((row) => [row.studyId, row.lessonTopic] as const),
+    )
+
+    let wrongs = dedupeByQuestion(extractWrongQuestions(rows)).map((item) => ({
+        ...item,
+        studyTopic: topicMap.get(item.studyId) ?? '',
+    }))
+
+    if (params.search) {
+        const keyword = params.search
+            .slice(0, SEARCH_KEYWORD_MAX_LEN)
+            .toLowerCase()
+        wrongs = wrongs.filter(
+            (item) =>
+                item.question.toLowerCase().includes(keyword) ||
+                item.explanation.toLowerCase().includes(keyword),
+        )
+    }
+
+    const items = paginate(wrongs, params.page, params.pageSize)
+    return {
+        items,
+        total: wrongs.length,
+        page: params.page,
+        pageSize: params.pageSize,
+    }
 }
 
 export type { StudynotesQuizResult, StudynotesQuizQuestion }

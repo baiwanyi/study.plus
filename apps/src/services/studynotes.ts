@@ -1,12 +1,28 @@
 'use client'
-
+/**
+ * 学习管理前端 API 封装模块：统一收敛 /study 相关 HTTP 请求，提供心得 CRUD、AI 评估、
+ * 测验生成/提交/批改，以及历史测验、错题本（单课程/全局）查询方法。
+ * 复用约定：请求统一走 request 封装；入参在客户端先行校验（正整数/字符串数组）。
+ * 关键约束：所有资源 ID 必须为正整数，非法入参在发请求前直接抛错。
+ */
 import { request } from './request'
 import type {
     StudynotesItem,
     StudynotesCreateRequest,
     StudynotesEvaluation,
     StudynotesQuiz,
+    StudynotesQuizHistoryItem,
+    WrongQuestion,
+    WrongQuestionPage,
 } from '@shared/types'
+
+export interface WrongQuestionsAllQuery {
+    page: number
+    pageSize: number
+    search?: string
+    /** 按科目筛选（math/chinese/english/science/custom），缺省为全部科目 */
+    subject?: string
+}
 
 function assertPositiveInt(value: number, field: string): void {
     if (!Number.isInteger(value) || value <= 0) {
@@ -85,6 +101,40 @@ export const studynotesApi = {
             `/study/${id}/quiz/latest`,
         )
     },
+    getQuizHistory: (id: number) => {
+        assertPositiveInt(id, '学习管理 ID')
+        return request<{ history: StudynotesQuizHistoryItem[] }>(
+            `/study/${id}/quiz/history`,
+        )
+    },
+    getQuizDetail: (id: number, quizId: number) => {
+        assertPositiveInt(id, '学习管理 ID')
+        assertPositiveInt(quizId, '测验 ID')
+        return request<{ quiz: StudynotesQuiz }>(`/study/${id}/quiz/${quizId}`)
+    },
+    getQuizWrong: (id: number) => {
+        assertPositiveInt(id, '学习管理 ID')
+        return request<{ wrongQuestions: WrongQuestion[] }>(
+            `/study/${id}/quiz/wrong`,
+        )
+    },
+    getQuizWrongAll: (params: WrongQuestionsAllQuery) => {
+        assertPositiveInt(params.page, '页码')
+        assertPositiveInt(params.pageSize, '每页数量')
+        const query: Record<string, string> = {
+            page: String(params.page),
+            pageSize: String(params.pageSize),
+        }
+        if (params.search) {
+            query.search = params.search
+        }
+        if (params.subject) {
+            query.subject = params.subject
+        }
+        return request<WrongQuestionPage>(
+            `/study/quiz/wrong-all?${new URLSearchParams(query).toString()}`,
+        )
+    },
     saveQuizAnswers: (id: number, quizId: number, answers: string[]) => {
         assertPositiveInt(id, '学习管理 ID')
         assertPositiveInt(quizId, '测验 ID')
@@ -119,9 +169,7 @@ export const studynotesApi = {
             `/study/${id}/quiz/${quizId}/grade`,
             {
                 method: 'POST',
-                body: answers
-                    ? JSON.stringify({ answers })
-                    : undefined,
+                body: answers ? JSON.stringify({ answers }) : undefined,
             },
         )
     },

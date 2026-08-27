@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, type ReactNode } from 'react'
-import { remarkApi } from '@apps/utils/api'
+import { remarkApi } from '@apps/services'
 import {
     defaultGradeValues,
     pointSymbol,

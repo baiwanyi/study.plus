@@ -24,7 +24,7 @@ export {
     toPointType,
     toTaskType,
 } from '@shared/utils'
-import { systemAPI } from './api/system'
+import { systemAPI } from '../services/system'
 
 export type {
     ExchangeStatus,

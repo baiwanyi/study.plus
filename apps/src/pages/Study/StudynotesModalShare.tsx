@@ -12,7 +12,7 @@ import type {
     PreviewAnalysis,
 } from '@shared/types'
 import { useSnackbar } from '@components/Snackbar'
-import { lessonsApi } from '@apps/utils/api/lessons'
+import { lessonsApi } from '@apps/services/lessons'
 import { EvaluationReport } from './EvaluationReport'
 import { PreviewAnalysisReport } from './PreviewAnalysisReport'
 

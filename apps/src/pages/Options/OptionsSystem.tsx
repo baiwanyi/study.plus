@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { optionsAPI, quotesApi } from '@apps/utils/api'
+import { optionsAPI, quotesApi } from '@apps/services'
 import { formatErrorMessage, taskClassLabels } from '@apps/utils/client'
 import { RulesPage } from '@components/RulesPage'
 import { useSnackbar } from '@components/Snackbar'

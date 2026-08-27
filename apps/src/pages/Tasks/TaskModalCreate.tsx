@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { tasksApi, optionsAPI } from '@apps/utils/api'
+import { tasksApi, optionsAPI } from '@apps/services'
 import { taskTypeLabels } from '@apps/utils/client'
 import { Modal } from '@components/Modal'
 import { Tabs } from '@components/Tabs'

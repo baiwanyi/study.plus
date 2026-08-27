@@ -1,18 +1,47 @@
 'use client'
-
-import { useLayoutEffect, useMemo, useRef } from 'react'
+/**
+ * 课程专属测验弹窗组件：管理测验生成/作答/提交/批改全流程展示，含 30 分钟限时
+ * （以服务端 generatedAt 为基准续算，关闭重开不重置，到点自动提交批改）、
+ * 右侧【历史测验】【错题本】操作栏、历史测验只读回看，以及错题本左栏宽版展示。
+ * 复用约定：作答状态机复用 useStudynotesQuiz 及其查询 hooks；右侧栏复用 QuizSidePanel；
+ * 答案还原复用 @apps/utils/quizFormat。
+ * 关键约束：仅作答态（answering）计时，已提交/已批改停止；历史回看为纯只读，禁用作答与提交。
+ */
+import {
+    useEffect,
+    useLayoutEffect,
+    useMemo,
+    useReducer,
+    useRef,
+} from 'react'
 import { CheckCircle2, Loader2, RefreshCw, XCircle } from 'lucide-react'
+import { formatAnswerText, stripOptionPrefix } from '@apps/utils/quizFormat'
 import { MarkdownView } from '@components/MarkdownView'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { STUDYNODES_QUIZ_TYPE_LABELS } from '@shared/types'
-import { decodeMultiSelection, encodeMultiSelection } from '@shared/utils'
-import { useStudynotesQuiz } from './hooks/useStudynotesQuiz'
+import {
+    decodeMultiSelection,
+    encodeMultiSelection,
+    formatDate,
+} from '@shared/utils'
+import {
+    QuizSidePanel,
+    WrongQuestionCard,
+} from './components/QuizSidePanel'
+import { useQuizCountdown } from './hooks/useQuizCountdown'
+import {
+    useStudynotesQuiz,
+    useStudynotesQuizDetail,
+    useStudynotesQuizHistory,
+    useStudynotesQuizWrong,
+} from './hooks/useStudynotesQuiz'
 import type {
     StudynotesQuiz,
     StudynotesQuizQuestion,
     StudynotesQuizQuestionType,
     StudynotesQuizResult,
+    WrongQuestion,
 } from '@shared/types'
 import type { FC } from 'react'
 
@@ -23,6 +52,57 @@ type QuizStatus =
     | 'grading'
     | 'graded'
     | 'error'
+
+// 测验限时 30 分钟：以服务端 generatedAt 为基准计算截止时刻，关闭弹窗重开仍正确续算
+const QUIZ_TIME_LIMIT_MS = 30 * 60 * 1000
+// 剩余时间不足 5 分钟标红提醒
+const QUIZ_URGENT_MS = 5 * 60 * 1000
+
+type SidePanelName = 'none' | 'history' | 'wrong'
+
+interface SidePanelState {
+    panel: SidePanelName
+    selectedQuizId: number | null
+}
+
+type SidePanelAction =
+    | { type: 'TOGGLE_PANEL'; panel: 'history' | 'wrong' }
+    | { type: 'SELECT_HISTORY'; quizId: number }
+    | { type: 'RESET' }
+
+const initialSidePanelState: SidePanelState = {
+    panel: 'none',
+    selectedQuizId: null,
+}
+
+// 右侧操作栏状态机：面板切换互斥且重置选中项，收起/重开弹窗时复位
+function sidePanelReducer(
+    state: SidePanelState,
+    action: SidePanelAction,
+): SidePanelState {
+    switch (action.type) {
+        case 'TOGGLE_PANEL':
+            // 再次点击同一面板即收起；切换面板时清空历史选中项
+            return state.panel === action.panel
+                ? initialSidePanelState
+                : { panel: action.panel, selectedQuizId: null }
+        case 'SELECT_HISTORY':
+            return { ...state, selectedQuizId: action.quizId }
+        case 'RESET':
+            return initialSidePanelState
+        default:
+            return state
+    }
+}
+
+// 剩余时间展示：mm:ss
+function formatCountdown(ms: number): string {
+    const totalSeconds = Math.max(0, Math.ceil(ms / 1000))
+    const minutes = Math.floor(totalSeconds / 60)
+    const seconds = totalSeconds % 60
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${pad(minutes)}:${pad(seconds)}`
+}
 
 interface QuizModalEditorProps {
     open: boolean
@@ -65,8 +145,8 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
     )
 
     // 底部确认栏仅负责「提交答案」；批改按钮置于 QuizHeader。
-    // 批改前（含已提交未批改）均显示，允许反复提交直到批改
-    const showSubmitConfirm = Boolean(quiz) && quiz?.results == null
+    // 批改前（含已提交未批改）均显示，允许反复提交直到批改；
+    // 历史只读回看时隐藏，避免误触当前测验的提交
     const handleSubmit = async () => {
         const ok = await submit()
         if (ok) {
@@ -78,6 +158,56 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         onSaved?.()
         onClose()
     }
+
+    // === 右侧操作栏（历史测验/错题本）状态与数据 ===
+    const [sidePanel, dispatchSidePanel] = useReducer(
+        sidePanelReducer,
+        initialSidePanelState,
+    )
+    const {
+        data: history = [],
+        isLoading: isHistoryLoading,
+    } = useStudynotesQuizHistory(cardId, open && sidePanel.panel === 'history')
+    const {
+        data: wrongQuestions = [],
+        isLoading: isWrongLoading,
+    } = useStudynotesQuizWrong(cardId, open && sidePanel.panel === 'wrong')
+    const isViewingHistory =
+        sidePanel.panel === 'history' && sidePanel.selectedQuizId != null
+    const { data: historyQuiz } = useStudynotesQuizDetail(
+        cardId,
+        isViewingHistory ? sidePanel.selectedQuizId : null,
+    )
+    // 底部确认栏仅负责「提交答案」；历史回看/错题本视图下隐藏，避免误触当前测验的提交
+    const showSubmitConfirm =
+        !isViewingHistory &&
+        sidePanel.panel !== 'wrong' &&
+        Boolean(quiz) &&
+        quiz?.results == null
+
+    // === 限时逻辑：以服务端 generatedAt 为锚，仅未提交且未批改的作答态计时 ===
+    const isAnswering = status === 'answering'
+    const deadlineAt = useMemo(() => {
+        if (!quiz || quiz.submittedAt || quiz.results) return null
+        return new Date(quiz.generatedAt).getTime() + QUIZ_TIME_LIMIT_MS
+    }, [quiz])
+    const remainingMs = useQuizCountdown(deadlineAt, open && isAnswering)
+    const remainingText = remainingMs > 0 ? formatCountdown(remainingMs) : null
+    const isTimeUrgent = remainingMs > 0 && remainingMs <= QUIZ_URGENT_MS
+
+    // 到点自动提交并批改：用当前时刻与 deadline 直接比较（remainingMs 初始为 0
+    // 不代表超时，避免打开瞬间误提交）；ref 防重复触发
+    const autoSubmittedRef = useRef(false)
+    useEffect(() => {
+        if (!open || !isAnswering || deadlineAt === null) return
+        if (Date.now() < deadlineAt) {
+            autoSubmittedRef.current = false
+            return
+        }
+        if (autoSubmittedRef.current) return
+        autoSubmittedRef.current = true
+        void grade()
+    }, [open, isAnswering, deadlineAt, remainingMs, grade])
 
     return (
         <Modal
@@ -93,22 +223,60 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
             isDisabled={status === 'grading' || status === 'generating'}>
             {!canQuiz ? (
                 <LockedState />
-            ) : isEmpty ? (
-                <EmptyState
-                    isGenerating={status === 'generating'}
-                    onGenerate={() => void generate()}
-                />
             ) : (
-                <QuizBody
-                    status={status}
-                    quiz={quiz}
-                    answers={answers}
-                    errorMsg={errorMsg}
-                    isSubmitted={isSubmitted}
-                    setAnswer={setAnswer}
-                    generate={generate}
-                    onGrade={() => void grade()}
-                />
+                <div className="flex items-start gap-4">
+                    <div className="min-w-0 flex-1">
+                        {isViewingHistory ? (
+                            historyQuiz ? (
+                                <QuizHistoryView quiz={historyQuiz} />
+                            ) : (
+                                <HistoryLoading />
+                            )
+                        ) : sidePanel.panel === 'wrong' ? (
+                            <WrongBookView
+                                wrongQuestions={wrongQuestions}
+                                isLoading={isWrongLoading}
+                            />
+                        ) : isEmpty ? (
+                            <EmptyState
+                                isGenerating={status === 'generating'}
+                                errorMsg={status === 'error' ? errorMsg : null}
+                                onGenerate={() => void generate()}
+                            />
+                        ) : (
+                            <QuizBody
+                                status={status}
+                                quiz={quiz}
+                                answers={answers}
+                                errorMsg={errorMsg}
+                                isSubmitted={isSubmitted}
+                                setAnswer={setAnswer}
+                                generate={generate}
+                                onGrade={() => void grade()}
+                            />
+                        )}
+                    </div>
+                    <QuizSidePanel
+                        panel={sidePanel.panel}
+                        history={history}
+                        selectedQuizId={sidePanel.selectedQuizId}
+                        isHistoryLoading={isHistoryLoading}
+                        remainingText={remainingText}
+                        isTimeUrgent={isTimeUrgent}
+                        onTogglePanel={(panel) =>
+                            dispatchSidePanel({ type: 'TOGGLE_PANEL', panel })
+                        }
+                        onSelectHistory={(quizId) =>
+                            dispatchSidePanel({
+                                type: 'SELECT_HISTORY',
+                                quizId,
+                            })
+                        }
+                        onShowQuiz={() =>
+                            dispatchSidePanel({ type: 'RESET' })
+                        }
+                    />
+                </div>
             )}
         </Modal>
     )
@@ -217,26 +385,153 @@ function LockedState() {
 
 function EmptyState({
     isGenerating,
+    errorMsg,
     onGenerate,
 }: {
     isGenerating: boolean
+    errorMsg: string | null
     onGenerate: () => void
 }) {
+    // 生成中隐藏按钮仅显示 loading，避免 AI 出题期间重复触发；失败时展示错误并允许重试
+    if (isGenerating) {
+        return (
+            <div className="flex h-full flex-col items-center justify-center gap-3 p-6 text-center">
+                <Loader2 className="size-5 animate-spin text-primary" />
+                <p className="text-sm text-gray-600">正在生成题目…</p>
+            </div>
+        )
+    }
     return (
         <div className="flex h-full flex-col items-center justify-center gap-4 p-6 text-center">
+            {errorMsg && (
+                <p className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-xs text-red-600">
+                    {errorMsg}
+                </p>
+            )}
             <p className="text-sm text-gray-600">还没有进行专属测验。</p>
             <button
                 type="button"
-                disabled={isGenerating}
                 onClick={onGenerate}
                 className="btn btn-primary">
-                {isGenerating ? (
-                    <Loader2 className="size-4 animate-spin" />
-                ) : (
-                    <RefreshCw className="size-4" />
-                )}
+                <RefreshCw className="size-4" />
                 开始测验
             </button>
+        </div>
+    )
+}
+
+/** 历史测验详情加载中占位 */
+function HistoryLoading() {
+    return (
+        <div className="flex h-full items-center justify-center gap-2 p-6 text-sm text-gray-400">
+            <Loader2 className="size-4 animate-spin" />
+            正在加载历史测验…
+        </div>
+    )
+}
+
+/** 左侧错题本视图：宽版展示该课程全部错题，复用 WrongQuestionCard（默认不带来源课程） */
+function WrongBookView({
+    wrongQuestions,
+    isLoading,
+}: {
+    wrongQuestions: WrongQuestion[]
+    isLoading: boolean
+}) {
+    return (
+        <div className="flex flex-1 flex-col">
+            <div className="border-b border-gray-200 bg-white px-4 pb-3">
+                <div className="text-sm font-semibold text-gray-800">错题本</div>
+                <div className="text-xs text-gray-500">
+                    {isLoading
+                        ? '加载中…'
+                        : `共 ${wrongQuestions.length} 道错题（按最近一次答错去重）`}
+                </div>
+            </div>
+            {isLoading ? (
+                <HistoryLoading />
+            ) : wrongQuestions.length === 0 ? (
+                <div className="flex h-full items-center justify-center p-6 text-sm text-gray-500">
+                    太棒了，当前没有错题！
+                </div>
+            ) : (
+                // 不设内部滚动容器：随 Modal 外层滚动条统一滚动
+                <div className="space-y-4 p-4">
+                    {wrongQuestions.map((item, index) => (
+                        <WrongQuestionCard
+                            key={`${item.submittedAt}-${index}`}
+                            item={item}
+                        />
+                    ))}
+                </div>
+            )}
+        </div>
+    )
+}
+
+/** 历史测验只读回看视图：展示该次测验的完整题目、作答与批改结果，禁止交互作答 */
+function QuizHistoryView({ quiz }: { quiz: StudynotesQuiz }) {
+    // 预构建 index -> result 映射，避免题目列表内 O(n²) 查找
+    const resultMap = useMemo(() => {
+        const map = new Map<number, StudynotesQuizResult>()
+        if (quiz.results) {
+            for (const r of quiz.results) {
+                map.set(r.index, r)
+            }
+        }
+        return map
+    }, [quiz.results])
+
+    return (
+        <div className="flex flex-1 flex-col">
+            <div className="flex items-center justify-between gap-3 border-b border-gray-200 bg-white px-4 pb-3">
+                <div className="min-w-0 space-y-1">
+                    <div className="truncate text-sm font-semibold text-gray-800">
+                        历史测验 · {formatDate(quiz.submittedAt ?? quiz.generatedAt)}
+                    </div>
+                    <div className="truncate text-xs text-gray-500">
+                        共 {quiz.questions.length} 题 · 满分 100 分（只读回看）
+                    </div>
+                </div>
+                <div className="flex shrink-0 items-center gap-2 text-sm">
+                    <span className="text-gray-600">
+                        答对{' '}
+                        <strong className="text-green-600">
+                            {quiz.correctCount ?? 0}
+                        </strong>{' '}
+                        / {quiz.questions.length}
+                    </span>
+                    <ScoreBadge score={quiz.score} />
+                </div>
+            </div>
+
+            {quiz.comment && (
+                <div className="border-b border-gray-200 bg-white p-3 text-sm">
+                    <div className="border-l-2 border-blue-300 bg-blue-50/60 p-3 leading-relaxed text-gray-700">
+                        <MarkdownView
+                            content={quiz.comment}
+                            className="bg-transparent!"
+                        />
+                    </div>
+                </div>
+            )}
+
+            <div className="flex-1 space-y-4 p-4">
+                {quiz.questions.map((q) => {
+                    const result = resultMap.get(q.index) ?? null
+                    const answer = quiz.answers?.[q.index - 1] ?? ''
+                    return (
+                        <QuizQuestionItem
+                            key={q.index}
+                            question={q}
+                            result={result}
+                            answer={answer}
+                            isReadOnly={true}
+                            onAnswerChange={() => undefined}
+                        />
+                    )
+                })}
+            </div>
         </div>
     )
 }
@@ -534,7 +829,7 @@ function ObjectiveAnswer({
                         <span>
                             <span>答：</span>
                             <span className="font-medium">
-                                {formatObjectiveAnswer(question, answer)}
+                                {formatAnswerText(question.options ?? [], answer)}
                             </span>
                             {result && (
                                 <span className="shrink-0 font-semibold">
@@ -685,30 +980,4 @@ function ScoreBadge({ score }: { score: number | null }) {
 function formatScore(score: number): string {
     const safe = Number.isFinite(score) ? score : 0
     return Number.isInteger(safe) ? String(safe) : safe.toFixed(1)
-}
-
-// 剥离选项文本自带的字母序号前缀（AI 出题可能返回 "A. 选项" 这类带前缀文本，
-// 前端渲染时已追加 {letter}. 前缀，不剥离会显示成 "A.A. 选项" 的重复序号）
-function stripOptionPrefix(opt: string): string {
-    return opt.replace(/^[A-Za-z]\.\s*/, '').trim()
-}
-
-// 只读态「答：」展示：把答案字母编码映射为可读选项文本（如 "A,C" -> "A. 选项1；C. 选项2"），
-// 避免直接显示 "A,C" 与选项列表的字母序号语义重复
-function formatObjectiveAnswer(
-    question: StudynotesQuizQuestion,
-    answer: string,
-): string {
-    const letters = decodeMultiSelection(answer)
-    if (letters.length === 0) {
-        return '（未作答）'
-    }
-    const options = question.options ?? []
-    return letters
-        .map((letter) => {
-            const idx = letter.charCodeAt(0) - 65
-            const text = options[idx]
-            return text ? `${letter}. ${stripOptionPrefix(text)}` : letter
-        })
-        .join('；')
 }

@@ -3,7 +3,7 @@
 import { toPng } from 'html-to-image'
 import { ExternalLink, ChevronDown } from 'lucide-react'
 import { useState, useCallback, useEffect, type ReactNode } from 'react'
-import { pointsApi, quotesApi, imagesApi } from '@apps/utils/api'
+import { pointsApi, quotesApi, imagesApi } from '@apps/services'
 import { formatNumber, formatErrorMessage } from '@apps/utils/client'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'

@@ -7,7 +7,7 @@ import {
     useRef,
     useState,
 } from 'react'
-import { studynotesApi } from '@apps/utils/api'
+import { studynotesApi } from '@apps/services'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'

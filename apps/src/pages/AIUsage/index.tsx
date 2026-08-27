@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { aiUsageApi } from '@apps/utils/api'
+import { aiUsageApi } from '@apps/services'
 import { Loading } from '@components/Loading'
 import { AISummaryCards } from './AISummaryCards'
 import { AISummaryTable } from './AISummaryTable'

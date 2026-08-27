@@ -1,10 +1,16 @@
 'use client'
-
+/**
+ * 学习中心页面模块：组织课程列表与预习/心得/测验/分享等弹窗编辑器，
+ * 并提供全局错题本入口（跨课程聚合查看所有测验错题）。
+ * 复用约定：列表数据复用 useLessons；弹窗组件按职责拆分为独立编辑器组件。
+ * 关键约束：打开测验弹窗时使用列表最新数据回填，避免测验完成后操作列状态陈旧。
+ */
 import { useCallback, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { lessonsApi, studynotesApi } from '@apps/utils/api'
+import { lessonsApi, studynotesApi } from '@apps/services'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
+import { WrongBookModal } from './components/WrongBookModal'
 import { useLessons } from './hooks/useLessons'
 import { LessonModalEditor } from './LessonModalEditor'
 import { LessonsListTable } from './LessonsListTable'
@@ -42,6 +48,7 @@ export const Studynotes: FC = () => {
     const [quizLesson, setQuizLesson] = useState<StudyLessonWithStatus | null>(
         null,
     )
+    const [showWrongBook, setShowWrongBook] = useState(false)
     const [shareCard, setShareCard] = useState<StudynotesItem | null>(null)
     const [deleteTarget, setDeleteTarget] =
         useState<StudyLessonWithStatus | null>(null)
@@ -138,11 +145,18 @@ export const Studynotes: FC = () => {
         <div className="space-y-6">
             <div className="flex items-center justify-between">
                 <h2>学习中心</h2>
-                <button
-                    onClick={() => setShowCreate(true)}
-                    className="btn btn-primary">
-                    添加课程
-                </button>
+                <div className="flex items-center gap-3">
+                    <button
+                        onClick={() => setShowWrongBook(true)}
+                        className="btn btn-outline bg-white">
+                        错题本
+                    </button>
+                    <button
+                        onClick={() => setShowCreate(true)}
+                        className="btn btn-primary">
+                        添加课程
+                    </button>
+                </div>
             </div>
 
             <StudynotesSubjectFilter
@@ -217,6 +231,11 @@ export const Studynotes: FC = () => {
                 open={shareCard != null}
                 card={shareCard}
                 onCancel={() => setShareCard(null)}
+            />
+
+            <WrongBookModal
+                open={showWrongBook}
+                onClose={() => setShowWrongBook(false)}
             />
 
             <Modal

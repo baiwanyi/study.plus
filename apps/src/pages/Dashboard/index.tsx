@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useMemo } from 'react'
-import { tasksApi, pointsApi } from '@apps/utils/api'
+import { tasksApi, pointsApi } from '@apps/services'
 import { getCurrentMonth } from '@apps/utils/client'
 import { Loading } from '@components/Loading'
 import { WidgetStats } from './WidgetStats'

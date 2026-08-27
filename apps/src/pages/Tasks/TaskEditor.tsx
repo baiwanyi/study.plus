@@ -5,7 +5,7 @@ import { Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import mermaid from 'mermaid'
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'
 import '@apps/styles/markdown-editor.css'
-import { tasksApi, systemAPI } from '@apps/utils/api'
+import { tasksApi, systemAPI } from '@apps/services'
 import {
     taskTypeLabels,
     taskTypeColors,

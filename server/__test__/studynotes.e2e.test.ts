@@ -27,11 +27,11 @@ describe('全链路：学习管理 → AI 评估 → 测验 → 批改', () => {
     })
 
     it('创建心得后可评估（满分门槛通过）并生成测验、提交批改', async () => {
-        // 1. 创建学习管理
+        // 1. 创建学习管理（RESTful 创建语义返回 201）
         const createRes = await api()
             .post('/api/study')
             .send(makeStudyNote({ lessonId }))
-        expect(createRes.status).toBe(200)
+        expect(createRes.status).toBe(201)
         const cardId = createRes.body.id
         expect(cardId).toBeDefined()
 

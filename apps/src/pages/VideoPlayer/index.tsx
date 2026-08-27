@@ -21,7 +21,7 @@ import {
 } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
-import { videosApi } from '@apps/utils/api'
+import { videosApi } from '@apps/services'
 import { isAdmin } from '@apps/utils/client'
 import { Loading } from '@components/Loading'
 import { useSnackbar } from '@components/Snackbar'

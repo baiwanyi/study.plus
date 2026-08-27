@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef } from 'react'
-import { weeklyApi } from '@apps/utils/api'
+import { weeklyApi } from '@apps/services'
 import { useSnackbar } from '@components/Snackbar'
 import type { WeeklyReport } from '@shared/types'
 import type { WeeklyReportContent } from '@shared/weekly'

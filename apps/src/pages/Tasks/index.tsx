@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect, useCallback } from 'react'
-import { tasksApi } from '@apps/utils/api'
+import { tasksApi } from '@apps/services'
 import { formatErrorMessage, taskTypeDefaultTitles } from '@apps/utils/client'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'

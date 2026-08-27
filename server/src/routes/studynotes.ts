@@ -1,3 +1,11 @@
+/**
+ * 学习管理（Studynotes）路由模块：暴露 /study 前缀下的心得 CRUD、AI 评估、
+ * 测验生成/提交/批改、历史测验与错题本（单课程/全局）等 RESTful 端点。
+ * 复用约定：入参统一经 parsePosInt 校验（非法返回 400）；业务逻辑全部下沉 services 层；
+ * AI 类端点挂 aiLimiter 限流防刷。
+ * 关键约束：错误响应不暴露内部细节（可能含 SQL/表名）；带路径参数的测验详情路由
+ * 必须注册在 /history、/wrong 等字面量子路径之后，避免被动态段吞掉。
+ */
 import { Router } from 'express'
 import { parsePosInt } from '../utils/param'
 import { aiLimiter } from '../utils/rate-limit'
@@ -7,7 +15,11 @@ import {
     evaluateStudyNote,
     generateQuiz,
     getLatestQuiz,
+    getQuizDetail,
+    getQuizHistory,
     getStudyNote,
+    getWrongQuestions,
+    getWrongQuestionsAll,
     gradeQuiz,
     listStudyNotes,
     saveQuizAnswers,
@@ -102,7 +114,8 @@ studynotesRouter.post('/', async (req: Request, res: Response) => {
             lessonId,
         })
 
-        res.json(note)
+        // RESTful 创建语义：新建资源返回 201 Created
+        res.status(201).json(note)
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('Error creating studyNotes card:', message)
@@ -143,7 +156,11 @@ studynotesRouter.put('/:id', async (req: Request, res: Response) => {
                 typeof memoryHook !== 'string' &&
                 memoryHook !== null) ||
             (lessonId !== undefined &&
-                (typeof lessonId !== 'number' || !Number.isInteger(lessonId)))
+                (typeof lessonId !== 'number' ||
+                    !Number.isInteger(lessonId) ||
+                    // 与 POST 校验一致：非正整数在本层 400 拦截，
+                    // 避免穿透 service 后因 lesson 不存在抛错变 500
+                    lessonId <= 0))
         ) {
             res.status(400).json({ error: '字段类型错误或不能为空' })
             return
@@ -224,7 +241,7 @@ studynotesRouter.post(
     },
 )
 
-// 生成专属测验：校验评估 ≥80 后，出 10 题并入库（submittedAt 为 null）
+// 生成专属测验：校验评估 ≥80 后，出 20 题并入库（submittedAt 为 null）
 studynotesRouter.post(
     '/:id/quiz',
     aiLimiter,
@@ -288,7 +305,8 @@ studynotesRouter.patch(
             const message =
                 error instanceof Error ? error.message : String(error)
             console.error('Error saving quiz answers:', message)
-            if (message.includes('该测验已提交')) {
+            // 匹配文本须与 service 抛出的锁定错误一致（'该测验已批改，无法修改答案'）
+            if (message.includes('该测验已批改')) {
                 res.status(409).json({ error: message })
                 return
             }
@@ -328,8 +346,9 @@ studynotesRouter.post(
             const message =
                 error instanceof Error ? error.message : String(error)
             console.error('Error submitting studyNotes quiz:', message)
-            // 不向客户端暴露内部错误详情（可能含 SQL/表名），原始信息仅记日志
-            if (message.includes('该测验已提交')) {
+            // 不向客户端暴露内部错误详情（可能含 SQL/表名），原始信息仅记日志；
+            // 匹配文本须与 service 抛出的锁定错误一致（'该测验已批改，无法修改答案'）
+            if (message.includes('该测验已批改')) {
                 res.status(409).json({ error: message })
                 return
             }
@@ -408,6 +427,112 @@ studynotesRouter.get(
                 error instanceof Error ? error.message : String(error)
             console.error('Error getting latest quiz:', message)
             res.status(500).json({ error: '获取测验记录失败' })
+        }
+    },
+)
+
+// 全局错题本：跨课程聚合全部已批改测验的错题，支持分页/搜索/按科目筛选。
+// 注意必须注册在 /:id/quiz/:quizId 之前，避免字面量 quiz 被动态 :id 吞掉
+studynotesRouter.get('/quiz/wrong-all', async (req: Request, res: Response) => {
+    try {
+        const page = parsePosInt(req.query.page)
+        const pageSize = parsePosInt(req.query.pageSize)
+        const subject =
+            typeof req.query.subject === 'string' && req.query.subject.trim()
+                ? req.query.subject.trim()
+                : undefined
+        const search =
+            typeof req.query.search === 'string'
+                ? req.query.search.trim()
+                : undefined
+        const result = await getWrongQuestionsAll({
+            page: page === -1 ? 1 : page,
+            pageSize: pageSize === -1 ? 20 : Math.min(pageSize, 100),
+            ...(subject ? { subject } : {}),
+            ...(search ? { search } : {}),
+        })
+        res.json(result)
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('Error getting wrong questions (all):', message)
+        res.status(500).json({ error: '获取错题本失败' })
+    }
+})
+
+// 该课程历史测验列表（仅已提交），按提交先后倒序
+studynotesRouter.get(
+    '/:id/quiz/history',
+    async (req: Request, res: Response) => {
+        try {
+            const id = parsePosInt(req.params.id)
+            if (id === -1) {
+                res.status(400).json({ error: '无效的卡片 ID' })
+                return
+            }
+
+            const result = await getQuizHistory(id)
+            if (!result) {
+                res.status(404).json({ error: '学习管理未找到' })
+                return
+            }
+
+            res.json(result)
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            console.error('Error getting quiz history:', message)
+            res.status(500).json({ error: '获取历史测验失败' })
+        }
+    },
+)
+
+// 该课程错题聚合（仅已提交测验，按题干去重保留最近一次答错）
+studynotesRouter.get('/:id/quiz/wrong', async (req: Request, res: Response) => {
+    try {
+        const id = parsePosInt(req.params.id)
+        if (id === -1) {
+            res.status(400).json({ error: '无效的卡片 ID' })
+            return
+        }
+
+        const result = await getWrongQuestions(id)
+        if (!result) {
+            res.status(404).json({ error: '学习管理未找到' })
+            return
+        }
+
+        res.json(result)
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('Error getting wrong questions:', message)
+        res.status(500).json({ error: '获取错题本失败' })
+    }
+})
+
+// 指定测验详情（历史回看），仅允许已提交记录
+studynotesRouter.get(
+    '/:id/quiz/:quizId',
+    async (req: Request, res: Response) => {
+        try {
+            const id = parsePosInt(req.params.id)
+            const quizId = parsePosInt(req.params.quizId)
+            if (id === -1 || quizId === -1) {
+                res.status(400).json({ error: '无效的参数' })
+                return
+            }
+
+            const result = await getQuizDetail(id, quizId)
+            if (!result) {
+                res.status(404).json({ error: '测验记录未找到' })
+                return
+            }
+
+            res.json(result)
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            console.error('Error getting quiz detail:', message)
+            res.status(500).json({ error: '获取测验详情失败' })
         }
     },
 )

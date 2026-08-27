@@ -1,8 +1,22 @@
 'use client'
-
+/**
+ * 学习管理测验前端状态与查询模块：核心 hook useStudynotesQuiz 以 useReducer 管理作答/提交/批改
+ * 状态机并承担自动保存；另提供历史测验、测验详情、错题本（单课程/全局）等 TanStack Query 查询 hooks。
+ * 复用约定：服务端数据交互统一经 studynotesApi；查询 key 遵循 [resource, ...params, kind] 约定。
+ * 关键约束：自动保存以服务端快照比对去重，批改后锁定答案；查询 hooks 由调用方控制 enabled 避免无谓请求。
+ */
+import { useQuery, type UseQueryResult } from '@tanstack/react-query'
 import { useCallback, useEffect, useReducer, useRef } from 'react'
-import { studynotesApi } from '../../../utils/api/studynotes'
-import type { StudynotesQuiz } from '@shared/types'
+import {
+    studynotesApi,
+    type WrongQuestionsAllQuery,
+} from '../../../services/studynotes'
+import type {
+    StudynotesQuiz,
+    StudynotesQuizHistoryItem,
+    WrongQuestion,
+    WrongQuestionPage,
+} from '@shared/types'
 
 const QUIZ_SIZE = 20
 const AUTO_SAVE_INTERVAL_MS = 30_000
@@ -61,7 +75,9 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
                     : 'idle',
             }
         case 'GENERATE_START':
-            return { ...state, status: 'generating', errorMsg: '' }
+            // 重新生成时立即清空旧题目与答案：左侧切到「正在生成题目…」空态 loading，
+            // 避免旧内容与新题混淆；quiz 为空时自动保存天然跳过，不会误写库
+            return { ...initialState, status: 'generating', errorMsg: '' }
         case 'GENERATE_SUCCESS':
             return {
                 ...state,
@@ -287,4 +303,76 @@ export function useStudynotesQuiz(
         grade,
         submit,
     }
+}
+
+/** 历史测验摘要列表（仅已提交，倒序）；enabled 由调用方按面板展开状态控制 */
+export function useStudynotesQuizHistory(
+    cardId: number | null,
+    enabled: boolean,
+): UseQueryResult<StudynotesQuizHistoryItem[]> {
+    return useQuery<StudynotesQuizHistoryItem[]>({
+        queryKey: ['studynotes-quiz', cardId, 'history'],
+        queryFn: async () => {
+            if (cardId == null) {
+                throw new Error('无效的卡片 ID')
+            }
+            const { history } = await studynotesApi.getQuizHistory(cardId)
+            return history
+        },
+        enabled: enabled && cardId != null,
+    })
+}
+
+/** 指定历史测验的完整内容（只读回看）；quizId 为 null 时不发起请求 */
+export function useStudynotesQuizDetail(
+    cardId: number | null,
+    quizId: number | null,
+): UseQueryResult<StudynotesQuiz> {
+    return useQuery<StudynotesQuiz>({
+        queryKey: ['studynotes-quiz', cardId, quizId, 'detail'],
+        queryFn: async () => {
+            if (cardId == null || quizId == null) {
+                throw new Error('无效的记录 ID')
+            }
+            const { quiz } = await studynotesApi.getQuizDetail(cardId, quizId)
+            return quiz
+        },
+        enabled: cardId != null && quizId != null,
+    })
+}
+
+/** 单课程错题聚合列表（按题干去重，保留最近一次答错） */
+export function useStudynotesQuizWrong(
+    cardId: number | null,
+    enabled: boolean,
+): UseQueryResult<WrongQuestion[]> {
+    return useQuery<WrongQuestion[]>({
+        queryKey: ['studynotes-quiz', cardId, 'wrong'],
+        queryFn: async () => {
+            if (cardId == null) {
+                throw new Error('无效的卡片 ID')
+            }
+            const { wrongQuestions } = await studynotesApi.getQuizWrong(cardId)
+            return wrongQuestions
+        },
+        enabled: enabled && cardId != null,
+    })
+}
+
+/** 全局错题本分页查询；params 为 null 时不发起请求（弹窗未打开） */
+export function useStudynotesQuizWrongAll(
+    params: WrongQuestionsAllQuery | null,
+): UseQueryResult<WrongQuestionPage> {
+    return useQuery<WrongQuestionPage>({
+        queryKey: ['studynotes-quiz', 'wrong-all', params],
+        queryFn: async () => {
+            if (!params) {
+                throw new Error('缺少查询参数')
+            }
+            return studynotesApi.getQuizWrongAll(params)
+        },
+        enabled: params !== null,
+        // 翻页/筛选时保留上一页数据，避免列表闪烁回空
+        placeholderData: (previous) => previous,
+    })
 }

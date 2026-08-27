@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react'
 import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
-import { exchangesApi, pointsApi, optionsAPI } from '@apps/utils/api'
+import { exchangesApi, pointsApi, optionsAPI } from '@apps/services'
 import { formatErrorMessage, isAdmin } from '@apps/utils/client'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'

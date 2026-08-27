@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/utils/api'
+import { optionsAPI } from '@apps/services'
 import { formatErrorMessage } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
 import {

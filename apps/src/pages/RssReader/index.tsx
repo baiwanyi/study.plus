@@ -3,10 +3,10 @@
 import { ArrowLeft, ExternalLink, Calendar, Newspaper } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { rssApi } from '@apps/utils/api'
+import { rssApi } from '@apps/services'
 import { Loading } from '@components/Loading'
 import { Tabs } from '@components/Tabs'
-import type { RssFeedItem, RssPostDetail } from '@apps/utils/api'
+import type { RssFeedItem, RssPostDetail } from '@apps/services'
 import { sanitizeHtml } from '@apps/utils/sanitize'
 
 const CATEGORIES = [

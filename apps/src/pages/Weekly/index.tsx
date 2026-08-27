@@ -2,7 +2,7 @@
 
 import { Plus } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { weeklyApi, optionsAPI } from '@apps/utils/api'
+import { weeklyApi, optionsAPI } from '@apps/services'
 import { formatErrorMessage } from '@apps/utils/client'
 import { useSnackbar } from '@components/Snackbar'
 import { Tabs } from '@components/Tabs'

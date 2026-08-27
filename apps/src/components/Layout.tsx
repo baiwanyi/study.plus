@@ -13,7 +13,7 @@ import {
     Rss,
     NotebookPen,
 } from 'lucide-react'
-import { quotesApi } from '@apps/utils/api'
+import { quotesApi } from '@apps/services'
 import { defaultQuotes } from '@shared/constants'
 import { isAdmin } from '@apps/utils/client'
 

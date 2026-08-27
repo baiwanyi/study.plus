@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
-import { optionsAPI } from '@apps/utils/api'
+import { optionsAPI } from '@apps/services'
 import { DataTable, type Column } from '@components/DataTable'
 import { defaultExchangeRuleRemarks } from '@shared/constants'
 import type { ExchangeItemRule } from '@shared/types'

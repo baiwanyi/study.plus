@@ -2,7 +2,7 @@
 
 import { Loader2, Check, Plus, Trash2 } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { tasksApi, systemAPI } from '@apps/utils/api'
+import { tasksApi, systemAPI } from '@apps/services'
 import {
     taskTypeColors,
     taskTypeLabels,

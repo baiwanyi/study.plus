@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { optionsAPI } from '@apps/utils/api'
+import { optionsAPI } from '@apps/services'
 import { parseExchangeData } from '@apps/pages/Options/OptionsRulesExchange'
 import type { MonthSummary, ExchangeItemRule } from '@shared/types'
 

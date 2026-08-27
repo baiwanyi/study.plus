@@ -1,3 +1,8 @@
+/**
+ * 前后端共享的类型与常量定义模块：集中声明 API 请求/响应结构、领域模型与展示标签。
+ * 复用约定：前后端统一通过 @shared/types 引入，禁止各自重复声明同一结构。
+ * 关键约束：字段语义直接影响数据库映射与 API 契约，变更须同步服务端 DTO 与前端消费方。
+ */
 import type { WeeklyReportContent } from './weekly'
 
 export type TaskType = 'composition' | 'mindmap' | 'notes'
@@ -73,6 +78,40 @@ export interface StudynotesQuiz {
     suggestions: string[]
     generatedAt: string
     submittedAt: string | null
+}
+
+/** 历史测验摘要项：仅含已提交记录，供历史测验列表展示 */
+export interface StudynotesQuizHistoryItem {
+    id: number
+    score: number | null
+    correctCount: number | null
+    submittedAt: string
+    generatedAt: string
+}
+
+/** 错题条目：由已批改测验中答错的题目聚合而成，options 供客观题答案还原为可读文本 */
+export interface WrongQuestion {
+    question: string
+    type: StudynotesQuizQuestionType
+    /** 客观题选项（简答为空数组） */
+    options: string[]
+    studentAnswer: string
+    correctAnswer: string
+    explanation: string
+    /** 答错所在测验的提交时间 */
+    submittedAt: string
+    /** 所属课程 ID（study_quiz.study_id，即课程 lessonId） */
+    studyId: number
+    /** 所属课程主题（全局错题本展示来源） */
+    studyTopic: string
+}
+
+/** 全局错题本分页响应 */
+export interface WrongQuestionPage {
+    items: WrongQuestion[]
+    total: number
+    page: number
+    pageSize: number
 }
 
 export interface StudynotesEvaluation {

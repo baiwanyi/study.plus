@@ -3,7 +3,7 @@
 import { ChevronLeft } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { videosApi } from '@apps/utils/api'
+import { videosApi } from '@apps/services'
 import { formatDate } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
 import { Loading } from '@components/Loading'

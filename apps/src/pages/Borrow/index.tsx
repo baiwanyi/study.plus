@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { advancesApi } from '@apps/utils/api'
+import { advancesApi } from '@apps/services'
 import { isAdmin, formatErrorMessage } from '@apps/utils/client'
 import { useSnackbar } from '@components/Snackbar'
 import { Loading } from '@components/Loading'

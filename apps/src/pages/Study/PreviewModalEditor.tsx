@@ -7,7 +7,7 @@ import {
     useRef,
     useState,
 } from 'react'
-import { lessonsApi } from '@apps/utils/api'
+import { lessonsApi } from '@apps/services'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { previewStudyQuestions } from '@shared/constants'

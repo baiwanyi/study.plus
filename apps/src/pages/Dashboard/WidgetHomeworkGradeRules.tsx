@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { parseHomeworkData } from '@apps/pages/Options/OptionsRulesHomework'
-import { optionsAPI } from '@apps/utils/api'
+import { optionsAPI } from '@apps/services'
 import { pointColors, pointSymbol } from '@apps/utils/client'
 import { DataTable, type Column } from '@components/DataTable'
 import type { HomeworkGradeRule } from '@shared/types'
