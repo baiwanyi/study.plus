@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { CheckCircle2, Lock } from 'lucide-react'
+import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, Lock } from 'lucide-react'
 import { isAdmin, paginate, getPageSize } from '@apps/utils/client'
 import { DataTable } from '@components/DataTable'
 import { Loading } from '@components/Loading'
@@ -88,6 +88,31 @@ function renderQuizStatus(lesson: StudyLessonWithStatus) {
     )
 }
 
+// 测验列排序方向：null 表示未排序（保持服务端返回顺序）
+type QuizSortDir = 'asc' | 'desc'
+
+// 表头点击的三态循环：无排序 → 降序（高分在前）→ 升序（低分在前）→ 无排序
+function nextQuizSortDir(dir: QuizSortDir | null): QuizSortDir | null {
+    if (dir === null) {
+        return 'desc'
+    }
+    if (dir === 'desc') {
+        return 'asc'
+    }
+    return null
+}
+
+// 排序方向指示图标：激活方向显示单箭头，未排序显示灰色双箭头提示可点击
+function renderSortIcon(dir: QuizSortDir | null) {
+    if (dir === 'desc') {
+        return <ArrowDown className="size-3.5" />
+    }
+    if (dir === 'asc') {
+        return <ArrowUp className="size-3.5" />
+    }
+    return <ArrowUpDown className="size-3.5 text-gray-400" />
+}
+
 export const LessonsListTable: FC<LessonsListTableProps> = ({
     loading,
     hasError,
@@ -101,13 +126,37 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
 }) => {
     const showAdminActions = isAdmin()
     const [page, setPage] = useState(1)
+    const [quizSortDir, setQuizSortDir] = useState<QuizSortDir | null>(null)
     const pageSize = getPageSize()
     // 钳制页码到有效范围，避免数据变化后停留在不存在的页导致空白
     const totalPages = Math.max(1, Math.ceil(lessons.length / pageSize))
     const currentPage = Math.min(page, totalPages)
+
+    const handleToggleQuizSort = () => {
+        // 方向切换改变数据顺序，回第一页让用户立即看到头部数据
+        setPage(1)
+        setQuizSortDir(nextQuizSortDir)
+    }
+
+    // 排序作用于全量数据再分页；无成绩的课程两种方向下恒排末尾
+    const sortedLessons = useMemo(() => {
+        if (quizSortDir === null) {
+            return lessons
+        }
+        const isDesc = quizSortDir === 'desc'
+        return [...lessons].sort((a, b) => {
+            if (a.quizScore == null && b.quizScore == null) return 0
+            if (a.quizScore == null) return 1
+            if (b.quizScore == null) return -1
+            return isDesc
+                ? b.quizScore - a.quizScore
+                : a.quizScore - b.quizScore
+        })
+    }, [lessons, quizSortDir])
+
     const pagedLessons = useMemo(
-        () => paginate(lessons, currentPage, pageSize),
-        [lessons, currentPage, pageSize],
+        () => paginate(sortedLessons, currentPage, pageSize),
+        [sortedLessons, currentPage, pageSize],
     )
     const pagination = useMemo(
         () => ({
@@ -156,7 +205,16 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
         },
         {
             key: 'quiz',
-            header: '测验',
+            header: (
+                <button
+                    type="button"
+                    onClick={handleToggleQuizSort}
+                    className="flex items-center gap-1 hover:text-primary"
+                    title="点击按测验成绩排序">
+                    测验
+                    {renderSortIcon(quizSortDir)}
+                </button>
+            ),
             render: (record) => renderQuizStatus(record),
         },
         {
