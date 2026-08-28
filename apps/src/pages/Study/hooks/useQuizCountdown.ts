@@ -1,16 +1,17 @@
 'use client'
 /**
- * 测验倒计时 Hook：完整封装测验 45 分钟限时的计时、展示、超时通知与剩余快照读取。
- * 职责：激活时以 quiz.remainingSeconds 快照（无快照回退满额）锚定截止时刻、每秒 tick、
- * 派生剩余展示文案与紧急态，并在「未超时 → 超时」跃迁时触发一次 onTimeUp 业务回调；
- * 同时经 getRemainingSeconds 暴露当前剩余秒数，供调用方在关闭弹窗时冻结入库。
- * 复用约定：quiz 类型来自 @shared/types；限时口径复用 @shared/constants 的
- * STUDY_QUIZ_TIME_LIMIT_SECONDS；展示格式化与超时判定不对外暴露。
- * 关键约束：关闭弹窗期间时间冻结（非绝对截止），重开由调用方重新拉取快照后锚定续算；
- * onTimeUp 每个 deadline 至多触发一次；激活后首帧 remainingText 为 null（tick 前）。
+ * 测验倒计时 Hook：封装 45 分钟限时的截止时刻裁决、每秒 tick、展示文案与超时通知。
+ * 职责：以服务端裁决的 quiz.deadlineAt 绝对时刻为唯一真源锚定倒计时（多端共用同一真源，
+ * 读数必然一致）、冻结态定格展示、每秒 tick、派生剩余展示文案与紧急态，并在「未超时 → 超时」
+ * 跃迁时触发一次 onTimeUp 业务回调；同时经 getRemainingSeconds 暴露当前剩余秒数供冻结入库。
+ * 复用约定：quiz 类型来自 @shared/types；开始计时经 studynotesApi.startQuizCountdown 由服务端
+ * 幂等裁决；展示格式化与超时判定不对外暴露。
+ * 关键约束：前端一律不得自行创造截止时刻（否则多端各自起算必然不一致）；无 deadlineAt 且非
+ * 作答端时返回 null（不显示倒计时）；冻结态不 tick 仅定格展示；onTimeUp 每个 deadline 至多
+ * 触发一次；激活后首帧 remainingText 为 null（tick 前）。
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { STUDY_QUIZ_TIME_LIMIT_SECONDS } from '@shared/constants'
+import { studynotesApi } from '../../../services/studynotes'
 import type { StudynotesQuiz } from '@shared/types'
 
 // 剩余时间不足 5 分钟标红提醒
@@ -43,33 +44,103 @@ export interface QuizCountdownState {
     remainingText: string | null
     /** 红色脉冲提醒（剩余 ≤5 分钟或已超时） */
     isTimeUrgent: boolean
+    /** 截止时刻是否已就绪（供调用方在冻结态定格展示前判断） */
+    isDeadlineReady: boolean
 }
 
 export function useQuizCountdown(options: {
-    /** 当前测验：已提交/已批改视为无倒计时；remainingSeconds 为冻结快照 */
+    /** 当前测验：已提交/已批改视为无倒计时；deadlineAt 为服务端裁决的绝对截止时刻 */
     quiz: StudynotesQuiz | null
-    /** 是否激活计时（调用方组合 open && 作答态） */
+    /** 计时是否激活（作答态为 true；冻结只读态为 false，仅定格展示） */
     active: boolean
+    /** 卡片 ID：作答端裁决截止时刻时用于拼接待请求路径 */
+    cardId: number | null
+    /** 是否为作答端：仅作答端可发起「开始计时」裁决，只读查看端（家长端）永不发起 */
+    canStartCountdown: boolean
     /** 「未超时 → 超时」跃迁时触发一次（如自动提交并批改的业务动作） */
     onTimeUp?: () => void
 }): QuizCountdownState & {
-    /** 当前剩余秒数（未激活/首帧前为 null），供关闭弹窗时冻结入库 */
+    /** 当前剩余秒数（未就绪/首帧前为 null），供关闭弹窗时冻结入库 */
     getRemainingSeconds: () => number | null
 } {
-    const { quiz, active, onTimeUp } = options
+    const { quiz, active, cardId, canStartCountdown, onTimeUp } = options
 
-    // 激活时以剩余秒数快照锚定截止时刻：关闭弹窗期间时间冻结，
-    // 无快照（历史存量数据）回退满额限时；quiz 变化（重开恢复现场）时重锚定
+    // 绝对截止时刻：一律来自服务端裁决，前端不再自行 Date.now() + 快照 起算，
+    // 否则每个端都会造出一个互不相干的 deadline
     const [deadlineAt, setDeadlineAt] = useState<number | null>(null)
+    // 已发起过裁决的测验 ID：StrictMode 双挂载、quiz 抖动、effect 重跑都只发一次请求
+    const startedQuizIdRef = useRef<number | null>(null)
+
     useEffect(() => {
-        if (!quiz || quiz.submittedAt || quiz.results || !active) {
+        if (!quiz || quiz.submittedAt || quiz.results) {
             setDeadlineAt(null)
+            startedQuizIdRef.current = null
             return
         }
-        const snapshotSeconds =
-            quiz.remainingSeconds ?? STUDY_QUIZ_TIME_LIMIT_SECONDS
-        setDeadlineAt(Date.now() + snapshotSeconds * 1000)
-    }, [quiz, active])
+
+        // 计时未裁决：仅作答端可发起；只读端（家长端）保持 null 不显示，
+        // 避免查看行为替作答端起算倒计时
+        if (quiz.deadlineAt === null) {
+            if (!canStartCountdown || !cardId || !active) {
+                setDeadlineAt(null)
+                return
+            }
+            if (startedQuizIdRef.current === quiz.id) return
+            startedQuizIdRef.current = quiz.id
+            let cancelled = false
+            void studynotesApi
+                .startQuizCountdown(cardId, quiz.id, false)
+                .then(({ deadlineAt: started }) => {
+                    if (cancelled) return
+                    setDeadlineAt(started)
+                })
+                .catch((error: unknown) => {
+                    if (cancelled) return
+                    // 裁决失败仅告警：不阻断作答，倒计时退化为不显示
+                    const message =
+                        error instanceof Error ? error.message : String(error)
+                    console.warn('开始测验计时失败：', message)
+                    startedQuizIdRef.current = null
+                })
+            return () => {
+                cancelled = true
+            }
+        }
+
+        // 已有截止时刻：分两条路径，且只走一次（startedQuizIdRef 去重）。
+        // 关键：进入作答态且本地持有冻结剩余量时（点「继续答题」从冻结恢复），
+        // 必须显式续算——deadlineAt 是绝对时刻，期间流逝的时间已被算入，
+        // 直接复用会让关闭弹窗的时间白白消耗考试时长，故以 resume=true 重新锚定
+        const shouldResume =
+            active &&
+            quiz.remainingSeconds !== null &&
+            startedQuizIdRef.current === null
+        if (shouldResume && cardId && canStartCountdown) {
+            startedQuizIdRef.current = quiz.id
+            let cancelled = false
+            void studynotesApi
+                .startQuizCountdown(cardId, quiz.id, true)
+                .then(({ deadlineAt: started }) => {
+                    if (cancelled) return
+                    setDeadlineAt(started)
+                })
+                .catch((error: unknown) => {
+                    if (cancelled) return
+                    // 续算失败回退既有 deadline：宁可按绝对时刻走，也不让倒计时消失
+                    const message =
+                        error instanceof Error ? error.message : String(error)
+                    console.warn('续算测验计时失败：', message)
+                    setDeadlineAt(quiz.deadlineAt)
+                })
+            return () => {
+                cancelled = true
+            }
+        }
+
+        // 其余情况（只读端查看、或续算已完成）锚定服务端真源渲染
+        startedQuizIdRef.current = quiz.id
+        setDeadlineAt(quiz.deadlineAt)
+    }, [quiz, active, cardId, canStartCountdown])
 
     // null = 未计时或激活后首帧（首个 tick 前），避免误显示「时间已到」
     const [remainingMs, setRemainingMs] = useState<number | null>(null)
@@ -84,11 +155,27 @@ export function useQuizCountdown(options: {
     onTimeUpRef.current = onTimeUp
 
     useEffect(() => {
-        if (deadlineAt === null || !active) {
+        // 冻结态（未激活）：以落库的剩余量定格展示，绝不按绝对时刻回放。
+        // deadlineAt 是绝对时刻，会随真实时间自然流逝——若在冻结态用它计算，
+        // 读数将持续递减直至「超时」，甚至误触发自动提交（只读端仅查看就替孩子交卷）。
+        // 故冻结态独立取 remainingSeconds 为定格基准，且不判定超时、不触发 onTimeUp。
+        if (!active) {
+            const frozenMs =
+                quiz?.remainingSeconds !== null &&
+                quiz?.remainingSeconds !== undefined
+                    ? quiz.remainingSeconds * 1000
+                    : null
+            remainingMsRef.current = frozenMs
+            setRemainingMs(frozenMs)
+            return
+        }
+
+        if (deadlineAt === null) {
             remainingMsRef.current = null
             setRemainingMs(null)
             return
         }
+
         const tick = () => {
             // 绝对时间计算：interval 漂移不影响准确性，后台节流后回前台立即恢复
             const remaining = deadlineAt - Date.now()
@@ -100,17 +187,24 @@ export function useQuizCountdown(options: {
                 onTimeUpRef.current?.()
             }
         }
+
         tick()
         const timer = setInterval(tick, 1000)
         return () => clearInterval(timer)
-    }, [deadlineAt, active])
+    }, [deadlineAt, active, quiz?.remainingSeconds])
 
     const isTimeUp =
         active &&
         deadlineAt !== null &&
         remainingMs !== null &&
         remainingMs <= 0
-    const remainingText = getRemainingText(remainingMs, isTimeUp)
+    // 冻结态不套用「时间已到」文案：此时定格的是待续算的剩余量（可能为 0），
+    // 显示「时间已到」会误导用户以为已自动提交，统一按 mm:ss 定格展示
+    const remainingText = active
+        ? getRemainingText(remainingMs, isTimeUp)
+        : remainingMs !== null
+          ? formatCountdown(remainingMs)
+          : null
     const isTimeUrgent =
         remainingMs !== null && remainingMs > 0
             ? remainingMs <= QUIZ_URGENT_MS
@@ -121,5 +215,10 @@ export function useQuizCountdown(options: {
         return Math.max(0, Math.ceil(remainingMsRef.current / 1000))
     }, [])
 
-    return { remainingText, isTimeUrgent, getRemainingSeconds }
+    return {
+        remainingText,
+        isTimeUrgent,
+        isDeadlineReady: deadlineAt !== null,
+        getRemainingSeconds,
+    }
 }

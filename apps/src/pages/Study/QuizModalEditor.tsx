@@ -41,6 +41,8 @@ type QuizStatus =
     | 'idle'
     | 'generating'
     | 'answering'
+    /** 冻结只读态：计时已裁决但本端未进入作答，题目只读且倒计时定格 */
+    | 'frozen'
     | 'grading'
     | 'graded'
     | 'error'
@@ -62,22 +64,25 @@ const initialSidePanelState: SidePanelState = {
     selectedQuizId: null,
 }
 
-type QuizConfirmAction = 'submit' | 'grade' | 'generate'
+type QuizConfirmAction = 'submit' | 'grade' | 'generate' | 'resume'
 
 // 确认栏文案按动作映射，避免渲染层嵌套三元
 const CONFIRM_LABELS: Record<QuizConfirmAction, string> = {
     submit: '提交答案',
     grade: '批改',
     generate: '重新测验',
+    resume: '继续答题',
 }
 
-// 按测验状态与视图解析确认栏动作：作答=提交答案、已提交未批改=批改、已批改=重新测验；
+// 按测验状态与视图解析确认栏动作：冻结只读=继续答题（续算倒计时并解锁作答）、
+// 作答=提交答案、已提交未批改=批改、已批改=重新测验；
 // 锁定/历史回看/错题本/空态视图返回 null（隐藏确认栏，空态由 EmptyState 自带按钮）
 function resolveConfirmAction(
     canQuiz: boolean,
     isViewingHistory: boolean,
     panel: SidePanelName,
     quiz: StudynotesQuiz | null,
+    status: QuizStatus,
 ): QuizConfirmAction | null {
     if (!canQuiz || isViewingHistory || panel === 'wrong') {
         return null
@@ -85,6 +90,8 @@ function resolveConfirmAction(
     if (!quiz) return null
     if (quiz.results) return 'generate'
     if (quiz.submittedAt) return 'grade'
+    // 冻结只读态优先于提交：计时已裁决但本端未进入作答时，先让用户显式恢复
+    if (status === 'frozen') return 'resume'
     return 'submit'
 }
 
@@ -137,6 +144,7 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         generate,
         grade,
         submit,
+        resume,
         saveRemainingSeconds,
     } = useStudynotesQuiz(
         // 弹窗关闭即卸载现场：重开时重新拉取服务端快照（含冻结的剩余秒数）恢复
@@ -157,8 +165,9 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
     )
 
     const handleClose = () => {
-        // 作答中关闭弹窗：冻结剩余秒数入库，二次打开时从快照续算；
-        // 非计时态（未开始/已提交/超时自动提交后）读数为 null，自动跳过
+        // 作答中关闭弹窗：冻结剩余秒数与截止时刻入库，二次打开进冻结只读态，
+        // 点「继续答题」后按冻结剩余量续算（关闭期间时间不流逝）；
+        // 冻结态未 tick 读数为上一周期值，非计时态（已提交/超时）为 null，自动跳过
         const remainingSeconds = getRemainingSeconds()
         if (remainingSeconds !== null) {
             void saveRemainingSeconds(remainingSeconds)
@@ -185,9 +194,15 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         isViewingHistory,
         sidePanel.panel,
         quiz,
+        status,
     )
 
     const handleConfirm = async () => {
+        if (confirmAction === 'resume') {
+            // 冻结只读 → 作答：倒计时由 useQuizCountdown 随 active 变 true 续算走动
+            resume()
+            return
+        }
         if (confirmAction === 'submit') {
             const ok = await submit()
             if (ok) {
@@ -204,13 +219,17 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         }
     }
 
-    // === 限时逻辑：完整封装于 useQuizCountdown（快照锚定/每秒 tick/超时通知） ===
+    // === 限时逻辑：完整封装于 useQuizCountdown（服务端裁决 deadline / 每秒 tick / 超时通知） ===
+    // 冻结态（frozen）传 active=false：仅定格展示冻结读数，不起计时器，
+    // 满足只读查看端「不倒计时」要求；作答态才激活 tick。
     // 不可直接调 grade：其防重条件要求 submittedAt 非空，作答中超时会被直接拒绝，
     // 故 onTimeUp 内须先 submit（标记已提交）再 grade
     const { remainingText, isTimeUrgent, getRemainingSeconds } =
         useQuizCountdown({
             quiz,
             active: open && status === 'answering',
+            cardId: open ? cardId : null,
+            canStartCountdown: canQuiz,
             onTimeUp: () => {
                 void (async () => {
                     const ok = await submit()
@@ -321,9 +340,10 @@ function QuizBody({
         return map
     }, [results])
 
-    // 仅「已有批改结果」或「批改进行中」展示只读答案区；
-    // 已提交未批改时保持可作答/可查看，批改后才切换为只读结果视图
-    const isReadOnly = hasResults || status === 'grading'
+    // 只读条件：已有批改结果、批改进行中，或冻结只读态（计时已裁决但本端未进入作答）。
+    // 已提交未批改时保持可作答/可查看，批改后才切换为只读结果视图。
+    // 冻结态只读可防止多端同时作答互相覆盖，也避免只读查看端误改答案
+    const isReadOnly = hasResults || status === 'grading' || status === 'frozen'
 
     // 作答 textarea 自适应高度：内容或状态变化后按 scrollHeight 调整，避免固定行数浪费空间/内部滚动
     const answerListRef = useRef<HTMLDivElement>(null)

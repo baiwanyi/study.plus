@@ -306,6 +306,9 @@ export const studyQuiz = sqliteTable(
         submittedAt: text('submitted_at'),
         // 未提交测验的剩余秒数快照：弹窗关闭时冻结写入，重开时续算；NULL 表示尚无快照
         remainingSeconds: integer('remaining_seconds'),
+        // 绝对截止时刻（Unix 毫秒）：多端共用的倒计时真源，首次开始作答时裁决落库；
+        // NULL 表示计时尚未开始（新测验或历史存量数据），前端只读端据此不显示倒计时
+        deadlineAt: integer('deadline_at'),
         createdAt: text('created_at')
             .notNull()
             .$defaultFn(() => new Date().toISOString()),

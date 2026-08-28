@@ -954,12 +954,16 @@ export async function migrate(): Promise<void> {
 
     await changeColumnToReal('study_quiz', 'score')
 
-    // 基于已存的 results_json 重新计算百分制成绩（保留一位小数），修正被取整的历史数据
+    // 基于已存的 results_json 重新计算百分制成绩（保留一位小数），修正被取整的历史数据。
+    // 口径与 gradeStudynotesQuiz 一致：results[].score 已是该题实得分（0~该题 points），
+    // 且题库 Σpoints 恒为 100（sanitizeQuizQuestions 兜底重分配），故总分 = Σ(score)，
+    // 不再除以「题数×10」——该分母错误假设每题固定 10 分，会把成绩系统性算低。
     try {
         const quizzes = await client.execute(
             'SELECT id, study_id, results_json, score FROM study_quiz',
         )
         let recalculated = 0
+        let changed = 0
         for (const row of quizzes.rows) {
             const q = row as unknown as {
                 id: number
@@ -975,26 +979,28 @@ export async function migrate(): Promise<void> {
                     }>
                     if (Array.isArray(results) && results.length > 0) {
                         const totalScore = results.reduce(
-                            (sum, r) => sum + (r.score || 0),
+                            (sum, r) => sum + (typeof r.score === 'number' && Number.isFinite(r.score) ? r.score : 0),
                             0,
                         )
-                        newScore =
-                            Math.round(
-                                (totalScore / (results.length * 10)) * 100 * 10,
-                            ) / 10
+                        newScore = Math.round(totalScore * 10) / 10
                     }
                 } catch {
                     // results_json 解析失败时沿用原 score
                 }
             }
             if (newScore === null) newScore = q.score
-            await client.execute({
-                sql: 'UPDATE study_quiz SET score = ? WHERE id = ?',
-                args: [newScore, q.id],
-            })
+            if (newScore !== q.score) {
+                await client.execute({
+                    sql: 'UPDATE study_quiz SET score = ? WHERE id = ?',
+                    args: [newScore, q.id],
+                })
+                changed++
+            }
             recalculated++
         }
-        console.log(`已重新计算 ${recalculated} 条历史测验成绩。`)
+        console.log(
+            `已重新计算 ${recalculated} 条历史测验成绩，其中 ${changed} 条分数发生变更。`,
+        )
     } catch (e) {
         console.warn('历史成绩重算跳过:', (e as Error).message)
     }
@@ -1142,6 +1148,17 @@ export async function migrate(): Promise<void> {
             'ALTER TABLE study_quiz ADD COLUMN remaining_seconds INTEGER',
         )
         console.log('Added remaining_seconds column to study_quiz table.')
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
+    // study_quiz 增加绝对截止时刻列（幂等）：多端共用倒计时真源，首次开始作答时裁决写入。
+    // 存量数据不批量补算：deadline_at 为 NULL 时由作答端首次打开时按剩余快照惰性裁决。
+    try {
+        await client.execute(
+            'ALTER TABLE study_quiz ADD COLUMN deadline_at INTEGER',
+        )
+        console.log('Added deadline_at column to study_quiz table.')
     } catch (e) {
         console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
     }

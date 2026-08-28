@@ -25,6 +25,7 @@ import {
     listStudyNotes,
     saveQuizAnswers,
     saveQuizRemainingSeconds,
+    startQuizCountdown,
     submitQuiz,
     updateStudyNote,
     validateAnswers,
@@ -363,6 +364,47 @@ studynotesRouter.patch(
                 return
             }
             res.status(500).json({ error: '保存剩余时间失败' })
+        }
+    },
+)
+
+// 开始计时（幂等）：作答端首次打开/点「继续答题」时裁决绝对截止时刻并落库，
+// 返回多端共用的 deadlineAt。已裁决则直接复用，不重置计时
+studynotesRouter.post(
+    '/:id/quiz/:quizId/countdown/start',
+    async (req: Request, res: Response) => {
+        try {
+            const id = parsePosInt(req.params.id)
+            const quizId = parsePosInt(req.params.quizId)
+            if (id === -1 || quizId === -1) {
+                res.status(400).json({ error: '无效的参数' })
+                return
+            }
+
+            // resume 显式续算开关：仅接受布尔值，缺失按首次裁决处理
+            const resume = req.body?.resume
+            if (resume !== undefined && typeof resume !== 'boolean') {
+                res.status(400).json({ error: 'resume 必须为布尔值' })
+                return
+            }
+
+            const result = await startQuizCountdown(id, quizId, resume === true)
+            if (!result) {
+                res.status(404).json({ error: '测验记录未找到' })
+                return
+            }
+
+            res.json(result)
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            console.error('Error starting quiz countdown:', message)
+            // 匹配文本须与 service 抛出的锁定错误一致（'该测验已提交，无法开始计时'）
+            if (message.includes('该测验已提交')) {
+                res.status(409).json({ error: message })
+                return
+            }
+            res.status(500).json({ error: '开始计时失败' })
         }
     },
 )

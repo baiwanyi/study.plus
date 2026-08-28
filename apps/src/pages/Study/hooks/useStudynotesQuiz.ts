@@ -26,6 +26,9 @@ type QuizStatus =
     | 'idle'
     | 'generating'
     | 'answering'
+    /** 冻结只读态：计时已开始但本端未进入作答（二次打开/只读查看端），
+     *  题目只读且倒计时定格，点「继续答题」后转 answering 并续算 */
+    | 'frozen'
     | 'grading'
     | 'graded'
     | 'error'
@@ -49,6 +52,7 @@ type QuizAction =
     | { type: 'LOAD_SUCCESS'; quiz: StudynotesQuiz | null }
     | { type: 'GENERATE_START' }
     | { type: 'GENERATE_SUCCESS'; quiz: StudynotesQuiz }
+    | { type: 'RESUME_ANSWERING' }
     | { type: 'SET_ANSWER'; index: number; value: string }
     | { type: 'GRADE_START' }
     | { type: 'GRADE_SUCCESS'; quiz: StudynotesQuiz }
@@ -68,10 +72,15 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
                           ...Array(QUIZ_SIZE).fill(''),
                       ].slice(0, QUIZ_SIZE)
                     : Array(QUIZ_SIZE).fill(''),
+                // 计时已裁决（deadlineAt 非空）说明测验进行中：一律先进冻结只读态，
+                // 展示定格倒计时，由用户点「继续答题」显式续算，避免误触作答与多端起算分歧。
+                // 新测验（计时未裁决）直接进作答态，首次 tick 时由作答端裁决起点
                 status: action.quiz
                     ? action.quiz.submittedAt
                         ? 'graded'
-                        : 'answering'
+                        : action.quiz.deadlineAt !== null
+                          ? 'frozen'
+                          : 'answering'
                     : 'idle',
             }
         case 'GENERATE_START':
@@ -85,6 +94,11 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
                 answers: Array(QUIZ_SIZE).fill(''),
                 status: 'answering',
             }
+        case 'RESUME_ANSWERING':
+            // 仅冻结态可恢复作答：已提交/已批改等终态不响应，避免绕过只读约束
+            return state.status === 'frozen' && state.quiz
+                ? { ...state, status: 'answering' }
+                : state
         case 'SET_ANSWER': {
             // 越界下标直接丢弃，避免稀疏数组/错位污染后续提交
             if (
@@ -220,6 +234,14 @@ export function useStudynotesQuiz(
         dispatch({ type: 'SET_ANSWER', index, value })
     }, [])
 
+    // 恢复作答：冻结只读态 → 作答态，倒计时随即由 useQuizCountdown 续算走动。
+    // 同步维护 ref，避免调用方紧随的读取拿到旧 status 造成误判
+    const resume = useCallback((): void => {
+        if (latestRef.current.status !== 'frozen') return
+        latestRef.current = { ...latestRef.current, status: 'answering' }
+        dispatch({ type: 'RESUME_ANSWERING' })
+    }, [])
+
     // 保存剩余秒数快照：弹窗关闭时冻结倒计时，二次打开时续算；
     // 无进行中测验（已提交/已批改/未加载）时静默跳过，失败仅告警不阻断关闭流程
     const saveRemainingSeconds = useCallback(
@@ -346,6 +368,7 @@ export function useStudynotesQuiz(
         generate,
         grade,
         submit,
+        resume,
         saveRemainingSeconds,
     }
 }

@@ -80,6 +80,8 @@ export interface StudynotesQuiz {
     submittedAt: string | null
     /** 剩余秒数快照：关闭弹窗时冻结写入，重开时从此续算；null 表示尚无快照（按满额处理） */
     remainingSeconds: number | null
+    /** 绝对截止时刻（Unix 毫秒）：多端共用倒计时真源；null 表示计时未开始，只读端不显示倒计时 */
+    deadlineAt: number | null
 }
 
 /** 历史测验摘要项：仅含已提交记录，供历史测验列表展示 */
