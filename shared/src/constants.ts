@@ -1,3 +1,9 @@
+/**
+ * 测验限时秒数（45 分钟）：作为 study_quiz.remaining_seconds 的初始写入值与保存校验上限，
+ * 同时供前端倒计时在无快照时回退使用，保证前后端限时口径一致。
+ */
+export const STUDY_QUIZ_TIME_LIMIT_SECONDS = 45 * 60
+
 export const defaultExamRemark = ['语文', '数学', '英语', '试卷订正']
 
 export const defaultSubmissionRemark = [

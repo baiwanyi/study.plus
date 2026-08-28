@@ -220,6 +220,34 @@ export function useStudynotesQuiz(
         dispatch({ type: 'SET_ANSWER', index, value })
     }, [])
 
+    // 保存剩余秒数快照：弹窗关闭时冻结倒计时，二次打开时续算；
+    // 无进行中测验（已提交/已批改/未加载）时静默跳过，失败仅告警不阻断关闭流程
+    const saveRemainingSeconds = useCallback(
+        async (remainingSeconds: number): Promise<void> => {
+            const { cardId: id, quiz: currentQuiz } = latestRef.current
+            if (
+                !id ||
+                !currentQuiz ||
+                currentQuiz.submittedAt ||
+                currentQuiz.results
+            ) {
+                return
+            }
+            try {
+                await studynotesApi.saveQuizRemainingSeconds(
+                    id,
+                    currentQuiz.id,
+                    remainingSeconds,
+                )
+            } catch (error: unknown) {
+                const message =
+                    error instanceof Error ? error.message : String(error)
+                console.warn('保存测验剩余时间失败：', message)
+            }
+        },
+        [],
+    )
+
     const generate = useCallback(async (): Promise<void> => {
         const { cardId: id, quiz, status } = latestRef.current
         // 防重入：正在生成、或存在任何未批改（results 为空）的测验时拒绝重新生成。
@@ -318,6 +346,7 @@ export function useStudynotesQuiz(
         generate,
         grade,
         submit,
+        saveRemainingSeconds,
     }
 }
 

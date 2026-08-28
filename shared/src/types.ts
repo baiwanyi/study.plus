@@ -78,6 +78,8 @@ export interface StudynotesQuiz {
     suggestions: string[]
     generatedAt: string
     submittedAt: string | null
+    /** 剩余秒数快照：关闭弹窗时冻结写入，重开时从此续算；null 表示尚无快照（按满额处理） */
+    remainingSeconds: number | null
 }
 
 /** 历史测验摘要项：仅含已提交记录，供历史测验列表展示 */

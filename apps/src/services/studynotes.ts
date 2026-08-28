@@ -5,6 +5,7 @@
  * 复用约定：请求统一走 request 封装；入参在客户端先行校验（正整数/字符串数组）。
  * 关键约束：所有资源 ID 必须为正整数，非法入参在发请求前直接抛错。
  */
+import { STUDY_QUIZ_TIME_LIMIT_SECONDS } from '@shared/constants'
 import { request } from './request'
 import type {
     StudynotesItem,
@@ -144,6 +145,30 @@ export const studynotesApi = {
             {
                 method: 'PATCH',
                 body: JSON.stringify({ answers }),
+            },
+        )
+    },
+    saveQuizRemainingSeconds: (
+        id: number,
+        quizId: number,
+        remainingSeconds: number,
+    ) => {
+        assertPositiveInt(id, '学习管理 ID')
+        assertPositiveInt(quizId, '测验 ID')
+        if (
+            !Number.isInteger(remainingSeconds) ||
+            remainingSeconds < 0 ||
+            remainingSeconds > STUDY_QUIZ_TIME_LIMIT_SECONDS
+        ) {
+            throw new Error(
+                `剩余秒数必须为 0~${STUDY_QUIZ_TIME_LIMIT_SECONDS} 的整数`,
+            )
+        }
+        return request<{ success: boolean }>(
+            `/study/${id}/quiz/${quizId}/remaining-seconds`,
+            {
+                method: 'PATCH',
+                body: JSON.stringify({ remainingSeconds }),
             },
         )
     },

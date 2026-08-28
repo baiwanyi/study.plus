@@ -8,6 +8,7 @@
  * 防止作答态泄露参考答案。
  */
 import { and, asc, desc, eq, sql } from 'drizzle-orm'
+import { STUDY_QUIZ_TIME_LIMIT_SECONDS } from '@shared/constants'
 import { paginate, studynotesSubjectValues } from '@shared/utils'
 import { db } from '../db/index'
 import { studyNotes, studyQuiz, studyLessons } from '../db/schema'
@@ -129,6 +130,7 @@ export function mapQuizRow(row: StudyQuizRow): StudynotesQuiz {
         suggestions: safeJsonParse<string[]>(row.suggestionsJson, []),
         generatedAt: row.generatedAt,
         submittedAt: row.submittedAt,
+        remainingSeconds: row.remainingSeconds,
     }
 }
 
@@ -583,6 +585,8 @@ export async function generateQuiz(
         .values({
             studyId: lessonId,
             questionsJson: JSON.stringify(sanitized),
+            // 新测验写入满额剩余时间快照，与前端倒计时口径一致
+            remainingSeconds: STUDY_QUIZ_TIME_LIMIT_SECONDS,
             generatedAt: now,
         })
         .onConflictDoNothing()
@@ -632,6 +636,42 @@ export async function saveQuizAnswers(
         .set({
             answersJson: JSON.stringify(answers),
         })
+        .where(eq(studyQuiz.id, quizId))
+
+    return { success: true }
+}
+
+// 保存未提交测验的剩余秒数快照：弹窗关闭时冻结倒计时，二次打开时续算
+export async function saveQuizRemainingSeconds(
+    id: number,
+    quizId: number,
+    remainingSeconds: number,
+): Promise<{ success: true } | null> {
+    const lessonId = await resolveLessonId(id)
+    if (lessonId === null) return null
+    // 范围防御：必须在 0 ~ 限时之间，防止越界脏数据破坏续算口径
+    if (
+        !Number.isInteger(remainingSeconds) ||
+        remainingSeconds < 0 ||
+        remainingSeconds > STUDY_QUIZ_TIME_LIMIT_SECONDS
+    ) {
+        throw new Error('剩余秒数超出合法范围')
+    }
+    const existing = await db
+        .select()
+        .from(studyQuiz)
+        .where(and(eq(studyQuiz.id, quizId), eq(studyQuiz.studyId, lessonId)))
+        .limit(1)
+
+    if (!existing[0]) return null
+    // 仅进行中的测验可冻结剩余时间；已提交/已批改的倒计时已终止
+    if (existing[0].submittedAt || existing[0].resultsJson) {
+        throw new Error('该测验已提交，无法保存剩余时间')
+    }
+
+    await db
+        .update(studyQuiz)
+        .set({ remainingSeconds })
         .where(eq(studyQuiz.id, quizId))
 
     return { success: true }

@@ -1136,6 +1136,16 @@ export async function migrate(): Promise<void> {
         console.warn('创建 study_quiz 部分唯一索引跳过:', (e as Error).message)
     }
 
+    // study_quiz 增加剩余秒数快照列（幂等）：弹窗关闭时冻结倒计时，重开时续算
+    try {
+        await client.execute(
+            'ALTER TABLE study_quiz ADD COLUMN remaining_seconds INTEGER',
+        )
+        console.log('Added remaining_seconds column to study_quiz table.')
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
     console.log('Migration completed successfully!')
 }
 

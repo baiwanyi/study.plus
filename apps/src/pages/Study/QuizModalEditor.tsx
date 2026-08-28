@@ -1,7 +1,7 @@
 'use client'
 /**
- * 课程专属测验弹窗组件：管理测验生成/作答/提交/批改全流程展示，含 30 分钟限时
- * （以服务端 generatedAt 为基准续算，关闭重开不重置，到点自动提交批改）、
+ * 课程专属测验弹窗组件：管理测验生成/作答/提交/批改全流程展示，含 45 分钟限时
+ * （关闭弹窗冻结剩余秒数入库，重开拉取快照续算，到点自动提交批改）、
  * 右侧【历史测验】【错题本】操作栏、历史测验只读回看，以及错题本左栏宽版展示。
  * 复用约定：作答状态机复用 useStudynotesQuiz 及其查询 hooks；右侧栏复用 QuizSidePanel；
  * 答案还原复用 @apps/utils/quizFormat；限时倒计时（含超时通知）完整封装于 useQuizCountdown。
@@ -137,8 +137,10 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         generate,
         grade,
         submit,
+        saveRemainingSeconds,
     } = useStudynotesQuiz(
-        cardId,
+        // 弹窗关闭即卸载现场：重开时重新拉取服务端快照（含冻结的剩余秒数）恢复
+        open ? cardId : null,
         canQuiz,
         () => {
             showSnackbar('答题内容已自动保存', 'success')
@@ -155,6 +157,12 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
     )
 
     const handleClose = () => {
+        // 作答中关闭弹窗：冻结剩余秒数入库，二次打开时从快照续算；
+        // 非计时态（未开始/已提交/超时自动提交后）读数为 null，自动跳过
+        const remainingSeconds = getRemainingSeconds()
+        if (remainingSeconds !== null) {
+            void saveRemainingSeconds(remainingSeconds)
+        }
         // 复位侧栏状态：selectedQuizId 指向当前课程的测验 ID，
         // 残留到其它课程的弹窗会因归属校验 404 导致历史视图永久 Loading
         dispatchSidePanel({ type: 'RESET' })
@@ -196,22 +204,23 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
         }
     }
 
-    // === 限时逻辑：完整封装于 useQuizCountdown（截止时刻计算/每秒 tick/超时通知） ===
+    // === 限时逻辑：完整封装于 useQuizCountdown（快照锚定/每秒 tick/超时通知） ===
     // 不可直接调 grade：其防重条件要求 submittedAt 非空，作答中超时会被直接拒绝，
     // 故 onTimeUp 内须先 submit（标记已提交）再 grade
-    const { remainingText, isTimeUrgent } = useQuizCountdown({
-        quiz,
-        active: open && status === 'answering',
-        onTimeUp: () => {
-            void (async () => {
-                const ok = await submit()
-                if (ok) {
-                    showSnackbar('测验时间到，已自动提交并批改', 'info')
-                    await grade()
-                }
-            })()
-        },
-    })
+    const { remainingText, isTimeUrgent, getRemainingSeconds } =
+        useQuizCountdown({
+            quiz,
+            active: open && status === 'answering',
+            onTimeUp: () => {
+                void (async () => {
+                    const ok = await submit()
+                    if (ok) {
+                        showSnackbar('测验时间到，已自动提交并批改', 'info')
+                        await grade()
+                    }
+                })()
+            },
+        })
 
     return (
         <Modal

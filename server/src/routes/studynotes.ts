@@ -7,6 +7,7 @@
  * 必须注册在 /history、/wrong 等字面量子路径之后，避免被动态段吞掉。
  */
 import { Router } from 'express'
+import { STUDY_QUIZ_TIME_LIMIT_SECONDS } from '@shared/constants'
 import { parsePosInt } from '../utils/param'
 import { aiLimiter } from '../utils/rate-limit'
 import {
@@ -23,6 +24,7 @@ import {
     gradeQuiz,
     listStudyNotes,
     saveQuizAnswers,
+    saveQuizRemainingSeconds,
     submitQuiz,
     updateStudyNote,
     validateAnswers,
@@ -311,6 +313,56 @@ studynotesRouter.patch(
                 return
             }
             res.status(500).json({ error: '保存答题内容失败' })
+        }
+    },
+)
+
+// 保存测验剩余秒数快照：弹窗关闭时冻结倒计时，二次打开续算（无 AI 限流需求）
+studynotesRouter.patch(
+    '/:id/quiz/:quizId/remaining-seconds',
+    async (req: Request, res: Response) => {
+        try {
+            const id = parsePosInt(req.params.id)
+            const quizId = parsePosInt(req.params.quizId)
+            if (id === -1 || quizId === -1) {
+                res.status(400).json({ error: '无效的参数' })
+                return
+            }
+
+            const remainingSeconds = req.body?.remainingSeconds
+            if (
+                typeof remainingSeconds !== 'number' ||
+                !Number.isInteger(remainingSeconds) ||
+                remainingSeconds < 0 ||
+                remainingSeconds > STUDY_QUIZ_TIME_LIMIT_SECONDS
+            ) {
+                res.status(400).json({
+                    error: `剩余秒数必须为 0~${STUDY_QUIZ_TIME_LIMIT_SECONDS} 的整数`,
+                })
+                return
+            }
+
+            const result = await saveQuizRemainingSeconds(
+                id,
+                quizId,
+                remainingSeconds,
+            )
+            if (!result) {
+                res.status(404).json({ error: '测验记录未找到' })
+                return
+            }
+
+            res.json({ success: true })
+        } catch (error: unknown) {
+            const message =
+                error instanceof Error ? error.message : String(error)
+            console.error('Error saving quiz remaining seconds:', message)
+            // 匹配文本须与 service 抛出的锁定错误一致（'该测验已提交，无法保存剩余时间'）
+            if (message.includes('该测验已提交')) {
+                res.status(409).json({ error: message })
+                return
+            }
+            res.status(500).json({ error: '保存剩余时间失败' })
         }
     },
 )

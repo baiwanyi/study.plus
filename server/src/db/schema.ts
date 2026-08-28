@@ -304,6 +304,8 @@ export const studyQuiz = sqliteTable(
         suggestionsJson: text('suggestions_json').notNull().default('[]'),
         generatedAt: text('generated_at').notNull(),
         submittedAt: text('submitted_at'),
+        // 未提交测验的剩余秒数快照：弹窗关闭时冻结写入，重开时续算；NULL 表示尚无快照
+        remainingSeconds: integer('remaining_seconds'),
         createdAt: text('created_at')
             .notNull()
             .$defaultFn(() => new Date().toISOString()),
