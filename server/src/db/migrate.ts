@@ -955,19 +955,19 @@ export async function migrate(): Promise<void> {
     await changeColumnToReal('study_quiz', 'score')
 
     // 基于已存的 results_json 重新计算百分制成绩（保留一位小数），修正被取整的历史数据。
-    // 口径与 gradeStudynotesQuiz 一致：results[].score 已是该题实得分（0~该题 points），
-    // 且题库 Σpoints 恒为 100（sanitizeQuizQuestions 兜底重分配），故总分 = Σ(score)，
-    // 不再除以「题数×10」——该分母错误假设每题固定 10 分，会把成绩系统性算低。
+    // results[].score 存在两种量纲：实得分（0~该题 points）与 0~10 比例分。
+    // 实得分：Σ 即为总分；比例分：按该题 points 折算后求和。
+    // 历史遗留行的 questions_json 无 points，按「题数均分满额 100」回退，保证存量数据不变。
     try {
         const quizzes = await client.execute(
-            'SELECT id, study_id, results_json, score FROM study_quiz',
+            'SELECT id, questions_json, results_json, score FROM study_quiz',
         )
         let recalculated = 0
         let changed = 0
         for (const row of quizzes.rows) {
             const q = row as unknown as {
                 id: number
-                study_id: number
+                questions_json: string | null
                 results_json: string | null
                 score: number | null
             }
@@ -977,12 +977,84 @@ export async function migrate(): Promise<void> {
                     const results = JSON.parse(q.results_json) as Array<{
                         score?: number
                     }>
+                    let questions: Array<{ points?: number }> = []
+                    try {
+                        const parsedQuestions = JSON.parse(
+                            q.questions_json ?? '[]',
+                        ) as Array<{ points?: number }>
+                        if (Array.isArray(parsedQuestions)) {
+                            questions = parsedQuestions
+                        }
+                    } catch {
+                        questions = []
+                    }
                     if (Array.isArray(results) && results.length > 0) {
-                        const totalScore = results.reduce(
-                            (sum, r) => sum + (typeof r.score === 'number' && Number.isFinite(r.score) ? r.score : 0),
+                        const sumReal = results.reduce(
+                            (sum, r) =>
+                                sum +
+                                (typeof r.score === 'number' &&
+                                Number.isFinite(r.score)
+                                    ? r.score
+                                    : 0),
                             0,
                         )
-                        newScore = Math.round(totalScore * 10) / 10
+                        // 量纲判定：results[].score 可能是「实得分」或「0~10 比例分」。
+                        // 可靠判据是「满分的题 score 是否等于该题 points」——实得分量纲下
+                        // 满分题 score == points；比例分量纲下满分题 score == 10。
+                        // 不可用「maxScore > 10」判定：单题 points 常为 4~6，实得分量纲下
+                        // maxScore 同样 ≤10，该判据会把实得分误判为比例分并二次折算。
+                        let hasPoints = false
+                        let allScoreLePoints = true
+                        let anyFullScoreEqPoints = false
+                        for (let i = 0; i < results.length; i += 1) {
+                            const rawScore = results[i]?.score
+                            const value =
+                                typeof rawScore === 'number' &&
+                                Number.isFinite(rawScore)
+                                    ? rawScore
+                                    : 0
+                            const raw = questions[i]?.points
+                            if (
+                                typeof raw === 'number' &&
+                                Number.isFinite(raw)
+                            ) {
+                                hasPoints = true
+                                if (value > raw) allScoreLePoints = false
+                                if (value === raw && raw > 0) {
+                                    anyFullScoreEqPoints = true
+                                }
+                            }
+                        }
+                        const isRealPointsScale =
+                            hasPoints && allScoreLePoints && anyFullScoreEqPoints
+                        if (isRealPointsScale) {
+                            // 已是实得分：直接求和，不可再按 points 折算
+                            newScore = Math.round(sumReal * 10) / 10
+                        } else {
+                            // 比例分按该题 points 折算为实得分；points 缺失的历史行
+                            // 按题数均分满额 100 回退，与存量数据口径保持一致
+                            const count = results.length
+                            const fallbackPoints = count > 0 ? 100 / count : 0
+                            const totalScore = results.reduce((sum, r, i) => {
+                                const ratio =
+                                    typeof r.score === 'number' &&
+                                    Number.isFinite(r.score)
+                                        ? Math.min(
+                                              10,
+                                              Math.max(0, r.score),
+                                          )
+                                        : 0
+                                const rawPoint = questions[i]?.points
+                                const point =
+                                    typeof rawPoint === 'number' &&
+                                    Number.isFinite(rawPoint) &&
+                                    rawPoint > 0
+                                        ? rawPoint
+                                        : fallbackPoints
+                                return sum + point * (ratio / 10)
+                            }, 0)
+                            newScore = Math.round(totalScore * 10) / 10
+                        }
                     }
                 } catch {
                     // results_json 解析失败时沿用原 score

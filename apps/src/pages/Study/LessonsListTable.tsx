@@ -138,19 +138,17 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
         setQuizSortDir(nextQuizSortDir)
     }
 
-    // 排序作用于全量数据再分页；无成绩的课程两种方向下恒排末尾
+    // 排序作用于全量数据再分页；无成绩（null）按 0 参与比较，
+    // 故升序时排最前、降序时排最后，无需为 null 单独写分支
     const sortedLessons = useMemo(() => {
         if (quizSortDir === null) {
             return lessons
         }
         const isDesc = quizSortDir === 'desc'
         return [...lessons].sort((a, b) => {
-            if (a.quizScore == null && b.quizScore == null) return 0
-            if (a.quizScore == null) return 1
-            if (b.quizScore == null) return -1
-            return isDesc
-                ? b.quizScore - a.quizScore
-                : a.quizScore - b.quizScore
+            const scoreA = a.quizScore ?? 0
+            const scoreB = b.quizScore ?? 0
+            return isDesc ? scoreB - scoreA : scoreA - scoreB
         })
     }, [lessons, quizSortDir])
 
