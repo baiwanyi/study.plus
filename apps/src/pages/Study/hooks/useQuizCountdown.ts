@@ -9,6 +9,7 @@
  * 关键约束：前端一律不得自行创造截止时刻（否则多端各自起算必然不一致）；deadlineAt 非空表示
  * 计时进行中（多端真源，旁观端只读取、绝不重新裁决，否则据陈旧快照续算会重置作答端计时）；
  * deadlineAt 为空且 remainingSeconds 非空表示计时已暂停（本端曾冻结，续算时作基准）；
+ * 已提交/已批改一律终止计时并隐藏读数（快照提交后仍残留库中，仅凭 deadlineAt 判空不足）；
  * 冻结态不 tick 仅定格展示，且关闭弹窗不回写剩余量，避免旁观行为暂停他人计时；
  * onTimeUp 每个 deadline 至多触发一次；激活后首帧 remainingText 为 null（tick 前）。
  */
@@ -26,6 +27,13 @@ function formatCountdown(ms: number): string {
     const seconds = totalSeconds % 60
     const pad = (n: number) => String(n).padStart(2, '0')
     return `${pad(minutes)}:${pad(seconds)}`
+}
+
+// 测验是否处于可计时状态（未提交且未批改），兼作类型守卫收窄 quiz。
+// 关键：remainingSeconds 快照在提交后仍残留在库中（生成时为满额、关闭弹窗时为冻结量），
+// 仅凭 deadlineAt 判空不足以隐藏读数，故两个 effect 共用此判定，避免判定口径漂移
+function isCountingQuiz(quiz: StudynotesQuiz | null): quiz is StudynotesQuiz {
+    return quiz !== null && quiz.submittedAt === null && quiz.results === null
 }
 
 // 剩余时间文案：正常显示 mm:ss；已超时显示「时间已到」（替代徽章凭空消失，
@@ -72,9 +80,12 @@ export function useQuizCountdown(options: {
     const [deadlineAt, setDeadlineAt] = useState<number | null>(null)
     // 已发起过裁决的测验 ID：StrictMode 双挂载、quiz 抖动、effect 重跑都只发一次请求
     const startedQuizIdRef = useRef<number | null>(null)
+    // 计时是否可用：两个 effect 共用同一判定，避免读数与截止时刻的口径漂移
+    const isCounting = isCountingQuiz(quiz)
 
     useEffect(() => {
-        if (!quiz || quiz.submittedAt || quiz.results) {
+        // 已提交/已批改：计时已终止，清空截止时刻与裁决去重标记
+        if (!isCounting) {
             setDeadlineAt(null)
             startedQuizIdRef.current = null
             return
@@ -118,7 +129,7 @@ export function useQuizCountdown(options: {
         // 裁定截止时刻，暂停期间流逝的时间自然不被计入
         startedQuizIdRef.current = quiz.id
         setDeadlineAt(quiz.deadlineAt)
-    }, [quiz, active, cardId, canStartCountdown])
+    }, [quiz, isCounting, active, cardId, canStartCountdown])
 
     // null = 未计时或激活后首帧（首个 tick 前），避免误显示「时间已到」
     const [remainingMs, setRemainingMs] = useState<number | null>(null)
@@ -136,6 +147,15 @@ export function useQuizCountdown(options: {
     onTimeUpRef.current = onTimeUp
 
     useEffect(() => {
+        // 已提交/已批改：计时已终止，清空读数使倒计时徽章隐藏。
+        // 关键：此时非激活且 deadlineAt 为空，若不加此守卫会落到下方暂停态分支，
+        // 拿库中残留的 remainingSeconds 算出读数，导致已批改的测验仍挂着倒计时
+        if (!isCounting) {
+            remainingMsRef.current = null
+            setRemainingMs(null)
+            return
+        }
+
         // 冻结态（未激活）：定格展示，绝不按绝对时刻持续回放，否则读数会一路递减到
         // 「超时」甚至误触发自动提交（只读端仅查看就替孩子交卷）。定格基准分两种：
         // 1) 他端正在作答（deadlineAt 非空）：真源即绝对截止时刻，取打开瞬间的剩余量定格，
@@ -175,7 +195,7 @@ export function useQuizCountdown(options: {
         tick()
         const timer = setInterval(tick, 1000)
         return () => clearInterval(timer)
-    }, [deadlineAt, active, quiz?.remainingSeconds])
+    }, [deadlineAt, isCounting, active, quiz?.remainingSeconds])
 
     const isTimeUp =
         active &&
