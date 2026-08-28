@@ -670,13 +670,14 @@ export async function saveQuizRemainingSeconds(
         throw new Error('该测验已提交，无法保存剩余时间')
     }
 
-    // 冻结剩余量的同时推进绝对截止时刻，使多端读数与冻结口径一致：
-    // 仅作答端调用，只读端不写库，避免查看行为重置倒计时
+    // 冻结剩余量并清空绝对截止时刻：deadlineAt 为 null 是「计时已暂停」的唯一标识，
+    // 与「进行中」（deadlineAt 为多端真源）严格正交。若冻结时仍推进 deadlineAt，
+    // 旁观端会同时读到陈旧快照与推进后的 deadline，据快照续算将重置作答端的计时
     await db
         .update(studyQuiz)
         .set({
             remainingSeconds,
-            deadlineAt: Date.now() + remainingSeconds * 1000,
+            deadlineAt: null,
         })
         .where(eq(studyQuiz.id, quizId))
 
@@ -685,13 +686,10 @@ export async function saveQuizRemainingSeconds(
 
 // 裁决并落库绝对截止时刻（幂等）：仅由作答端调用，为多端提供唯一倒计时真源。
 // 已有 deadline 时直接复用（并发双写/重开/多端同时打开都不会重置计时）；
-// 无 deadline 时以剩余快照（无快照按满额，兼容存量数据）为基准续算落库。
+// 无 deadline 时以剩余快照（无快照按满额，兼容存量数据）为基准裁定落库。
 export async function startQuizCountdown(
     id: number,
     quizId: number,
-    /** true = 以冻结剩余量为基准重新续算（点「继续答题」恢复作答时调用，
-     *  使关闭弹窗期间流逝的时间不被计入）；false = 首次裁决，已有 deadline 则复用 */
-    resume: boolean,
 ): Promise<{ deadlineAt: number } | null> {
     const lessonId = await resolveLessonId(id)
     if (lessonId === null) return null
@@ -706,12 +704,13 @@ export async function startQuizCountdown(
     if (existing[0].submittedAt || existing[0].resultsJson) {
         throw new Error('该测验已提交，无法开始计时')
     }
-    // 首次裁决且已有截止时刻：直接复用，杜绝多端各自起算导致时间不一致
-    if (!resume && existing[0].deadlineAt !== null) {
+    // 已有截止时刻：直接复用，杜绝多端各自起算导致时间不一致，
+    // 也避免旁观端据陈旧快照续算而重置作答端正在进行的计时
+    if (existing[0].deadlineAt !== null) {
         return { deadlineAt: existing[0].deadlineAt }
     }
 
-    // 续算基准为冻结的剩余量（关闭弹窗期间时间不流逝），无快照按满额处理；
+    // 裁定基准为落库的剩余量（暂停期间时间不流逝），无快照按满额处理；
     // 范围兜底，避免脏数据算出越界截止时刻
     const rawSeconds =
         existing[0].remainingSeconds ?? STUDY_QUIZ_TIME_LIMIT_SECONDS

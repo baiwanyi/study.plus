@@ -381,14 +381,7 @@ studynotesRouter.post(
                 return
             }
 
-            // resume 显式续算开关：仅接受布尔值，缺失按首次裁决处理
-            const resume = req.body?.resume
-            if (resume !== undefined && typeof resume !== 'boolean') {
-                res.status(400).json({ error: 'resume 必须为布尔值' })
-                return
-            }
-
-            const result = await startQuizCountdown(id, quizId, resume === true)
+            const result = await startQuizCountdown(id, quizId)
             if (!result) {
                 res.status(404).json({ error: '测验记录未找到' })
                 return

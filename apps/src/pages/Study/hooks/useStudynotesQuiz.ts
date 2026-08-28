@@ -72,13 +72,16 @@ function reducer(state: QuizState, action: QuizAction): QuizState {
                           ...Array(QUIZ_SIZE).fill(''),
                       ].slice(0, QUIZ_SIZE)
                     : Array(QUIZ_SIZE).fill(''),
-                // 计时已裁决（deadlineAt 非空）说明测验进行中：一律先进冻结只读态，
-                // 展示定格倒计时，由用户点「继续答题」显式续算，避免误触作答与多端起算分歧。
-                // 新测验（计时未裁决）直接进作答态，首次 tick 时由作答端裁决起点
+                // 计时已裁决过一律先进冻结只读态，展示定格倒计时，由用户点「继续答题」
+                // 显式起算/续算，避免误触作答与多端起算分歧。判定覆盖两种：
+                // deadlineAt 非空=他端或本端正在计时；remainingSeconds 非空=已有时间快照
+                // （新测验生成时即写入满额，本端关闭弹窗时改写为冻结量）。
+                // 仅「两者皆空」的存量旧数据直接进作答态，由作答端裁决起点
                 status: action.quiz
                     ? action.quiz.submittedAt
                         ? 'graded'
-                        : action.quiz.deadlineAt !== null
+                        : action.quiz.deadlineAt !== null ||
+                            action.quiz.remainingSeconds !== null
                           ? 'frozen'
                           : 'answering'
                     : 'idle',

@@ -172,14 +172,13 @@ export const studynotesApi = {
             },
         )
     },
-    startQuizCountdown: (id: number, quizId: number, resume: boolean) => {
+    startQuizCountdown: (id: number, quizId: number) => {
         assertPositiveInt(id, '学习管理 ID')
         assertPositiveInt(quizId, '测验 ID')
         return request<{ deadlineAt: number }>(
             `/study/${id}/quiz/${quizId}/countdown/start`,
             {
                 method: 'POST',
-                body: JSON.stringify({ resume }),
             },
         )
     },

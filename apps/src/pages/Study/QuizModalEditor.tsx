@@ -165,9 +165,10 @@ export const QuizModalEditor: FC<QuizModalEditorProps> = ({
     )
 
     const handleClose = () => {
-        // 作答中关闭弹窗：冻结剩余秒数与截止时刻入库，二次打开进冻结只读态，
-        // 点「继续答题」后按冻结剩余量续算（关闭期间时间不流逝）；
-        // 冻结态未 tick 读数为上一周期值，非计时态（已提交/超时）为 null，自动跳过
+        // 本端作答中关闭弹窗：冻结剩余秒数入库并清空截止时刻（服务端据此标记「计时已暂停」），
+        // 二次打开进冻结只读态，点「继续答题」后按冻结剩余量续算（关闭期间时间不流逝）；
+        // 旁观态（他端正在作答）getRemainingSeconds 返回 null，自动跳过写库，
+        // 避免查看行为暂停他人正在进行的计时
         const remainingSeconds = getRemainingSeconds()
         if (remainingSeconds !== null) {
             void saveRemainingSeconds(remainingSeconds)

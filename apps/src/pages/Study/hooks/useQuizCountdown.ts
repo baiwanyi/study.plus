@@ -6,9 +6,11 @@
  * 跃迁时触发一次 onTimeUp 业务回调；同时经 getRemainingSeconds 暴露当前剩余秒数供冻结入库。
  * 复用约定：quiz 类型来自 @shared/types；开始计时经 studynotesApi.startQuizCountdown 由服务端
  * 幂等裁决；展示格式化与超时判定不对外暴露。
- * 关键约束：前端一律不得自行创造截止时刻（否则多端各自起算必然不一致）；无 deadlineAt 且非
- * 作答端时返回 null（不显示倒计时）；冻结态不 tick 仅定格展示；onTimeUp 每个 deadline 至多
- * 触发一次；激活后首帧 remainingText 为 null（tick 前）。
+ * 关键约束：前端一律不得自行创造截止时刻（否则多端各自起算必然不一致）；deadlineAt 非空表示
+ * 计时进行中（多端真源，旁观端只读取、绝不重新裁决，否则据陈旧快照续算会重置作答端计时）；
+ * deadlineAt 为空且 remainingSeconds 非空表示计时已暂停（本端曾冻结，续算时作基准）；
+ * 冻结态不 tick 仅定格展示，且关闭弹窗不回写剩余量，避免旁观行为暂停他人计时；
+ * onTimeUp 每个 deadline 至多触发一次；激活后首帧 remainingText 为 null（tick 前）。
  */
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { studynotesApi } from '../../../services/studynotes'
@@ -78,8 +80,10 @@ export function useQuizCountdown(options: {
             return
         }
 
-        // 计时未裁决：仅作答端可发起；只读端（家长端）保持 null 不显示，
-        // 避免查看行为替作答端起算倒计时
+        // 计时未裁决：deadlineAt 为空，含「新测验」与「本端曾关闭弹窗冻结」（服务端冻结时
+        // 已清空 deadlineAt、仅留 remainingSeconds 快照）。仅作答端（active 且有权）可发起
+        // 裁决，服务端以该快照为基准裁定截止时刻，即完成续算；只读端（家长端）保持 null
+        // 不显示，避免查看行为替作答端起算倒计时
         if (quiz.deadlineAt === null) {
             if (!canStartCountdown || !cardId || !active) {
                 setDeadlineAt(null)
@@ -89,7 +93,7 @@ export function useQuizCountdown(options: {
             startedQuizIdRef.current = quiz.id
             let cancelled = false
             void studynotesApi
-                .startQuizCountdown(cardId, quiz.id, false)
+                .startQuizCountdown(cardId, quiz.id)
                 .then(({ deadlineAt: started }) => {
                     if (cancelled) return
                     setDeadlineAt(started)
@@ -107,37 +111,11 @@ export function useQuizCountdown(options: {
             }
         }
 
-        // 已有截止时刻：分两条路径，且只走一次（startedQuizIdRef 去重）。
-        // 关键：进入作答态且本地持有冻结剩余量时（点「继续答题」从冻结恢复），
-        // 必须显式续算——deadlineAt 是绝对时刻，期间流逝的时间已被算入，
-        // 直接复用会让关闭弹窗的时间白白消耗考试时长，故以 resume=true 重新锚定
-        const shouldResume =
-            active &&
-            quiz.remainingSeconds !== null &&
-            startedQuizIdRef.current === null
-        if (shouldResume && cardId && canStartCountdown) {
-            startedQuizIdRef.current = quiz.id
-            let cancelled = false
-            void studynotesApi
-                .startQuizCountdown(cardId, quiz.id, true)
-                .then(({ deadlineAt: started }) => {
-                    if (cancelled) return
-                    setDeadlineAt(started)
-                })
-                .catch((error: unknown) => {
-                    if (cancelled) return
-                    // 续算失败回退既有 deadline：宁可按绝对时刻走，也不让倒计时消失
-                    const message =
-                        error instanceof Error ? error.message : String(error)
-                    console.warn('续算测验计时失败：', message)
-                    setDeadlineAt(quiz.deadlineAt)
-                })
-            return () => {
-                cancelled = true
-            }
-        }
-
-        // 其余情况（只读端查看、或续算已完成）锚定服务端真源渲染
+        // 其余情况锚定服务端真源渲染：含「他端正在作答」（deadlineAt 非空）与裁决已完成。
+        // 旁观态必须走此分支——deadlineAt 即作答端的真实截止时刻，据陈旧快照续算会把
+        // 正在进行的计时整个重置，故旁观端永不发起裁决，只读取真源。
+        // 「本端曾暂停」已由上方 deadlineAt 为空的分支处理：服务端以落库快照为基准
+        // 裁定截止时刻，暂停期间流逝的时间自然不被计入
         startedQuizIdRef.current = quiz.id
         setDeadlineAt(quiz.deadlineAt)
     }, [quiz, active, cardId, canStartCountdown])
@@ -146,6 +124,9 @@ export function useQuizCountdown(options: {
     const [remainingMs, setRemainingMs] = useState<number | null>(null)
     // 镜像最新剩余毫秒供 getRemainingSeconds 读取：函数引用恒定，不经渲染链路
     const remainingMsRef = useRef<number | null>(null)
+    // 镜像最新激活态：供引用恒定的 getRemainingSeconds 区分「本端作答」与「旁观冻结」
+    const activeRef = useRef(active)
+    activeRef.current = active
     // 记录已触发 onTimeUp 的截止时刻：同一 deadline 至多触发一次，
     // StrictMode 双挂载/开关弹窗等 effect 重跑不会重复触发；
     // 换测验产生新 deadline 时自然允许再次触发
@@ -155,16 +136,19 @@ export function useQuizCountdown(options: {
     onTimeUpRef.current = onTimeUp
 
     useEffect(() => {
-        // 冻结态（未激活）：以落库的剩余量定格展示，绝不按绝对时刻回放。
-        // deadlineAt 是绝对时刻，会随真实时间自然流逝——若在冻结态用它计算，
-        // 读数将持续递减直至「超时」，甚至误触发自动提交（只读端仅查看就替孩子交卷）。
-        // 故冻结态独立取 remainingSeconds 为定格基准，且不判定超时、不触发 onTimeUp。
+        // 冻结态（未激活）：定格展示，绝不按绝对时刻持续回放，否则读数会一路递减到
+        // 「超时」甚至误触发自动提交（只读端仅查看就替孩子交卷）。定格基准分两种：
+        // 1) 他端正在作答（deadlineAt 非空）：真源即绝对截止时刻，取打开瞬间的剩余量定格，
+        //    如实反映作答端当前读数，且不 tick、不判定超时；
+        // 2) 本端曾暂停（deadlineAt 已清空）：以落库的冻结量定格，待续算时作为基准。
         if (!active) {
             const frozenMs =
-                quiz?.remainingSeconds !== null &&
-                quiz?.remainingSeconds !== undefined
-                    ? quiz.remainingSeconds * 1000
-                    : null
+                deadlineAt !== null
+                    ? Math.max(0, deadlineAt - Date.now())
+                    : quiz?.remainingSeconds !== null &&
+                        quiz?.remainingSeconds !== undefined
+                      ? quiz.remainingSeconds * 1000
+                      : null
             remainingMsRef.current = frozenMs
             setRemainingMs(frozenMs)
             return
@@ -211,6 +195,10 @@ export function useQuizCountdown(options: {
             : isTimeUp
 
     const getRemainingSeconds = useCallback((): number | null => {
+        // 仅作答态（激活）才返回有效读数：旁观端关闭弹窗时若据此写库，
+        // 会清空 deadlineAt 而暂停作答端正在进行的计时。
+        // 冻结态（本端曾暂停）的快照已是最新冻结值，重复写库无意义，一并跳过
+        if (!activeRef.current) return null
         if (remainingMsRef.current === null) return null
         return Math.max(0, Math.ceil(remainingMsRef.current / 1000))
     }, [])
