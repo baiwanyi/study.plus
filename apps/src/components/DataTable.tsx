@@ -84,7 +84,7 @@ export function DataTable<T extends Record<string, any>>({
             </table>
 
             {pagination && pagination.total > pageSize && (
-                <div className="flex items-center justify-between px-4 py-3 border-t border-light bg-gray-50">
+                <div className="flex items-center justify-between px-4 py-3 border-t border-gray-300 bg-gray-50">
                     <p className="text-sm text-gray-500">
                         共 {pagination.total} 条，第 {pagination.current}/
                         {totalPages} 页
@@ -95,7 +95,7 @@ export function DataTable<T extends Record<string, any>>({
                                 pagination.onChange(pagination.current - 1)
                             }
                             disabled={pagination.current <= 1}
-                            className="px-3 py-1 text-sm rounded border border-light bg-white hover:bg-gray-50 disabled:opacity-40">
+                            className="px-3 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40">
                             上一页
                         </button>
                         <button
@@ -103,7 +103,7 @@ export function DataTable<T extends Record<string, any>>({
                                 pagination.onChange(pagination.current + 1)
                             }
                             disabled={pagination.current >= totalPages}
-                            className="px-3 py-1 text-sm rounded border border-light bg-white hover:bg-gray-50 disabled:opacity-40">
+                            className="px-3 py-1 text-sm rounded border border-gray-300 bg-white hover:bg-gray-50 disabled:opacity-40">
                             下一页
                         </button>
                     </div>
