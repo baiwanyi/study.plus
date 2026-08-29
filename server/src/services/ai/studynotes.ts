@@ -1,8 +1,16 @@
+/**
+ * 学习管理 AI 服务模块：负责心得评估、预习分析、专属测验生成与答案批改。
+ * 复用约定：AI 调用统一走 callDeepSeek（内置指数退避重试与超时控制），用量经 logAiUsage 落库，
+ * JSON 解析统一走 safeJsonParse，提示词模板复用 @shared/constants 常量。
+ * 关键约束：出题拆为客观题、简答两批并发，单批输出量减半以规避长输出触发 AI 请求超时；
+ * 生成结果须为客观 10 题 + 简答 10 题且单选/多选各至少 1 题，answer 仅供批改不得对外暴露。
+ */
 import {
     defaultPromptEvaluateStudynotes,
     promptAnalyzePreview,
-    promptStudynotesQuizGenerate,
+    promptStudynotesQuizEssay,
     promptStudynotesQuizGrade,
+    promptStudynotesQuizObjective,
 } from '@shared/constants'
 import { decodeMultiSelection, studynotesSubjectLabels } from '@shared/utils'
 import type {
@@ -189,6 +197,85 @@ function buildCardPrompt(card: StudynotesCardInput, template: string): string {
         .replace('{memoryHook}', card.memoryHook || '未填写')
 }
 
+// 出题拆成客观题、简答题两批并发：20 题一次性生成时单次输出 6000~14000 tokens，
+// 常在 120s 超时窗口内跑不完；拆分后单批输出量减半且两批并行，超时概率显著下降
+const QUIZ_OBJECTIVE_COUNT = 10
+const QUIZ_ESSAY_COUNT = 10
+
+/** 单批次出题：请求 AI 并返回已剔除空题干的题目列表 */
+async function generateQuizBatch(
+    card: StudynotesCardInput,
+    template: string,
+    batchLabel: string,
+): Promise<StudynotesQuizQuestion[]> {
+    const { content: reply, usage } = await callDeepSeek({
+        messages: [{ role: 'user', content: buildCardPrompt(card, template) }],
+        temperature: 0.7,
+        // 单批 10 题含题干/选项/答案，实测输出 3000~7000 tokens，10000 留出充足余量；
+        // 若仍被截断，callDeepSeek 检测到 finish_reason=length 会自动扩容重试
+        max_tokens: 10000,
+        response_format: { type: 'json_object' },
+        timeoutMs: 180_000,
+    })
+
+    await logAiUsage(
+        'quiz-question',
+        usage,
+        `学习管理出题（${batchLabel}）：${card.topic || card.subject}`,
+    )
+
+    const parsed = safeJsonParse<{
+        questions?: StudynotesQuizQuestion[]
+    } | null>(reply, null)
+    if (!parsed || !Array.isArray(parsed.questions)) {
+        throw new Error(`AI 返回的${batchLabel}题目格式不正确`)
+    }
+    // 过滤空题对象（题干为空则丢弃），避免空白题目入库
+    return parsed.questions.filter(
+        (q) => String(q.question ?? '').trim().length > 0,
+    )
+}
+
+/**
+ * 单题规范化：简答批固定 essay，客观批 type 非 multi 一律回落 single；
+ * points 非法用合法默认值 5，避免被 sanitize 当作「分值非法」剔除导致题目不足
+ * （总分由 sanitize 兜底重分配为 100）
+ */
+function normalizeQuizQuestion(
+    question: StudynotesQuizQuestion,
+    index: number,
+    isEssay: boolean,
+): StudynotesQuizQuestion {
+    let type: StudynotesQuizQuestion['type'] = 'single'
+    if (isEssay) {
+        type = 'essay'
+    } else if (question.type === 'multi') {
+        type = 'multi'
+    }
+    return {
+        index,
+        type,
+        question: String(question.question ?? '').trim(),
+        points:
+            typeof question.points === 'number' &&
+            Number.isFinite(question.points) &&
+            question.points > 0
+                ? Math.round(question.points)
+                : 5,
+        ...(Array.isArray(question.options)
+            ? {
+                  // 过滤空白选项，避免空串选项入库后被渲染成空白行
+                  options: question.options
+                      .map(String)
+                      .filter((o) => o.trim().length > 0),
+              }
+            : {}),
+        ...(question.answer !== undefined && question.answer !== null
+            ? { answer: String(question.answer) }
+            : {}),
+    }
+}
+
 export async function generateStudynotesQuiz(
     card: StudynotesCardInput,
 ): Promise<StudynotesQuizQuestion[]> {
@@ -196,85 +283,41 @@ export async function generateStudynotesQuiz(
         throw new Error('AI 出题未配置，请设置 DEEPSEEK_API_KEY')
     }
 
-    const prompt = buildCardPrompt(card, promptStudynotesQuizGenerate)
-
     try {
-        const { content: reply, usage } = await callDeepSeek({
-            messages: [{ role: 'user', content: prompt }],
-            temperature: 0.7,
-            // 20 题含题干/选项/答案/解析，实测输出 6000~14000 tokens，12000 卡在临界值
-            // 偶发触发「截断→扩容重试」（用户多等一轮生成、费用翻倍），故初始即给足 20000；
-            // 若仍截断，callDeepSeek 检测到 finish_reason=length 会继续自动扩容重试
-            max_tokens: 20000,
-            response_format: { type: 'json_object' },
-            timeoutMs: 120_000,
-        })
+        const [objectiveRaw, essayRaw] = await Promise.all([
+            generateQuizBatch(card, promptStudynotesQuizObjective, '客观题'),
+            generateQuizBatch(card, promptStudynotesQuizEssay, '简答题'),
+        ])
 
-        await logAiUsage(
-            'quiz-question',
-            usage,
-            `学习管理出题：${card.topic || card.subject}`,
-        )
-
-        const parsed = safeJsonParse<{
-            questions?: StudynotesQuizQuestion[]
-        } | null>(reply, null)
-        if (!parsed || !Array.isArray(parsed.questions)) {
-            throw new Error('AI 返回的题目格式不正确')
-        }
-
-        // 过滤空题对象（题干为空则丢弃），避免空白题目入库
-        const nonEmptyQuestions = parsed.questions.filter(
-            (q) => String(q.question || '').trim().length > 0,
-        )
-        // AI 可能返回 19/21 题，最多截取前 20 题，避免偶发数量偏差导致整体失败
-        const trimmed = nonEmptyQuestions.slice(0, 20)
-        if (trimmed.length !== 20) {
-            throw new Error('AI 返回的有效题目数量不足（应为20题）')
-        }
-
-        // 题型配比校验：简答恰好 10 题、单选/多选各至少 1 题（type 非法按 essay 计数，
-        // 与下方 map 的回落口径一致），防止 AI 返回 20 题全为同一种题型
-        const typeCounts = trimmed.reduce<Record<string, number>>((acc, q) => {
-            const type =
-                q.type === 'single' || q.type === 'multi' ? q.type : 'essay'
-            acc[type] = (acc[type] ?? 0) + 1
-            return acc
-        }, {})
-        if (
-            (typeCounts.essay ?? 0) !== 10 ||
-            (typeCounts.single ?? 0) < 1 ||
-            (typeCounts.multi ?? 0) < 1
-        ) {
+        // AI 可能返回 9/11 题，最多截取所需题量，避免偶发数量偏差导致整体失败
+        const objective = objectiveRaw.slice(0, QUIZ_OBJECTIVE_COUNT)
+        const essay = essayRaw.slice(0, QUIZ_ESSAY_COUNT)
+        if (objective.length !== QUIZ_OBJECTIVE_COUNT) {
             throw new Error(
-                'AI 返回的题型配比不符合要求（简答10题，单选/多选各至少1题）',
+                `AI 返回的有效客观题不足（应为${QUIZ_OBJECTIVE_COUNT}题）`,
+            )
+        }
+        if (essay.length !== QUIZ_ESSAY_COUNT) {
+            throw new Error(
+                `AI 返回的有效简答题不足（应为${QUIZ_ESSAY_COUNT}题）`,
+            )
+        }
+        // 客观题配比校验：单选/多选各至少 1 题（口径与 normalizeQuizQuestion 一致），
+        // 防止客观批清一色同题型
+        const multiCount = objective.filter((q) => q.type === 'multi').length
+        if (multiCount === 0 || multiCount === objective.length) {
+            throw new Error(
+                'AI 返回的客观题题型配比不符合要求（单选/多选各至少1题）',
             )
         }
 
-        // 透传 type/options/answer/points：type 非法回落 essay；points 非法用合法默认值 5，
-        // 避免被 sanitize 当作「分值非法」剔除导致题目不足（总分由 sanitize 兜底重分配为 100）
-        return trimmed.map((q, i) => ({
-            index: i + 1,
-            type: q.type === 'single' || q.type === 'multi' ? q.type : 'essay',
-            question: String(q.question || '').trim(),
-            points:
-                typeof q.points === 'number' &&
-                Number.isFinite(q.points) &&
-                q.points > 0
-                    ? Math.round(q.points)
-                    : 5,
-            ...(Array.isArray(q.options)
-                ? {
-                      // 过滤空白选项，避免空串选项入库后被渲染成空白行
-                      options: q.options
-                          .map(String)
-                          .filter((o) => o.trim().length > 0),
-                  }
-                : {}),
-            ...(q.answer !== undefined && q.answer !== null
-                ? { answer: String(q.answer) }
-                : {}),
-        }))
+        // 客观题排前 10 题、简答题排后 10 题，index 连续 1..20
+        return [
+            ...objective.map((q, i) => normalizeQuizQuestion(q, i + 1, false)),
+            ...essay.map((q, i) =>
+                normalizeQuizQuestion(q, QUIZ_OBJECTIVE_COUNT + i + 1, true),
+            ),
+        ]
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('AI quiz generate error:', message)
