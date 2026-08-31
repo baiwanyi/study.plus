@@ -113,6 +113,15 @@ interface TaskModalShareProps {
     onCancel: () => void
 }
 
+/** 提交日期转文件名日期段（YYYY-MM-DD）；缺失或非法一律回落「未提交」，避免 Invalid Date 进文件名 */
+function formatSubmitDate(iso: string | null | undefined): string {
+    if (!iso) return '未提交'
+    const date = new Date(iso)
+    if (Number.isNaN(date.getTime())) return '未提交'
+    const pad = (n: number) => String(n).padStart(2, '0')
+    return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
 /** 安全解析 aiScore JSON 字符串 */
 function parseAiScore(raw: string | null): AIScoreResult | null {
     if (!raw) return null
@@ -143,14 +152,14 @@ export const TaskModalShare = memo(
                     '_',
                 )
                 const link = document.createElement('a')
-                link.download = `分享_${safeTitle}.png`
+                link.download = `分享_${formatSubmitDate(task?.submittedAt)}_${safeTitle}.png`
                 link.href = dataUrl
                 link.click()
                 link.remove()
             } catch (err) {
                 console.error('导出图片失败:', err)
             }
-        }, [task?.title])
+        }, [task?.submittedAt, task?.title])
 
         return (
             <Modal
