@@ -104,9 +104,10 @@ export const Studynotes: FC = () => {
         [editLesson, showSnackbar, refetch],
     )
 
+    // 心得尚未创建时 studynoteId 为 null，需以新建模式打开空白表单，
+    // 保存时由 lessonId 建立课程与心得的关联，故此处不能因 studynoteId 为空而拦截
     const handleOpenReflection = useCallback(
         (lesson: StudyLessonWithStatus) => {
-            if (lesson.studynoteId == null) return
             setReflectionLesson(lesson)
             setReflectionCardId(lesson.studynoteId)
         },
