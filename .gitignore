@@ -1,5 +1,7 @@
 node_modules/
 dist/
+deploy/
+.deploy-stale-*/
 data/
 .env
 *.log

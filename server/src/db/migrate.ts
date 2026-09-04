@@ -192,6 +192,46 @@ export async function migrate(): Promise<void> {
     )
   `)
 
+    // 兑换表列清单：按显式列名迁移，避免 SELECT * 在旧表列数不同时失败。
+    const exchangeColumns = [
+        'id',
+        'item_type',
+        'points_cost',
+        'detail',
+        'status',
+        'created_at',
+        'updated_at',
+    ]
+    const exchangeTableColumns = async (table: string): Promise<string[]> => {
+        const info = await client.execute(`PRAGMA table_info(${table})`)
+        const existing = info.rows.map(
+            (row) => (row as unknown as { name: string }).name,
+        )
+        return exchangeColumns.filter((column) => existing.includes(column))
+    }
+
+    // 自愈历史遗留：旧版迁移用 SELECT * 回填，列数不匹配时中断，
+    // 导致 exchanges_old 残留、主表为空，且此后每次迁移都因同名表已存在而再次失败。
+    // 先按显式列名把旧表数据迁回主表（跳过已存在的 id），再删除旧表。
+    const exchangesOldResult = await client.execute({
+        sql: "SELECT name FROM sqlite_master WHERE type='table' AND name = ?",
+        args: ['exchanges_old'],
+    })
+    if (exchangesOldResult.rows.length > 0) {
+        try {
+            const columns = (
+                await exchangeTableColumns('exchanges_old')
+            ).join(', ')
+            await client.execute(
+                `INSERT INTO exchanges (${columns}) SELECT ${columns} FROM exchanges_old WHERE id NOT IN (SELECT id FROM exchanges)`,
+            )
+            await client.execute('DROP TABLE exchanges_old')
+            console.log('已恢复 exchanges_old 中的兑换记录并清理旧表。')
+        } catch (e) {
+            console.warn('exchanges_old 恢复跳过:', (e as Error).message)
+        }
+    }
+
     const exchangesExists = await client.execute(
         "SELECT name FROM sqlite_master WHERE type='table' AND name='exchanges'",
     )
@@ -219,11 +259,15 @@ export async function migrate(): Promise<void> {
             points_cost INTEGER NOT NULL,
             detail TEXT NOT NULL,
             status TEXT NOT NULL DEFAULT 'active' CHECK(status IN ('active', 'revoked')),
-            created_at TEXT NOT NULL DEFAULT (datetime('now'))
+            created_at TEXT NOT NULL DEFAULT (datetime('now')),
+            updated_at TEXT
           )
         `)
+                const columns = (
+                    await exchangeTableColumns('exchanges_old')
+                ).join(', ')
                 await client.execute(
-                    'INSERT INTO exchanges SELECT * FROM exchanges_old',
+                    `INSERT INTO exchanges (${columns}) SELECT ${columns} FROM exchanges_old`,
                 )
                 await client.execute('DROP TABLE exchanges_old')
                 console.log('Exchanges table migrated successfully.')

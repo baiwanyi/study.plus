@@ -1,3 +1,9 @@
+/**
+ * Express 应用入口：安全中间件、API 路由注册、前端静态资源托管与生产启动逻辑。
+ * 路径统一由 paths 模块按 APP_ROOT 解析，静态资源目录可通过 DIST_PATH 覆盖。
+ * 启动副作用（API Key 校验、定时任务、端口监听）收口在 isMain 守卫中，
+ * 避免被集成测试 import 时触发 process.exit / 端口占用 / 后台定时器。
+ */
 import cors from 'cors'
 import helmet from 'helmet'
 import { eq } from 'drizzle-orm'
@@ -5,9 +11,11 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import fs from 'fs'
 import path from 'path'
+import { fileURLToPath } from 'url'
 import type { NextFunction, Request, Response } from 'express'
 import { db } from './db/index'
 import { options } from './db/schema'
+import { resolveFromClientRoot, resolveFromRoot } from './paths'
 import { isFirstDayOfMonth, repayActiveAdvances } from './routes/advance-helper'
 import { aiUsageRouter } from './routes/ai-usage'
 import { exchangesRouter } from './routes/exchanges'
@@ -29,7 +37,14 @@ process.env.NODE_ENV ||= 'production'
 // 守卫中，避免被测试 import 时触发 process.exit / 端口占用 / 后台定时器。
 export const app = express()
 const PORT = Number(process.env.PORT) || 3006
-const isMain = import.meta.main
+// 前端构建产物目录：与 Vite 的 outDir（deploy/dist）保持一致，可用 DIST_PATH 覆盖。
+const clientDist = resolveFromClientRoot(process.env.DIST_PATH || 'dist')
+// import.meta.main 仅 Node 24.2+ 提供；低版本下回落到入口路径比对，
+// 否则 isMain 恒为 undefined，会导致 API Key 校验与端口监听被整体跳过。
+const isMain =
+    import.meta.main ??
+    (process.argv[1] !== undefined &&
+        path.resolve(process.argv[1]) === fileURLToPath(import.meta.url))
 
 // Security headers via helmet (covers X-Content-Type-Options,
 // X-Frame-Options, Referrer-Policy, etc.). HSTS is NOT managed by helmet
@@ -150,14 +165,8 @@ app.use('/api/study', requireApiKey, studynotesRouter)
 
 // List images in public/images/ directory for share background picker
 app.get('/api/images', async (_req: Request, res: Response) => {
-    const imagesDir = path.resolve(
-        import.meta.dirname,
-        '..',
-        '..',
-        'apps',
-        'public',
-        'images',
-    )
+    // 分享背景图随 Vite 构建一并输出到 dist/images，开发与部署共用同一目录。
+    const imagesDir = path.join(clientDist, 'images')
     try {
         const files = (await fs.promises.readdir(imagesDir))
             .filter((f) => /\.(jpg|jpeg|png|webp)$/i.test(f))
@@ -194,12 +203,6 @@ app.get('/api/system', async (_req: Request, res: Response) => {
 })
 
 // Serve React client in production
-const clientDist = path.resolve(
-    import.meta.dirname,
-    '..',
-    '..',
-    process.env.DIST_PATH || 'dist',
-)
 app.use(express.static(clientDist))
 
 // API 404 fallback — return JSON for unmatched API routes

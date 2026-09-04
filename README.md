@@ -39,7 +39,7 @@
 | Markdown | @uiw/react-md-editor (4.x)                | Markdown 编辑器 + 实时预览           |
 | 思维导图 | Mermaid.js 11.15                          | Markdown 语法渲染思维导图            |
 | 编译优化 | React Compiler (Babel 插件)               | 自动记忆化编译优化                   |
-| 后端服务 | Express 5 + tsx                           | RESTful API (端口 3001)              |
+| 后端服务 | Express 5 + tsx                           | RESTful API（端口由环境变量 `PORT` 配置）|
 | 安全中间件 | helmet + cors + express-rate-limit      | 安全头 / 跨域 / 接口限流（防账单刷爆）|
 | 校验     | Zod 4                                    | 请求体 / 参数校验                    |
 | 数据库   | SQLite + @libsql/client                   | 轻量级本地数据库                     |
@@ -55,7 +55,7 @@
 采用 **前后端分离** 的 pnpm workspace monorepo 架构，拆分为 3 个独立包：
 
 - **`apps/`（前端）**：React 19 + Vite 8，运行在端口 5173
-- **`server/`（后端）**：Express 5 + tsx，运行在端口 3001
+- **`server/`（后端）**：Express 5 + tsx，端口由环境变量 `PORT` 配置
 - **`shared/`（共享层）**：类型定义、常量、Zod Schema、纯工具函数
 
 **依赖关系**：`apps → shared`、`server → shared`，前端和后端之间无直接依赖。
@@ -524,9 +524,8 @@ study.webian.dev/
 # 安装依赖
 pnpm install
 
-# 配置环境变量
-cp .env.example .env
-# 如果没有 .env.example，请参考下方「环境变量」手动创建 .env
+# 配置环境变量（模板位于 server/.env.example）
+cp server/.env.example .env
 
 # 初始化数据库
 pnpm db:migrate
@@ -537,7 +536,7 @@ pnpm dev:all
 # 或仅启动前端（Vite，端口 5173）
 pnpm dev
 
-# 仅启动后端（在 server 包：tsx watch，端口 3001）
+# 仅启动后端（在 server 包：tsx watch，端口由 PORT 配置）
 pnpm --filter server dev
 
 # 构建前端
@@ -552,23 +551,44 @@ pnpm test                # 运行所有测试
 
 ### 环境变量（根目录 .env）
 
+全局唯一的 `.env` 位于**仓库根目录**（Vite 与后端均由此读取）。可从模板复制后填写：
+
+```bash
+cp server/.env.example .env
+```
+
 ```env
-# DeepSeek API
+# 接口访问密钥（必填）：后端接口鉴权，未设置时服务拒绝启动
+API_KEY=自定义一个密钥
+
+# DeepSeek API（使用 AI 功能时必填）
 DEEPSEEK_API_KEY=你的API密钥
 DEEPSEEK_BASE_URL=https://api.deepseek.com
 
 # 服务端口
-PORT=3001
+PORT=3006
 
-# 数据库路径
-DB_PATH=./data/study.db
+# 数据库路径（相对 APP_ROOT 解析，开发态即仓库根/data/study.db）
+DB_PATH=data/study.db
 
-# 视频分发路径（本地视频文件根目录）
-DISTRIBUTION_PATH=E:\\Videos\\xxx
-
-# 自动保存间隔（秒）
-AUTOSAVE_INTERVAL=10
+# 前端构建期变量：编译进 dist 的 JS，需与后端配合
+VITE_API_KEY=与 API_KEY 相同的值
+VITE_ADMIN_DOMAINS=管理员访问的主机名或IP
 ```
+
+完整字段与说明见 `server/.env.example`。
+
+**不同运行形态下 `.env` 的读取位置**：
+
+| 运行形态 | `.env` 读取位置 | 数据库目录 |
+| ---- | ---- | ---- |
+| 开发态（`pnpm start` / `pnpm dev`） | 仓库根 `.env` | 仓库根 `data/` |
+| 仓库内试跑产物（`node deploy/server.mjs`） | 仓库根 `.env`（取上一级） | `deploy/data/`，不存在时回退仓库根 `data/` |
+| 服务器独立部署（`C:\study-plus\server.mjs`） | 自身目录 `.env` | 自身目录 `data/` |
+
+未配置 `DB_PATH` 时按上表查找；显式配置 `DB_PATH` 则严格相对 `APP_ROOT` 解析，不做回退。
+
+> 视频分发目录与自动保存间隔已改为数据库配置，在「设置」页面维护，不再使用环境变量。
 
 > ⚠️ `.env` 文件已在 `.gitignore` 中配置，不会被提交到仓库。请勿将 API 密钥硬编码或提交到版本控制。
 
@@ -589,11 +609,105 @@ AUTOSAVE_INTERVAL=10
 
 | 脚本              | 说明                                  |
 | ----------------- | ------------------------------------- |
-| `dev`             | 启动后端开发服务器（tsx watch，端口 3001）|
+| `dev`             | 启动后端开发服务器（tsx watch，端口由 PORT 配置）|
 | `start`           | 启动后端生产服务器（tsx）             |
 | `db:migrate`      | 运行迁移脚本（建表 + 默认数据 + 历史成绩重算）|
 | `db:generate`     | 生成 Drizzle 迁移文件                 |
 | `db:push`         | Drizzle Kit 直接推送 Schema 到数据库  |
+
+## 打包与部署（Windows Server）
+
+日常打包只需一条命令，产物是一个**不依赖 `node_modules` 的自包含目录**，拷贝到服务器后直接 `node` 启动即可。
+
+`deploy/` 是**纯产物目录**，每次打包整体删除重建；运行时文件（`.env`、数据库）由部署端维护，不参与版本管理。
+
+```bash
+# 一条命令：先清空重建后端产物，再由 Vite 构建前端
+pnpm package
+
+# 也可分开执行（顺序不可颠倒）
+pnpm build:server   # 清空 deploy/，打包后端并复制原生运行时
+pnpm build          # Vite 直接构建前端到 deploy/dist
+```
+
+### 产物结构
+
+```
+deploy/
+├── server.mjs            # 后端单文件（express/helmet/cors/zod/drizzle/dotenv 等全部内联）
+├── migrate.mjs           # 数据库迁移单文件
+├── dist/                 # 前端静态产物（Vite 直接输出到此处）
+├── data/study.db         # 首次执行迁移时生成（APP_ROOT/data）
+├── .env                  # 由部署端创建，不随打包分发
+└── node_modules/         # 仅 libsql 原生运行时（4 个包），不是依赖树
+    ├── libsql/
+    ├── detect-libc/
+    ├── @libsql/win32-x64-msvc/
+    └── @neon-rs/load/
+```
+
+> SQLite 的原生二进制由 `@neon-rs/load` 在运行时动态加载，任何打包器都无法静态内联，
+> 因此这 4 个包必须随产物分发。除此之外服务器不需要安装任何 `node_modules`。
+
+### 部署步骤
+
+```powershell
+# 1. 服务器安装 Node 22 LTS 或 24 LTS（不得低于 20.11）
+
+# 2. 拷贝 deploy/ 到服务器，例如 C:\study-plus
+cd C:\study-plus
+
+# 3. 创建环境变量（字段见下方「环境变量」，或参考仓库中的 server/.env.example）
+notepad .env
+
+# 4. 初始化数据库（建表 + 灌入默认规则）
+node migrate.mjs
+
+# 5. 启动服务
+node server.mjs
+```
+
+### 生产环境常驻
+
+推荐用 [nssm](https://nssm.cc/) 注册为 Windows 服务：
+
+```powershell
+nssm install StudyPlus "C:\Program Files\nodejs\node.exe" "C:\study-plus\server.mjs"
+nssm set StudyPlus AppDirectory C:\study-plus
+nssm start StudyPlus
+```
+
+放通防火墙端口（端口需与 `.env` 中的 `PORT` 一致）：
+
+```powershell
+netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protocol=TCP localport=3006
+```
+
+### 部署注意事项
+
+| 事项 | 说明 |
+| ---- | ---- |
+| 前端环境变量是**构建期注入** | `VITE_API_KEY`、`VITE_ADMIN_DOMAINS` 会被编译进 `dist` 的 JS。更换服务器或修改 `API_KEY` 后必须重新执行 `pnpm build`，否则前端携带旧 Key 请求会全部 401 |
+| `VITE_ADMIN_DOMAINS` 要填主机名或 IP | 否则管理员页面（设置 / 规则配置）因 `isAdmin()` 判定失败而不可用 |
+| 重新打包会**整体删除** `deploy/` | `data/` 与 `.env` 一并清除。生产环境请将 `DB_PATH` 设为 `deploy/` 之外的绝对路径（如 `DB_PATH=D:\study-data\study.db`），或在打包前备份 |
+| 平台必须与打包机一致 | 产物中的原生二进制为 `@libsql/win32-x64-msvc`；若目标平台不同，需在目标机器上重新打包 |
+
+### 环境变量（部署目录 `.env`）
+
+字段与 `server/.env.example` 一致，其中 `APP_ROOT` 为可选项：
+
+| 变量 | 说明 |
+| ---- | ---- |
+| `API_KEY` | **必填**，后端接口鉴权（`X-API-Key`）；缺失时服务器拒绝启动。需与前端构建时的 `VITE_API_KEY` 一致 |
+| `DEEPSEEK_API_KEY` | **使用 AI 功能时必填**（评分 / 起名 / 出题 / 周报分析 / 心得评估 / 智能测验） |
+| `DEEPSEEK_BASE_URL` | DeepSeek 接口地址，默认 `https://api.deepseek.com` |
+| `PORT` | 监听端口，默认 3006 |
+| `DB_PATH` | 数据库路径，相对部署目录解析，默认 `data/study.db`；生产建议用绝对路径指向 `deploy/` 之外 |
+| `NODE_ENV` | `production`（默认，不返回错误堆栈）或 `development` |
+| `ENABLE_HSTS` | HSTS 开关，默认 `false`；仅确有 TLS 终端时才设为 `true` |
+| `CORS_ORIGIN` | 允许的跨域源，逗号分隔；留空表示同源部署 |
+| `APP_ROOT` | 应用根目录，默认取进程工作目录 |
+| `DIST_PATH` | 前端产物目录，默认 `APP_ROOT/dist` |
 
 ## 许可证
 

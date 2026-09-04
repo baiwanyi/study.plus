@@ -7,12 +7,16 @@
         "dev:all": "concurrently \"pnpm --filter server dev\" \"pnpm --filter apps dev\"",
         "dev": "pnpm --filter apps dev",
         "build": "pnpm --filter apps build",
+        "build:server": "node scripts/deploy.mjs",
+        "package": "pnpm build:server && pnpm build",
         "db:migrate": "pnpm --filter server db:migrate",
+        "server": "node deploy/server.mjs",
         "start": "pnpm --filter server start",
         "test": "pnpm --filter server exec vitest run"
     },
     "devDependencies": {
         "concurrently": "^10.0.0",
+        "esbuild": "^0.28.0",
         "vitest": "^4.1.6"
     }
 }

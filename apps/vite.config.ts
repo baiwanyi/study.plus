@@ -14,7 +14,8 @@ export default defineConfig({
         },
     },
     build: {
-        outDir: path.resolve(__dirname, '..', 'dist'),
+        // 前端产物直接输出到部署目录，不再先构建到仓库根再搬运。
+        outDir: path.resolve(__dirname, '..', 'deploy', 'dist'),
         emptyOutDir: true,
         rollupOptions: {
             output: {
