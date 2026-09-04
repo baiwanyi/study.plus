@@ -397,6 +397,9 @@ study.webian.dev/
 │   │       │   ├── task.ts    # 作业评分/起名/出题 AI
 │   │       │   ├── weekly.ts  # 周报分析 AI
 │   │       │   └── studynotes.ts # 心得评估 AI + 测验出题 AI + 测验批改 AI（客观题本地判分）+ 预习分析 AI
+│   │       ├── backup.ts       # 每日备份编排（一致性快照 + zip 打包 + 调度判定）
+│   │       ├── backup-retention.ts # 邮箱保留策略（IMAP 收件箱/已发送 双文件夹清理）
+│   │       ├── mailer.ts       # 备份邮件发送（SMTP 三类超时 + 指数退避重试）
 │   │       └── points.ts       # 积分计算引擎
 │   ├── package.json
 │   └── tsconfig.json
@@ -708,6 +711,67 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 | `CORS_ORIGIN` | 允许的跨域源，逗号分隔；留空表示同源部署 |
 | `APP_ROOT` | 应用根目录，默认取进程工作目录 |
 | `DIST_PATH` | 前端产物目录，默认 `APP_ROOT/dist` |
+| `BACKUP_ENABLED` | 数据库每日备份总开关，默认 `false`；置为 `true` 才启用 |
+| `BACKUP_TIME` | 每日触发时刻 `HH:mm`（本地时区），默认 `03:00` |
+| `BACKUP_MAX_ATTACHMENT_MB` | zip 超过该体积则跳过发送并告警，默认 `20` |
+| `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | 备份邮件发送服务器；QQ 邮箱为 `smtp.qq.com` / `465` / `true` |
+| `SMTP_USER` / `SMTP_PASS` | 发件账号与**授权码**（在邮箱网页端生成，非登录密码） |
+| `MAIL_FROM` / `MAIL_TO` | 发件人（默认取 `SMTP_USER`）与收件人（多个逗号分隔） |
+| `BACKUP_RETENTION` | 收件箱与「已发送」各保留的最新份数，`0` 表示不清理，默认 `0` |
+| `BACKUP_RETENTION_MAX_DELETE` | 单文件夹单次最多移动的封数（防误删安全阀），默认 `5` |
+| `IMAP_HOST` / `IMAP_PORT` / `IMAP_SECURE` | 清理用的 IMAP 服务器；QQ 邮箱为 `imap.qq.com` / `993` / `true` |
+| `IMAP_USER` / `IMAP_PASS` | 收件箱的 IMAP 凭据，留空时复用 SMTP 凭据 |
+| `IMAP_MAILBOX` | 备份邮件所在文件夹，默认 `INBOX` |
+| `IMAP_SENT_FOLDER` / `IMAP_TRASH_FOLDER` | 「已发送」「已删除」文件夹名，留空时按 special-use 标志自动探测 |
+
+备份相关变量的完整说明见 `server/.env.example` 的「数据库每日备份（可选）」段。
+
+## 数据库每日备份
+
+把 SQLite 库每天打包成 zip 并以邮件外发，用作异地容灾：本机硬盘故障时，邮箱里仍保留最近若干天的完整快照。功能默认全关，不影响主服务。
+
+### 工作流程
+
+| 阶段 | 行为 |
+| ---- | ---- |
+| 调度 | 每小时巡检一次，到达 `BACKUP_TIME` 且当日未执行过则触发；启动晚于触发时刻时，开机 30 秒后补发一次 |
+| 快照 | 先执行 `PRAGMA wal_checkpoint(TRUNCATE)` 把 WAL 中未落库的事务写回主库，再复制物理文件 |
+| 打包 | 流式压缩为 zip，附件名 `study-backup-YYYY-MM-DD.zip` |
+| 发送 | SMTP 直连，附件超过 `BACKUP_MAX_ATTACHMENT_MB` 则跳过发送并告警 |
+| 清理 | 按自定义头与主题前缀命中备份邮件，把超出份数的旧备份移入「已删除」文件夹 |
+
+### 安全性设计
+
+- **一致性**：直接复制读写中的 SQLite 文件会漏掉 WAL 里未落库的事务，故快照前必须先 checkpoint。
+- **防误删三重防护**：自定义头 `X-StudyPlus-Backup` 精确命中 → 逐封校验主题前缀 `[StudyPlus Backup]` → 单文件夹单次移动不超过 `BACKUP_RETENTION_MAX_DELETE` 封。探测不到「已删除」文件夹时直接放弃清理并打印全部文件夹清单，绝不猜测。
+- **主题前缀刻意使用纯 ASCII**：中文前缀经 SMTP 传输后会被 MIME 编码为 `=?UTF-8?B?…?=`，IMAP 侧取回的主题将无法按前缀匹配，二次校验会恒定失效。
+- **降级不拖垮主服务**：SMTP 或 IMAP 配置缺失时仅打印中文告警并禁用对应能力，API 服务正常启动。
+
+### QQ 邮箱配置
+
+1. 邮箱网页端 → 设置 → 账户 → 在「POP3/IMAP/SMTP 服务」中开启 **IMAP/SMTP 服务** → 生成 **16 位授权码**（不是 QQ 密码）。
+2. 在 `.env` 中填写：`SMTP_HOST=smtp.qq.com`、`SMTP_PORT=465`、`SMTP_SECURE=true`、`SMTP_PASS=<授权码>`、`IMAP_HOST=imap.qq.com`、`IMAP_PORT=993`、`IMAP_SECURE=true`。
+3. 自发自收场景下 `SMTP_USER`、`MAIL_TO`、`IMAP_USER`、`IMAP_PASS` 填同一个地址即可（`IMAP_USER` / `IMAP_PASS` 留空会自动复用 SMTP 凭据）。
+
+> ⚠️ 自发自收会在**收件箱**和**已发送**各留一份副本，因此两个文件夹都必须清理，否则「已发送」里的备份会永久堆积。
+
+### 灰度上线建议
+
+| 阶段 | 配置 | 验证目标 |
+| ---- | ---- | ---- |
+| 第 1 周 | `BACKUP_RETENTION=0` | 只发不删，确认每天能收到可解压的 zip |
+| 第 2 周 | `BACKUP_RETENTION=20`、`BACKUP_RETENTION_MAX_DELETE=1` | 观察日志，确认只移走备份邮件、未触碰其他邮件 |
+| 转正 | `BACKUP_RETENTION_MAX_DELETE=5` | 正常运行 |
+
+启动后日志会打印 `[Backup] 邮箱中现有 N 封备份邮件` 相关的清理记录。若长期无任何清理记录，通常是 `IMAP_MAILBOX` 配错（收信规则把备份邮件归入了其他文件夹）。
+
+### 注意事项
+
+| 事项 | 说明 |
+| ---- | ---- |
+| 数据外发 | 数据库含儿童学习记录与家庭积分数据，每日经邮件服务商传输。 zip 未加密，安全边界依赖 SMTP TLS 与邮箱账号本身的安全，请妥善保管授权码 |
+| 部署端配置 | `.env` 不随打包产物分发，升级到服务器后新增变量需手工补进部署目录的 `.env` |
+| 邮箱容量 | 两个文件夹各留 20 份，实际约 40 个压缩包；按 db 实际大小（通常 zip 后仅几 MB）估算不构成压力 |
 
 ## 许可证
 

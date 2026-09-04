@@ -39,5 +39,9 @@ const client = createClient({
     url: TEST_DB_URL ?? `file:${DB_PATH}`,
 })
 
+// 仅文件型数据库具备可复制的物理路径；测试内存库与远程库返回 null。
+// 备份模块据此判定能否生成快照，无需重复实现上面的路径回退规则。
+export const DB_FILE_PATH: string | null = TEST_DB_URL ? null : DB_PATH
+
 export const db = drizzle(client, { schema })
 export { client }

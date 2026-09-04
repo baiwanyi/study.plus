@@ -13,7 +13,7 @@ import fs from 'fs'
 import path from 'path'
 import { fileURLToPath } from 'url'
 import type { NextFunction, Request, Response } from 'express'
-import { db } from './db/index'
+import { DB_FILE_PATH, db } from './db/index'
 import { options } from './db/schema'
 import { resolveFromClientRoot, resolveFromRoot } from './paths'
 import { isFirstDayOfMonth, repayActiveAdvances } from './routes/advance-helper'
@@ -27,6 +27,13 @@ import { studynotesRouter } from './routes/studynotes'
 import { tasksRouter } from './routes/tasks'
 import { videosRouter } from './routes/videos'
 import { weeklyRouter } from './routes/weekly'
+import {
+    readBackupConfig,
+    runDailyBackup,
+    shouldRunBackup,
+    toDateKey,
+} from './services/backup'
+import { readMailConfig } from './services/mailer'
 
 // 安全默认：未显式声明 NODE_ENV=development 时，按生产环境处理
 // （生产环境禁止向客户端返回错误堆栈，见全局错误处理器）。
@@ -256,6 +263,41 @@ function setupMonthlyRepayment(): void {
     console.log('[Scheduled] 每月还款定时任务已启动')
 }
 
+// Setup daily database backup.
+// 与月度还款同一范式：每小时巡检 + 日期守卫，保证每日至多一份；
+// 启动晚于触发时刻时延迟补发一次，适配非全天开机的家庭服务器。
+// 仅「发送失败」不写入已执行日期，允许后续 tick 在当天重试；
+// 「附件超限」属于不会自行恢复的状态，重试无意义，故一并标记完成。
+let lastBackupDate = ''
+
+function setupDailyBackup(): void {
+    const backupConfig = readBackupConfig(DB_FILE_PATH)
+    if (!backupConfig) {
+        return
+    }
+    const mailConfig = readMailConfig()
+    if (!mailConfig) {
+        return
+    }
+    const checkAndBackup = async () => {
+        const now = new Date()
+        if (!shouldRunBackup(lastBackupDate, now, backupConfig)) {
+            return
+        }
+        const result = await runDailyBackup(backupConfig, mailConfig, now)
+        if (result.status === 'sent') {
+            console.log('[Backup] 每日数据库备份已发送')
+        }
+        if (result.status !== 'failed') {
+            lastBackupDate = toDateKey(now)
+        }
+    }
+    setTimeout(checkAndBackup, 30 * 1000)
+    setInterval(checkAndBackup, 60 * 60 * 1000)
+    const trigger = `${String(backupConfig.triggerHour).padStart(2, '0')}:${String(backupConfig.triggerMinute).padStart(2, '0')}`
+    console.log(`[Scheduled] 每日数据库备份定时任务已启动，触发时刻 ${trigger}`)
+}
+
 // 以下为生产启动逻辑：仅当以主模块直接运行（node/bun server/src/index.ts）时执行。
 // 被测试 import 时 isMain 为 false，跳过定时任务与端口监听，避免污染测试环境。
 if (isMain) {
@@ -266,6 +308,7 @@ if (isMain) {
         process.exit(1)
     }
     setupMonthlyRepayment()
+    setupDailyBackup()
 
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`Server listening on port ${PORT}`)
