@@ -1,7 +1,14 @@
 'use client'
 
 import { useState, useMemo } from 'react'
-import { ArrowDown, ArrowUp, ArrowUpDown, CheckCircle2, Lock } from 'lucide-react'
+import {
+    ArrowDown,
+    ArrowUp,
+    ArrowUpDown,
+    CheckCircle2,
+    Lock,
+    BadgeQuestionMark,
+} from 'lucide-react'
 import { isAdmin, paginate, getPageSize } from '@apps/utils/client'
 import { DataTable } from '@components/DataTable'
 import { Loading } from '@components/Loading'
@@ -20,6 +27,8 @@ interface LessonsListTableProps {
     onQuiz: (lesson: StudyLessonWithStatus) => void
     onShare: (lesson: StudyLessonWithStatus) => void
     onDelete: (lesson: StudyLessonWithStatus) => void
+    // 心得解锁判定：已生成课堂问答题的课程需问答评分 ≥ 80 才能写心得；其余直接可写
+    canReflection: (lesson: StudyLessonWithStatus) => boolean
 }
 
 // 分数着色：<80 红，80-89 绿，>=90 金
@@ -47,12 +56,28 @@ function renderPreviewStatus(lesson: StudyLessonWithStatus) {
     }
     return (
         <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-4 shrink-0 text-green-600" />
-            <span className="text-xs text-green-600">已预习</span>
+            <CheckCircle2
+                className={`size-4 shrink-0 ${lesson.previewScore != null ? scoreColor(lesson.previewScore) : 'text-green-600'}`}
+            />
             {lesson.previewScore != null && (
-                <span className="text-xs text-gray-500">
-                    （{lesson.previewScore}分）
+                <span className={`font-semibold ${scoreColor(lesson.previewScore)}`}>
+                    {lesson.previewScore}分
                 </span>
+            )}
+            {lesson.previewQuizGenerated && (
+                <BadgeQuestionMark
+                    className={[
+                        'size-4',
+                        lesson.previewQuizScore == null
+                            ? 'text-gray-400'
+                            : scoreColor(lesson.previewQuizScore),
+                    ].join(' ')}
+                    aria-label={
+                        lesson.previewQuizScore != null
+                            ? `已生成课堂问答题，评分${lesson.previewQuizScore}分`
+                            : '已生成课堂问答题，待评分'
+                    }
+                />
             )}
         </span>
     )
@@ -64,12 +89,13 @@ function renderReflectionStatus(lesson: StudyLessonWithStatus) {
     }
     return (
         <span className="flex items-center gap-1.5">
-            <CheckCircle2 className="size-4 shrink-0 text-green-600" />
-            <span className="text-xs text-green-600">已写心得</span>
+            <CheckCircle2
+                className={`size-4 shrink-0 ${lesson.studynoteScore != null ? scoreColor(lesson.studynoteScore) : 'text-green-600'}`}
+            />
             {lesson.studynoteScore != null && (
                 <span
-                    className={`text-xs font-semibold ${scoreColor(lesson.studynoteScore)}`}>
-                    （{lesson.studynoteScore}分）
+                    className={`font-semibold ${scoreColor(lesson.studynoteScore)}`}>
+                    {lesson.studynoteScore}分
                 </span>
             )}
         </span>
@@ -123,6 +149,7 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
     onQuiz,
     onShare,
     onDelete,
+    canReflection,
 }) => {
     const showAdminActions = isAdmin()
     const [page, setPage] = useState(1)
@@ -241,7 +268,16 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
                         </button>
                         <button
                             onClick={() => onReflection(record)}
+                            disabled={!canReflection(record)}
+                            title={
+                                canReflection(record)
+                                    ? '写学习心得'
+                                    : '完成预习问答并达到 80 分后可写心得'
+                            }
                             className="btn btn-outline btn-sm">
+                            {!canReflection(record) && (
+                                <Lock className="size-3" />
+                            )}
                             心得
                         </button>
                         <button

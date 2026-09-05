@@ -8,12 +8,16 @@
 import {
     defaultPromptEvaluateStudynotes,
     promptAnalyzePreview,
+    promptGeneratePreviewQuestions,
+    promptGradePreviewAnswers,
     promptStudynotesQuizEssay,
     promptStudynotesQuizGrade,
     promptStudynotesQuizObjective,
 } from '@shared/constants'
-import { decodeMultiSelection, studynotesSubjectLabels } from '@shared/utils'
+import { decodeMultiSelection, studynotesSubjectLabels, taskClassLabels } from '@shared/utils'
 import type {
+    StudyPreviewQuizQuestion,
+    StudyPreviewQuizResult,
     StudynotesQuizQuestion,
     StudynotesQuizResult,
 } from '@shared/types'
@@ -23,6 +27,21 @@ import {
     logAiUsage,
     safeJsonParse,
 } from './core'
+import { loadSystemSettings } from '../../routes/advance-helper'
+
+/** 从系统设定读取年级并转为中文标签（如"三年级"），读取失败时回退"未定级" */
+async function getGradeLabel(): Promise<string> {
+    try {
+        const settings = await loadSystemSettings()
+        const grade = Number((settings as Record<string, unknown>).grade)
+        if (Number.isFinite(grade) && grade >= 0 && grade < taskClassLabels.length) {
+            return taskClassLabels[grade]
+        }
+    } catch {
+        // 忽略读取异常，使用默认标签
+    }
+    return '未定级'
+}
 
 export async function evaluateStudynotesReflection(
     subject: string,
@@ -42,6 +61,7 @@ export async function evaluateStudynotesReflection(
         })
     }
 
+    const gradeLabel = await getGradeLabel()
     const prompt = defaultPromptEvaluateStudynotes
         .replace(
             '{subject}',
@@ -51,6 +71,7 @@ export async function evaluateStudynotesReflection(
         .replace('{summary}', summary || '未填写')
         .replace('{example}', example || '未填写')
         .replace('{stuckPoints}', stuckPoints || '未填写')
+        .replace('{grade}', gradeLabel)
 
     try {
         const { content: reply, usage } = await callDeepSeek({
@@ -118,6 +139,7 @@ export async function analyzePreview(
         })
     }
 
+    const gradeLabel = await getGradeLabel()
     const prompt = promptAnalyzePreview
         .replace(
             '{subject}',
@@ -127,6 +149,7 @@ export async function analyzePreview(
         .replace('{content}', content || '未填写')
         .replace('{oldKnowledge}', oldKnowledge || '未填写')
         .replace('{questions}', questions || '未填写')
+        .replace('{grade}', gradeLabel)
 
     try {
         const { content: reply, usage } = await callDeepSeek({
@@ -185,7 +208,11 @@ interface StudynotesCardInput {
     memoryHook?: string | null
 }
 
-function buildCardPrompt(card: StudynotesCardInput, template: string): string {
+function buildCardPrompt(
+    card: StudynotesCardInput,
+    template: string,
+    gradeLabel: string,
+): string {
     const subjectLabel =
         studynotesSubjectLabels[card.subject] || card.subject || '未填写学科'
     return template
@@ -195,6 +222,7 @@ function buildCardPrompt(card: StudynotesCardInput, template: string): string {
         .replace('{example}', card.example || '未填写')
         .replace('{stuckPoints}', card.stuckPoints || '未填写')
         .replace('{memoryHook}', card.memoryHook || '未填写')
+        .replace('{grade}', gradeLabel)
 }
 
 // 出题拆成客观题、简答题两批并发：20 题一次性生成时单次输出 6000~14000 tokens，
@@ -207,9 +235,10 @@ async function generateQuizBatch(
     card: StudynotesCardInput,
     template: string,
     batchLabel: string,
+    gradeLabel: string,
 ): Promise<StudynotesQuizQuestion[]> {
     const { content: reply, usage } = await callDeepSeek({
-        messages: [{ role: 'user', content: buildCardPrompt(card, template) }],
+        messages: [{ role: 'user', content: buildCardPrompt(card, template, gradeLabel) }],
         temperature: 0.7,
         // 单批 10 题含题干/选项/答案，实测输出 3000~7000 tokens，10000 留出充足余量；
         // 若仍被截断，callDeepSeek 检测到 finish_reason=length 会自动扩容重试
@@ -284,9 +313,10 @@ export async function generateStudynotesQuiz(
     }
 
     try {
+        const gradeLabel = await getGradeLabel()
         const [objectiveRaw, essayRaw] = await Promise.all([
-            generateQuizBatch(card, promptStudynotesQuizObjective, '客观题'),
-            generateQuizBatch(card, promptStudynotesQuizEssay, '简答题'),
+            generateQuizBatch(card, promptStudynotesQuizObjective, '客观题', gradeLabel),
+            generateQuizBatch(card, promptStudynotesQuizEssay, '简答题', gradeLabel),
         ])
 
         // AI 可能返回 9/11 题，最多截取所需题量，避免偶发数量偏差导致整体失败
@@ -432,7 +462,8 @@ export async function gradeStudynotesQuiz(
         })
         .join('\n\n')
 
-    const prompt = buildCardPrompt(card, promptStudynotesQuizGrade).replace(
+    const gradeLabel = await getGradeLabel()
+    const prompt = buildCardPrompt(card, promptStudynotesQuizGrade, gradeLabel).replace(
         '{questionsAndAnswers}',
         questionsAndAnswers,
     )
@@ -557,6 +588,235 @@ export async function gradeStudynotesQuiz(
     } catch (error: unknown) {
         const message = error instanceof Error ? error.message : String(error)
         console.error('AI quiz grade error:', message)
+        throw new Error(`批改失败：${message}`)
+    }
+}
+
+// ===== 课前预习课堂问答题 =====
+// 预习完整度达标后由学生手动触发，生成 3 道开放性思考题；仅产出题干，
+// 标准答案待学生课堂听讲后作答、由 AI 批改时给出。
+
+export async function generatePreviewQuestions(
+    subject: string,
+    topic: string,
+    content: string,
+    oldKnowledge: string,
+    questions: string,
+): Promise<StudyPreviewQuizQuestion[]> {
+    if (!DEEPSEEK_API_KEY) {
+        throw new Error('AI 出题未配置，请设置 DEEPSEEK_API_KEY')
+    }
+
+    const gradeLabel = await getGradeLabel()
+    const prompt = promptGeneratePreviewQuestions
+        .replace(
+            '{subject}',
+            studynotesSubjectLabels[subject] || subject || '未填写学科',
+        )
+        .replace('{topic}', topic || '未填写课题')
+        .replace('{content}', content || '未填写')
+        .replace('{oldKnowledge}', oldKnowledge || '未填写')
+        .replace('{questions}', questions || '未填写')
+        .replace('{grade}', gradeLabel)
+
+    try {
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.7,
+            max_tokens: 4000,
+            response_format: { type: 'json_object' },
+            timeoutMs: 120_000,
+        })
+
+        await logAiUsage(
+            'preview-quiz-generate',
+            usage,
+            `预习课堂问答生成：${topic || subject}`,
+        )
+
+        const parsed = safeJsonParse<{
+            questions?: StudyPreviewQuizQuestion[]
+        } | null>(reply, null)
+        if (!parsed || !Array.isArray(parsed.questions)) {
+            throw new Error('AI 返回的课堂问答题格式不正确')
+        }
+        // 过滤空题、保序重排 index，且必须恰好 3 题（不足即失败，避免残缺题库）
+        const kept = parsed.questions
+            .filter((q) => String(q?.question ?? '').trim().length > 0)
+            .map((q, i) => ({
+                index: i + 1,
+                question: String(q.question ?? '').trim(),
+                points:
+                    typeof q.points === 'number' &&
+                    Number.isFinite(q.points) &&
+                    q.points > 0
+                        ? Math.round(q.points)
+                        : 0,
+            }))
+        if (kept.length !== 3) {
+            throw new Error('AI 返回的课堂问答题不足 3 题')
+        }
+        // 总分兜底为 100：Σpoints≠100 时按题数均分，余数逐题补 1
+        const total = kept.reduce((s, q) => s + q.points, 0)
+        if (total !== 100) {
+            const base = Math.floor(100 / kept.length)
+            let remainder = 100 - base * kept.length
+            return kept.map((q) => {
+                const points = remainder > 0 ? base + 1 : base
+                remainder -= 1
+                return { ...q, points }
+            })
+        }
+        return kept
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('AI preview quiz generate error:', message)
+        throw new Error(`生成课堂问答题失败：${message}`)
+    }
+}
+
+export interface PreviewQuizGradeResult {
+    results: StudyPreviewQuizResult[]
+    score: number
+    comment: string
+    suggestions: string[]
+}
+
+/**
+ * 批改课堂问答题：3 道题均为开放性简答，无唯一标准答案。
+ * AI 基于预习内容 + 学生答案逐题给 0-10 比例分，按各题 points 折算实得分，总分即百分制。
+ */
+export interface PreviewQuizCardInput {
+    subject: string
+    topic: string
+    content: string
+    oldKnowledge: string
+    questions: string
+}
+
+export async function gradePreviewAnswers(
+    card: PreviewQuizCardInput,
+    questions: StudyPreviewQuizQuestion[],
+    answers: string[],
+): Promise<PreviewQuizGradeResult> {
+    if (!DEEPSEEK_API_KEY) {
+        throw new Error('AI 批改未配置，请设置 DEEPSEEK_API_KEY')
+    }
+
+    const questionsAndAnswers = questions
+        .map((q, i) => {
+            const ans = answers[i] ?? ''
+            const display = ans.trim() ? ans : '（未作答）'
+            return `第${q.index}题：${q.question}\n学生答案：${display}`
+        })
+        .join('\n\n')
+
+    const gradeLabel = await getGradeLabel()
+    const prompt = promptGradePreviewAnswers
+        .replace(
+            '{subject}',
+            studynotesSubjectLabels[card.subject] || card.subject || '未填写学科',
+        )
+        .replace('{topic}', card.topic || '未填写课题')
+        .replace('{content}', card.content || '未填写')
+        .replace('{oldKnowledge}', card.oldKnowledge || '未填写')
+        .replace('{questions}', card.questions || '未填写')
+        .replace('{questionsAndAnswers}', questionsAndAnswers)
+        .replace('{grade}', gradeLabel)
+
+    try {
+        const { content: reply, usage } = await callDeepSeek({
+            messages: [{ role: 'user', content: prompt }],
+            temperature: 0.3,
+            max_tokens: 8000,
+            response_format: { type: 'json_object' },
+            timeoutMs: 120_000,
+        })
+
+        await logAiUsage(
+            'preview-quiz-grade',
+            usage,
+            `预习课堂问答批改：${card.topic || card.subject}`,
+        )
+
+        const parsed = safeJsonParse<{
+            results?: Array<{
+                index: number
+                score?: number
+                correctAnswer?: string
+                explanation?: string
+            }>
+            comment?: string
+            suggestions?: string[]
+        } | null>(reply, null)
+        // 必须有 results 且非空：3 题全主观，缺失即视为 AI 未返回判分，直接失败避免静默成 0 分
+        if (
+            !parsed ||
+            !Array.isArray(parsed.results) ||
+            parsed.results.length === 0
+        ) {
+            throw new Error('AI 返回的课堂问答批改为空')
+        }
+
+        const aiResultByIndex = new Map<
+            number,
+            NonNullable<typeof parsed.results>[number]
+        >()
+        for (const r of parsed.results) {
+            const idx = Number(r.index)
+            if (Number.isInteger(idx)) aiResultByIndex.set(idx, r)
+        }
+
+        const results = questions
+            .map((q, i): StudyPreviewQuizResult | null => {
+                const studentAnswer = answers[i] ?? ''
+                const aiRes = aiResultByIndex.get(q.index)
+                if (!aiRes) {
+                    return {
+                        index: q.index,
+                        question: q.question,
+                        studentAnswer,
+                        score: 0,
+                        correctAnswer: '',
+                        explanation: 'AI 未返回该题判分结果',
+                    }
+                }
+                const isAnswerEmpty = !studentAnswer.trim()
+                const aiScore = Number(aiRes.score)
+                const rawScore = Number.isFinite(aiScore) ? aiScore : 0
+                const ratioScore = isAnswerEmpty
+                    ? 0
+                    : Math.min(10, Math.max(0, Math.round(rawScore * 10) / 10))
+                const points =
+                    Number.isFinite(q.points) && q.points > 0 ? q.points : 0
+                const score =
+                    Math.round(points * (ratioScore / 10) * 10) / 10
+                return {
+                    index: q.index,
+                    question: q.question,
+                    studentAnswer,
+                    score,
+                    correctAnswer: String(aiRes.correctAnswer ?? ''),
+                    explanation: String(aiRes.explanation ?? ''),
+                }
+            })
+            .filter((r): r is StudyPreviewQuizResult => r !== null)
+
+        const score =
+            Math.round(results.reduce((sum, r) => sum + r.score, 0) * 10) / 10
+        return {
+            results,
+            score,
+            comment: String(parsed.comment ?? ''),
+            suggestions: Array.isArray(parsed.suggestions)
+                ? parsed.suggestions
+                      .map(String)
+                      .filter((s) => s.trim().length > 0)
+                : [],
+        }
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('AI preview quiz grade error:', message)
         throw new Error(`批改失败：${message}`)
     }
 }

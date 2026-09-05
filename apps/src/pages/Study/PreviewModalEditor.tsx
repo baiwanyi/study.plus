@@ -17,7 +17,8 @@ import { lessonsApi } from '@apps/services'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
 import { previewStudyQuestions } from '@shared/constants'
-import { PreviewAnalysisReport } from './PreviewAnalysisReport'
+import { PreviewAnalysisReport } from './components/PreviewAnalysisReport'
+import { PreviewQuizPanel } from './components/PreviewQuizPanel'
 import type { PreviewAnalysis, StudyLessonWithStatus } from '@shared/types'
 import type { FC } from 'react'
 
@@ -201,7 +202,14 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
                             AI 分析生成中...
                         </p>
                     ) : analysis ? (
-                        <PreviewAnalysisReport analysis={analysis} />
+                        <>
+                            <PreviewAnalysisReport analysis={analysis} />
+                            {/* 课堂问答题面板常驻显示；未达标时由面板内部提示达标要求 */}
+                            <PreviewQuizPanel
+                                lessonId={lesson?.id ?? 0}
+                                completenessScore={analysis.completenessScore}
+                            />
+                        </>
                     ) : (
                         <div className="flex h-full flex-col items-center justify-center gap-3 p-8 text-center">
                             <p className="text-sm text-gray-600">

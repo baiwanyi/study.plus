@@ -15,8 +15,8 @@
         "test": "pnpm --filter server exec vitest run"
     },
     "devDependencies": {
-        "concurrently": "^10.0.0",
-        "esbuild": "^0.28.0",
-        "vitest": "^4.1.6"
+        "concurrently": "^10.0.5",
+        "esbuild": "^0.28.2",
+        "vitest": "^5.0.0"
     }
 }

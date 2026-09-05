@@ -24,10 +24,11 @@ import type {
     StudynotesItem,
     StudynotesEvaluation,
     StudyPreview,
+    StudyPreviewQuiz,
     PreviewAnalysis,
 } from '@shared/types'
-import { EvaluationReport } from './EvaluationReport'
-import { PreviewAnalysisReport } from './PreviewAnalysisReport'
+import { EvaluationReport } from './components/EvaluationReport'
+import { PreviewAnalysisReport } from './components/PreviewAnalysisReport'
 import { Loading } from '@apps/components/Loading'
 
 interface StudynotesModalShareProps {
@@ -102,6 +103,8 @@ export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
 
     const [preview, setPreview] = useState<StudyPreview | null>(null)
     const [previewLoading, setPreviewLoading] = useState(false)
+    const [quiz, setQuiz] = useState<StudyPreviewQuiz | null>(null)
+    const [quizLoading, setQuizLoading] = useState(false)
     const requestIdRef = useRef(0)
 
     const evaluation = useMemo(
@@ -139,6 +142,24 @@ export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
                 if (cancelled || myReq !== requestIdRef.current) return
                 setPreviewLoading(false)
             })
+
+        // 课堂问答题与预习内容并行加载，二者独立，避免互相阻塞
+        setQuizLoading(true)
+        setQuiz(null)
+        lessonsApi
+            .getPreviewQuiz(lessonId)
+            .then(({ quiz: q }) => {
+                if (cancelled || myReq !== requestIdRef.current) return
+                setQuiz(q)
+            })
+            .catch(() => {
+                if (cancelled || myReq !== requestIdRef.current) return
+            })
+            .finally(() => {
+                if (cancelled || myReq !== requestIdRef.current) return
+                setQuizLoading(false)
+            })
+
         // 组件卸载或依赖变化（含关闭弹窗）时标记取消，避免关闭后弹 toast
         return () => {
             cancelled = true
@@ -283,11 +304,94 @@ export const StudynotesModalShare: FC<StudynotesModalShareProps> = ({
                             )}
                         </section>
 
+                        {/* ===== 课堂问答题 ===== */}
+                        <section className="rounded-2xl border border-sky-100 bg-white p-5 shadow-sm">
+                            <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
+                                <span className="flex size-7 items-center justify-center rounded-full bg-sky-500 text-xs font-bold text-white">
+                                    2
+                                </span>
+                                <h3 className="text-base font-bold text-headline">
+                                    课堂问答题
+                                </h3>
+                            </div>
+                            {quizLoading ? (
+                                <Loading />
+                            ) : quiz ? (
+                                quiz.results ? (
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <span className="text-xs text-gray-600">
+                                                本组问答题评分
+                                            </span>
+                                            <span className="text-base font-bold text-sky-700">
+                                                {quiz.score} 分
+                                            </span>
+                                        </div>
+                                        {quiz.questions.map((q) => {
+                                            const result =
+                                                quiz.results?.find(
+                                                    (r) => r.index === q.index,
+                                                ) ?? null
+                                            return (
+                                                <div
+                                                    key={q.index}
+                                                    className="rounded-lg bg-slate-50 p-3">
+                                                    <h4 className="text-sm font-semibold text-gray-700">
+                                                        {q.index}. {q.question}
+                                                    </h4>
+                                                    {result ? (
+                                                        <>
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                你的作答：
+                                                                {result.studentAnswer ||
+                                                                    '（未作答）'}
+                                                            </p>
+                                                            <p className="text-xs text-gray-600 mt-1">
+                                                                参考答案：
+                                                                {result.correctAnswer}
+                                                            </p>
+                                                            <p className="text-xs text-gray-500 mt-1">
+                                                                {result.explanation}
+                                                            </p>
+                                                            <p className="text-xs font-semibold mt-1 text-sky-600">
+                                                                得分：{result.score}
+                                                            </p>
+                                                        </>
+                                                    ) : (
+                                                        <p className="text-xs text-gray-400 mt-1">
+                                                            （待作答）
+                                                        </p>
+                                                    )}
+                                                </div>
+                                            )
+                                        })}
+                                    </div>
+                                ) : (
+                                    <div className="space-y-2">
+                                        {quiz.questions.map((q) => (
+                                            <p
+                                                key={q.index}
+                                                className="text-sm text-gray-600">
+                                                {q.index}. {q.question}
+                                            </p>
+                                        ))}
+                                        <p className="text-xs text-gray-400">
+                                            （待作答）
+                                        </p>
+                                    </div>
+                                )
+                            ) : (
+                                <p className="text-sm text-gray-400">
+                                    未生成课堂问答题
+                                </p>
+                            )}
+                        </section>
+
                         {/* ===== 课后心得 ===== */}
                         <section className="rounded-2xl border border-rose-100 bg-white p-5 shadow-sm">
                             <div className="flex items-center gap-2 mb-4 pb-3 border-b border-gray-100">
                                 <span className="flex size-7 items-center justify-center rounded-full bg-rose-500 text-xs font-bold text-white">
-                                    2
+                                    3
                                 </span>
                                 <h3 className="text-base font-bold text-headline">
                                     课后心得

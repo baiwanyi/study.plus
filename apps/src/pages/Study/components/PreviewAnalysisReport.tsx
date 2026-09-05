@@ -31,16 +31,54 @@ export const PreviewAnalysisReport: FC<PreviewAnalysisReportProps> = ({
     const classFocusPoints = (analysis.classFocusPoints ?? []).filter(Boolean)
     const overallComment = analysis.overallComment ?? ''
 
+    const getScoreColor = (score: number) => {
+        if (score >= 80) return 'text-green-600'
+        if (score >= 60) return 'text-yellow-600'
+        return 'text-red-600'
+    }
+
     return (
         <div className="space-y-4 text-sm">
-            {/* 完整度（弱化展示：小徽章 + 评价，不设大圆环避免评估焦虑） */}
-            <div className="flex items-center gap-3">
-                <span className="shrink-0 rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold text-blue-700">
-                    预习完整度 {completenessScore}
-                </span>
-                <p className="text-gray-700">
-                    {analysis.completenessComment || ''}
-                </p>
+            {/* 完整度评分大圆环（与 EvaluationReport 同款样式） */}
+            <div className="flex items-center gap-4">
+                <div className="relative size-16 shrink-0">
+                    <svg className="size-16 -rotate-90" viewBox="0 0 72 72">
+                        <circle
+                            cx="36"
+                            cy="36"
+                            r="30"
+                            fill="none"
+                            stroke="#e5e7eb"
+                            strokeWidth="6"
+                        />
+                        <circle
+                            cx="36"
+                            cy="36"
+                            r="30"
+                            fill="none"
+                            stroke={
+                                completenessScore >= 80
+                                    ? '#22c55e'
+                                    : completenessScore >= 60
+                                      ? '#eab308'
+                                      : '#ef4444'
+                            }
+                            strokeWidth="6"
+                            strokeLinecap="round"
+                            strokeDasharray={`${Math.max(0, (completenessScore / 100) * 188.5)} 188.5`}
+                        />
+                    </svg>
+                    <span
+                        className={`absolute inset-0 flex items-center justify-center text-base font-bold ${getScoreColor(completenessScore)}`}>
+                        {completenessScore}
+                    </span>
+                </div>
+                <div className="space-y-1">
+                    <p className="font-semibold">完整度评分</p>
+                    <p className="text-gray-700">
+                        {analysis.completenessComment || ''}
+                    </p>
+                </div>
             </div>
 
             {strengths.length > 0 && (

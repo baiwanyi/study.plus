@@ -134,6 +134,7 @@ export const DEFAULT_WEEKLY_AI_HELPER = '费曼'
 export const defaultSystemSettings = {
     pageSize: 20,
     autosaveInterval: 10,
+    grade: 1,
     monthlyBasePoints: 500,
     minimumPointsForPrivileges: 100,
     advanceRepayRatio: 16,
@@ -172,7 +173,7 @@ export const defaultPromptScoreNotes =
     '请对以下读书笔记进行评分，重点评估【摘抄赏析】和【写读后感】两个维度。{taskTitle}。内容：{taskContent}\n\n评分维度及权重：\n1. 【摘抄赏析】（50分）：摘抄的句子是否精炼、有代表性或有美感；赏析是否体现了学生的独立思考和个人感悟，而非简单复述或空泛套话。\n2. 【写读后感】（40分）：读后感是否有真实感受和深度思考；能否结合书中内容联系自身经历、生活或已知知识进行反思；是否有自己独特的见解，而非照搬书评。\n3. 【好词积累】（10分）：积累的好词数量是否充足，是否贴合本书内容。\n\n请按以下格式返回：\n1. 评分等级（A+/A/B/C/D/E）\n2. 百分制总分\n3. 各维度分项得分\n4. 评语（50字以内）\n5. 改进建议（1-3条，侧重摘抄赏析和读后感的提升方向）\n\n请严格按以下 JSON 格式返回：{"grade":"等级","score":分数,"detailScores":{"appreciation":分数,"reflection":分数,"words":分数},"comment":"评语","suggestions":["建议1","建议2"]}'
 
 export const defaultPromptEvaluateStudynotes =
-    '你是一位温和的辅导老师，请对学生的学习心得进行评估。学科：{subject}，课题：{topic}。学生写的：【一句话概括】{summary}【自己的例子】{example}【卡壳点】{stuckPoints}。请从以下三个维度分析：1. 知识点总结是否完整：学生概括的关键概念是否涵盖了学科核心？遗漏了什么？2. 举例是否得当：例子是否能正确说明知识点？如果例子有误，指出哪里不对。3. 卡壳点的价值：学生的卡壳点是否切中要害？应该从哪里入手解决？评分权重说明：completenessScore 满分为100分，其中【一句话概括】占70分（核心得分），【自己的例子】占15分，【卡壳点】占15分。请按此权重比例给出综合评分。要求：发现错误时明确指出"这里可能需要再想想"，并给出正确思路；发现遗漏时用提示的方式引导（"你还可以想想..."），不要直接给答案；对卡壳点给出具体、可操作的建议；语气温和鼓励，使用"你"称呼孩子；不需要评分或评级。请返回 JSON 格式：{"completenessScore":数字(0-100),"completenessComment":"评价总结的完整性","missingPoints":["遗漏点1","遗漏点2"],"errors":[{"description":"错误描述","correction":"正确的理解"}],"improvementSuggestions":["建议1","建议2"],"overallComment":"总体评语（鼓励为主）"}'
+    '你是一位温和的辅导老师，请对学生的学习心得进行评估。学生当前年级：{grade}。学科：{subject}，课题：{topic}。学生写的：【一句话概括】{summary}【自己的例子】{example}【卡壳点】{stuckPoints}。请从以下三个维度分析：1. 知识点总结是否完整：学生概括的关键概念是否涵盖了学科核心？遗漏了什么？2. 举例是否得当：例子是否能正确说明知识点？如果例子有误，指出哪里不对。3. 卡壳点的价值：学生的卡壳点是否切中要害？应该从哪里入手解决？评分权重说明：completenessScore 满分为100分，其中【一句话概括】占70分（核心得分），【自己的例子】占15分，【卡壳点】占15分。请按此权重比例给出综合评分。要求：发现错误时明确指出"这里可能需要再想想"，并给出正确思路；发现遗漏时用提示的方式引导（"你还可以想想..."），不要直接给答案；对卡壳点给出具体、可操作的建议；语气温和鼓励，使用"你"称呼孩子；不需要评分或评级。请返回 JSON 格式：{"completenessScore":数字(0-100),"completenessComment":"评价总结的完整性","missingPoints":["遗漏点1","遗漏点2"],"errors":[{"description":"错误描述","correction":"正确的理解"}],"improvementSuggestions":["建议1","建议2"],"overallComment":"总体评语（鼓励为主）"}'
 
 // 专属测验：客观题（单选/多选 10 题）与简答题（10 题）拆成两批并发出题。
 // 20 题一次性生成时单次输出过长，常触发 AI 请求超时，拆分后单批输出量减半
@@ -201,7 +202,7 @@ const promptStudynotesQuizCommon =
 
 // 客观题批：单选/多选共 10 题，合计 40 分（与简答批 60 分相加为满分 100）
 export const promptStudynotesQuizObjective =
-    '你是中小学「学习辅导员」，请基于学生刚写好的学习心得，出10道客观巩固测验题（单选题与多选题）。\n' +
+    '你是中小学「学习辅导员」，请基于学生刚写好的学习心得，出10道客观巩固测验题（单选题与多选题）。学生当前年级：{grade}。\n' +
     '学科：{subject}，课题：{topic}\n' +
     promptStudynotesQuizCommon +
     '\n' +
@@ -224,7 +225,7 @@ export const promptStudynotesQuizObjective =
 
 // 简答批：10 道简答题，合计 60 分（与客观批 40 分相加为满分 100）
 export const promptStudynotesQuizEssay =
-    '你是中小学「学习辅导员」，请基于学生刚写好的学习心得，出10道简答题，考查理解、解释、举例与迁移运用。\n' +
+    '你是中小学「学习辅导员」，请基于学生刚写好的学习心得，出10道简答题，考查理解、解释、举例与迁移运用。学生当前年级：{grade}。\n' +
     '学科：{subject}，课题：{topic}\n' +
     promptStudynotesQuizCommon +
     '\n' +
@@ -245,7 +246,7 @@ export const promptStudynotesQuizEssay =
 
 // 专属测验：批改 20 题答案（客观题仅需解析，主观题由 AI 判分）
 export const promptStudynotesQuizGrade =
-    '你是中小学「学习辅导员」，请基于学生心得和20道题，批改学生的答案。\n' +
+    '你是中小学「学习辅导员」，请基于学生心得和20道题，批改学生的答案。学生当前年级：{grade}。\n' +
     '学科：{subject}，课题：{topic}\n' +
     '学生心得内容：\n' +
     '- 一句话概括：{summary}\n' +
@@ -318,7 +319,7 @@ export const previewStudyQuestions: Array<{
 
 // 预习 AI 分析：弱化评分、强化引导
 export const promptAnalyzePreview =
-    '你是一位温和的辅导老师，请分析小学生的课前预习内容，帮助他带着清晰的目标走进课堂。\n' +
+    '你是一位温和的辅导老师，请分析小学生的课前预习内容，帮助他带着清晰的目标走进课堂。学生当前年级：{grade}。\n' +
     '学科：{subject}，课题：{topic}\n' +
     '学生写的预习内容：\n' +
     '- 预习笔记：{content}\n' +
@@ -341,3 +342,67 @@ export const promptAnalyzePreview =
     '  "classFocusPoints": ["课堂注意事项1", "课堂注意事项2"],\n' +
     '  "overallComment": "总体鼓励评语"\n' +
     '}'
+
+// ===== 课前预习课堂问答题 =====
+// 预习完整度达标后，由学生手动触发生成 3 道「课堂问答题」。
+// 问题须是「需要正式上课听讲后才能回答」的开放性思考题，呼应学生预习时的疑问与不足。
+export const promptGeneratePreviewQuestions =
+    '你是中小学「学习辅导员」，请基于学生的课前预习内容，生成 3 道「课堂问答题」。学生当前年级：{grade}。\n' +
+    '这些问题的目的：让学生正式上课时带着问题去听讲，重点弄清自己预习时的疑惑；\n' +
+    '学生会在课堂上获得解答，课后用自己的话作答，因此问题必须是「需要课堂听讲才能回答」的开放性问题。\n' +
+    '学科：{subject}，课题：{topic}\n' +
+    '学生写的预习内容：\n' +
+    '- 预习笔记：{content}\n' +
+    '- 联系旧知：{oldKnowledge}\n' +
+    '- 我的疑问：{questions}\n' +
+    '\n' +
+    '出题要求：\n' +
+    '1. 共 3 题，index 从 1 到 3 连续，全部为开放性的简答/思考题（不要选项，也不要标准答案字段）。\n' +
+    '2. 必须呼应学生「我的疑问」以及预习中的不足，让学生带着明确目标听课。\n' +
+    '3. 问题应针对「课堂听讲后才能厘清」的点，例如：老师讲的 X 与我预习时的理解有何不同、为什么、如何举例说明、能如何迁移运用等。\n' +
+    '4. 每道题必须包含 points 字段（正整数），3 道题的 points 之和必须精确等于 100（建议约 34/33/33）。\n' +
+    '5. 问题表述须符合小学生认知，避免过于抽象；禁止出现 HTML 标签、Markdown 与 LaTeX 公式。\n' +
+    '\n' +
+    '请只输出如下 JSON（不要输出其他内容）：\n' +
+    '{\n' +
+    '  "questions": [\n' +
+    '    { "index": 1, "question": "第1题内容", "points": 34 }\n' +
+    '  ]\n' +
+    '}\n' +
+    '（共3题，index 从 1 到 3 连续；3 道题的 points 之和必须为 100）\n'
+
+// 课堂问答题批改：学生课后基于课堂所学作答，AI 逐题评定 0-10 比例分。
+// 正确答案为 AI 基于学科知识生成的参考答案要点（学生课堂听讲后应能达到）。
+export const promptGradePreviewAnswers =
+    '你是中小学「学习辅导员」，请基于学生的课前预习内容、3 道课堂问答题以及学生课后给出的答案，逐题批改。学生当前年级：{grade}。\n' +
+    '学科：{subject}，课题：{topic}\n' +
+    '学生预习内容：\n' +
+    '- 预习笔记：{content}\n' +
+    '- 联系旧知：{oldKnowledge}\n' +
+    '- 我的疑问：{questions}\n' +
+    '\n' +
+    '题目与学生答案：\n' +
+    '{questionsAndAnswers}\n' +
+    '\n' +
+    '批改要求：\n' +
+    '1. 3 道题均为开放性简答/思考题，没有唯一标准答案，允许学生用自己的话表达，意思对、能结合课堂所学即可给高分。\n' +
+    '2. 逐题判断学生答案质量，按 0-10 分给出 score（可含一位小数）：完全正确且能用自己的话讲清楚=10 分；部分正确、要点不完整按程度给 3-9.5 分；未作答或答非所问=0 分。\n' +
+    '3. 每题给出 correctAnswer（参考答案要点，供学生对照）与 explanation（一句简短解析或鼓励）。\n' +
+    '4. comment 为对学生整体表现的一句简短鼓励性评语。\n' +
+    '5. suggestions 为 1-3 条复习建议（字符串数组）。\n' +
+    '6. 文本禁止使用 HTML 标签、Markdown 格式与 LaTeX 公式；数学符号用中文文字表达。\n' +
+    '\n' +
+    '请只输出如下 JSON（不要输出其他内容）：\n' +
+    '{\n' +
+    '  "results": [\n' +
+    '    {\n' +
+    '      "index": 1,\n' +
+    '      "score": 9,\n' +
+    '      "correctAnswer": "参考答案要点",\n' +
+    '      "explanation": "解析"\n' +
+    '    }\n' +
+    '  ],\n' +
+    '  "comment": "整体评语",\n' +
+    '  "suggestions": ["建议1", "建议2"]\n' +
+    '}\n' +
+    '（results 数量必须与题目数完全一致，index 从 1 开始连续，缺一不可）\n'

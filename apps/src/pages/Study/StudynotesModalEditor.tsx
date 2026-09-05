@@ -16,7 +16,7 @@ import { studynotesApi } from '@apps/services'
 import { Loading } from '@components/Loading'
 import { Modal } from '@components/Modal'
 import { useSnackbar } from '@components/Snackbar'
-import { EvaluationReport } from './EvaluationReport'
+import { EvaluationReport } from './components/EvaluationReport'
 import type { StudynotesItem, StudynotesEvaluation } from '@shared/types'
 
 interface StudynotesModalEditorProps {

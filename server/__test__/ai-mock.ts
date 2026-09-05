@@ -143,6 +143,43 @@ export function buildAiMock() {
         },
     )
 
+    const generatePreviewQuestions = vi.fn(
+        async (
+            _subject: string,
+            _topic: string,
+            _content: string,
+            _oldKnowledge: string,
+            _questions: string,
+        ) => [
+            { index: 1, question: '课堂问答题第1题', points: 34 },
+            { index: 2, question: '课堂问答题第2题', points: 33 },
+            { index: 3, question: '课堂问答题第3题', points: 33 },
+        ],
+    )
+
+    const gradePreviewAnswers = vi.fn(
+        async (
+            _card: unknown,
+            questions: { index: number; question: string }[],
+            answers: string[],
+        ) => {
+            const results = questions.map((q, i) => ({
+                index: q.index,
+                question: q.question,
+                studentAnswer: answers[i] ?? '',
+                score: 10,
+                correctAnswer: '参考答案',
+                explanation: '解析说明',
+            }))
+            return {
+                results,
+                score: 100,
+                comment: '全部正确',
+                suggestions: [],
+            }
+        },
+    )
+
     return {
         scoreComposition,
         generateTitle,
@@ -155,5 +192,7 @@ export function buildAiMock() {
         analyzePreview,
         generateStudynotesQuiz,
         gradeStudynotesQuiz,
+        generatePreviewQuestions,
+        gradePreviewAnswers,
     }
 }

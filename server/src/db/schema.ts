@@ -324,6 +324,36 @@ export const studyQuiz = sqliteTable(
     }),
 )
 
+// 课前预习课堂问答题：预习完整度达标后由学生手动生成，作答后 AI 批改。
+// 与 study_quiz 解耦，独立成表；lesson_id 唯一（每课程一套），随课程级联删除。
+export const studyPreviewQuiz = sqliteTable(
+    'study_preview_quiz',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        lessonId: integer('lesson_id')
+            .notNull()
+            .unique()
+            .references(() => studyLessons.id, { onDelete: 'cascade' }),
+        questionsJson: text('questions_json').notNull(),
+        answersJson: text('answers_json'),
+        resultsJson: text('results_json'),
+        score: real('score'),
+        comment: text('comment').notNull().default(''),
+        suggestionsJson: text('suggestions_json').notNull().default('[]'),
+        generatedAt: text('generated_at').notNull(),
+        submittedAt: text('submitted_at'),
+        evaluatedAt: text('evaluated_at'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        lessonIdIdx: index('study_preview_quiz_lesson_id_idx').on(
+            table.lessonId,
+        ),
+    }),
+)
+
 export const weeklyMessages = sqliteTable(
     'weekly_messages',
     {

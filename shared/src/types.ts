@@ -162,6 +162,10 @@ export interface StudyLessonWithStatus extends StudyLesson {
     studynoteScore: number | null
     /** 心得专属测验最新分数 */
     quizScore: number | null
+    /** 是否已生成课前预习课堂问答题（预习完整度达标后由学生手动生成） */
+    previewQuizGenerated: boolean
+    /** 课堂问答题评分（作答并提交 AI 批改后得到，0-100；未作答/未批改为 null） */
+    previewQuizScore: number | null
 }
 
 export interface PreviewAnalysis {
@@ -186,6 +190,43 @@ export interface StudyPreview {
     aiAnalyzedAt: string | null
     createdAt: string
     updatedAt: string
+}
+
+/** 课前预习课堂问答题：单题结构（开放性简答，无标准答案字段，答案由学生课堂学习后作答） */
+export interface StudyPreviewQuizQuestion {
+    /** 题目序号，连续 1..N */
+    index: number
+    /** 问答题题干 */
+    question: string
+    /** 该题分值，全部题目之和恒为 100 */
+    points: number
+}
+
+/** 课堂问答题逐题批改结果 */
+export interface StudyPreviewQuizResult {
+    index: number
+    question: string
+    studentAnswer: string
+    /** 该题实得分（0~points，可含一位小数） */
+    score: number
+    /** 参考答案要点，供学生对照 */
+    correctAnswer: string
+    explanation: string
+}
+
+/** 课前预习课堂问答题记录（预习完整度达标后由学生手动生成，作答后 AI 批改） */
+export interface StudyPreviewQuiz {
+    id: number
+    lessonId: number
+    questions: StudyPreviewQuizQuestion[]
+    answers: string[] | null
+    results: StudyPreviewQuizResult[] | null
+    score: number | null
+    comment: string
+    suggestions: string[]
+    generatedAt: string
+    submittedAt: string | null
+    evaluatedAt: string | null
 }
 
 export interface StudyPreviewCreateRequest {

@@ -7,6 +7,7 @@ import type {
     StudyLessonWithStatus,
     StudyPreview,
     StudyPreviewCreateRequest,
+    StudyPreviewQuiz,
     StudynotesItem,
 } from '@shared/types'
 
@@ -85,6 +86,26 @@ export const lessonsApi = {
         assertPositiveInt(lessonId, '课程 ID')
         return request<{ studynote: StudynotesItem | null }>(
             `/lessons/${lessonId}/studynote`,
+        )
+    },
+    getPreviewQuiz: (lessonId: number) => {
+        assertPositiveInt(lessonId, '课程 ID')
+        return request<{ quiz: StudyPreviewQuiz | null }>(
+            `/lessons/${lessonId}/preview/quiz`,
+        )
+    },
+    generatePreviewQuiz: (lessonId: number) => {
+        assertPositiveInt(lessonId, '课程 ID')
+        return request<{ quiz: StudyPreviewQuiz }>(
+            `/lessons/${lessonId}/preview/quiz`,
+            { method: 'POST' },
+        )
+    },
+    submitPreviewQuiz: (lessonId: number, answers: string[]) => {
+        assertPositiveInt(lessonId, '课程 ID')
+        return request<{ quiz: StudyPreviewQuiz }>(
+            `/lessons/${lessonId}/preview/quiz/submit`,
+            { method: 'POST', body: JSON.stringify({ answers }) },
         )
     },
 }

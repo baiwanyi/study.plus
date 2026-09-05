@@ -899,6 +899,34 @@ export async function migrate(): Promise<void> {
   `)
     console.log('Created study_previews table.')
 
+    // ===== 课前预习课堂问答题表：预习完整度达标后由学生手动生成，作答后 AI 批改 =====
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS study_preview_quiz (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      lesson_id INTEGER NOT NULL UNIQUE REFERENCES study_lessons(id) ON DELETE CASCADE,
+      questions_json TEXT NOT NULL,
+      answers_json TEXT,
+      results_json TEXT,
+      score REAL,
+      comment TEXT NOT NULL DEFAULT '',
+      suggestions_json TEXT NOT NULL DEFAULT '[]',
+      generated_at TEXT NOT NULL,
+      submitted_at TEXT,
+      evaluated_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created study_preview_quiz table.')
+
+    try {
+        await client.execute(
+            'CREATE INDEX IF NOT EXISTS study_preview_quiz_lesson_id_idx ON study_preview_quiz(lesson_id)',
+        )
+        console.log('Created index on study_preview_quiz.lesson_id.')
+    } catch (e) {
+        console.warn('创建 study_preview_quiz 索引跳过:', (e as Error).message)
+    }
+
     // study_notes 表增加 lesson_id（幂等：列已存在时 ALTER 抛错跳过）
     try {
         await client.execute(
