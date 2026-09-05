@@ -193,6 +193,19 @@ export const PreviewModalEditor: FC<PreviewModalEditorProps> = ({
                             />
                         </div>
                     ))}
+
+                    {/* 预习与课堂要求说明 */}
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-5">
+                        <p className="text-sm font-bold text-amber-800 mb-2">
+                            预习与课堂要求
+                        </p>
+                        <ol className="list-decimal list-inside space-y-1.5 text-xs leading-relaxed text-amber-900">
+                            <li>预习完整度评分达到 <b>80 分</b> 以上，方可开启课堂问答题。</li>
+                            <li>请用 <b>不同颜色的笔</b> 将「正式课上要注意的重点」与「课堂问答题」分别抄录到课本；课上得到答案后填写于课本，并反馈给本系统。</li>
+                            <li>课堂问答题生成后，须经 AI 批改且评分达到 <b>80 分</b> 以上，才能开启学习心得。</li>
+                        </ol>
+                    </div>
+
                 </div>
 
                 {/* ===== Right: AI 分析报告 ===== */}
