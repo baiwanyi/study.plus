@@ -104,8 +104,8 @@ h3 { font-size: clamp(22px, 3vw, 34px); line-height: 1.2; }
   position: sticky;
   top: 0;
   z-index: 100;
-  background: rgba(0, 0, 0, 0.82);
-  backdrop-filter: saturate(180%) blur(20px);
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: saturate(180%) blur(10px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
 }
 .nav__inner {
@@ -188,7 +188,7 @@ h3 { font-size: clamp(22px, 3vw, 34px); line-height: 1.2; }
 
 /* ---------- Hero ---------- */
 .hero {
-  background: var(--black);
+  background: var(--black) url(./images/alexander-x-4ErHlhwGUrI-unsplash.jpg) no-repeat center/cover;
   color: var(--on-dark);
   padding: 96px 0 110px;
   overflow: hidden;
