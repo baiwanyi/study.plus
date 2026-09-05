@@ -24,6 +24,7 @@
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
 - **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
+- **数据备份**：数据库每日自动打包并邮件外发，实现异地容灾（详见部署文档「数据库每日备份」章节）
 
 ### 产品定位
 
@@ -44,7 +45,7 @@
 | 校验     | Zod 4                                    | 请求体 / 参数校验                    |
 | 数据库   | SQLite + @libsql/client                   | 轻量级本地数据库                     |
 | ORM      | Drizzle ORM + Drizzle Kit                 | 类型安全的 SQL 查询构建器 + 迁移工具 |
-| AI 能力  | DeepSeek API (deepseek-v4-flash)          | 评分/起名/出题/周报分析/智能对话/预习分析 |
+| AI 能力  | DeepSeek API (deepseek-v4-flash)          | 评分/起名/出题/周报分析/智能对话/预习分析/预习课堂问答生成批改 |
 | 测试     | Vitest + @testing-library/react + jsdom   | 单元测试 + 组件测试 + API 集成测试   |
 | 视频播放 | HTML5 `<video>` + react-player            | 原生视频播放器，支持 Range 请求      |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
@@ -95,7 +96,7 @@
 
 - 集成 DeepSeek API（deepseek-v4-flash 模型），评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
-- 支持 AI 使用记录查询与 Token 用量统计（按 作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改 分类）
+- 支持 AI 使用记录查询与 Token 用量统计（按 作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改/预习课堂问答生成/预习课堂问答批改 分类）
 
 #### 1.3 评分标准（统一作业评分）
 
@@ -210,7 +211,7 @@
 #### 3.5 AI 使用记录
 
 - DeepSeek API 调用记录（使用项目/任务名称/使用时间/Token 用量）
-- 按项目汇总统计（作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改）
+- 按项目汇总统计（作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改/预习课堂问答生成/预习课堂问答批改）
 - 总调用次数与总 Token 消耗概览
 
 #### 3.6 规则配置
@@ -265,7 +266,7 @@
 
 四个环节：
 
-- **课前预习**：填写导学案三部分——本节课内容、已有旧知识、课前思考题。保存后可一键生成 AI 预习建议与课堂注意事项；内容变更会自动作废旧分析、触发重新分析（接口限流每小时 30 次）。
+- **课前预习**：填写导学案三部分——本节课内容、已有旧知识、课前思考题。保存后可一键生成 AI 预习建议与课堂注意事项；内容变更会自动作废旧分析、触发重新分析（接口限流每小时 30 次）。预习完整度评分达 80 分后，可在预习面板生成 3 道课堂问答题，课后结合课堂所学作答并由 AI 批改评分（含每题参考答案与解析）；未达标时面板仅提示达标要求。
 - **学习心得**：以费曼四问引导填写——①一句话概括核心知识 ②举自己的例子 ③哪里卡住了（可留空）④复习锚点「记忆钩子」（选填）。保存即生成 AI 完整度评估报告，评估失败可二次重试而不重复保存。
 - **智能测验**：围绕课程自动生成 20 道专属测验（简答题固定 10 道，单选/多选自由分配且各至少 1 道），总分 100 分由 AI 按题型难度自动分配至每题。作答后批改：客观题（单选/多选）本地预判正误并按分值计分，AI 仅生成解析；主观题（简答）由 AI 判分并换算实分。结果含每题得分/参考答案/解析、总体评语与复习建议。**权限门控**：心得评估得分 ≥ 80 分方可开始测验，否则锁定提示。成绩精确到小数，支持「重新测试」覆盖。**45 分钟限时**：以服务端生成时间为锚计算截止时刻（关闭弹窗重开正确续算，不重置不暂停），剩余不足 5 分钟标红提醒，到点自动提交并批改（关闭期间到点则重开时补提交）。
 - **历史测验与错题本**：测验弹窗右侧栏提供【历史】回看（历次成绩列表，点选只读查看完整题目/作答/批改结果）与【错题】面板（课程级错题聚合，客观题带选项对错配色）；学习中心主页提供**全局错题本**（跨课程聚合，支持关键词搜索、科目筛选与分页，每条错题标注来源课程）。
@@ -295,6 +296,7 @@ study_notes         -> id, summary, example, stuckPoints, memoryHook?, evaluatio
 study_lessons       -> id, subject, topic, createdAt, updatedAt   # 课程（学科/主题，subject+topic 唯一索引）
 study_previews      -> id, lessonId(FK, unique), content, oldKnowledge, questions, aiAnalysis?, aiAnalyzedAt?, createdAt, updatedAt   # 课前导学案
 study_quiz          -> id, studyId(FK), questionsJson, answersJson?, resultsJson?, score(REAL), correctCount?, comment, suggestionsJson, generatedAt, submittedAt?, createdAt   # 智能测验（同一课程未提交测验唯一；成绩为小数 REAL）
+study_preview_quiz  -> id, lessonId(FK, unique), questionsJson, answersJson?, resultsJson?, score(REAL), comment, suggestionsJson, generatedAt, submittedAt?, evaluatedAt?, createdAt   # 课前预习课堂问答题（预习完整度≥80 后生成，课后作答评分）
 ```
 
 ### 积分流转全景
@@ -352,6 +354,7 @@ study.webian.dev/
 │   │   │   │   ├── LessonModalEditor.tsx   # 课程创建/编辑（subject+topic 唯一）
 │   │   │   │   ├── PreviewModalEditor.tsx  # 课前导学编辑 + AI 分析预览
 │   │   │   │   ├── PreviewAnalysisReport.tsx # 课前导学 AI 分析报告
+│   │   │   │   ├── PreviewQuizPanel.tsx     # 课前预习课堂问答题面板（生成/作答/评分；未达标提示）
 │   │   │   │   ├── StudynotesModalEditor.tsx  # 学习心得费曼四问编辑 + AI 评估
 │   │   │   │   ├── EvaluationReport.tsx       # AI 评估报告结构化展示
 │   │   │   │   ├── QuizModalEditor.tsx       # 智能测验作答/批改/结果反馈（45 分钟限时；确认栏按状态切换提交/批改/重新测验）
@@ -374,7 +377,7 @@ study.webian.dev/
 │   │   ├── index.ts             # Express 入口（路由注册 + 静态文件服务）
 │   │   ├── db/                  # 数据库层
 │   │   │   ├── index.ts        # 数据库连接（libSQL + Drizzle）
-│   │   │   ├── schema.ts       # Drizzle ORM Schema（18 表）
+│   │   │   ├── schema.ts       # Drizzle ORM Schema（20 表）
 │   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据 + 历史成绩重算）
 │   │   ├── routes/             # API 路由（13 个模块）
 │   │   │   ├── tasks.ts        # 作业管理（含 AI 评分/起名/出题/对话）
@@ -512,6 +515,7 @@ study.webian.dev/
 - [x] 课前导学 AI 分析接口限流（每小时 30 次，防账单刷爆）
 - [x] 学习心得与课程关联（study_notes.lesson_id 外键，级联删除）
 - [x] 智能测验成绩精度修复：study_quiz.score 与 study_notes.quiz_score 改为 REAL（小数），迁移脚本重算历史成绩并保留一位小数
+- [x] 课前预习课堂问答题：预习完整度≥80 分后生成 3 道课堂问答题，课后结合课堂所学作答并由 AI 批改评分（含参考答案与解析），数据存 study_preview_quiz 表
 
 ### Phase 10 - 测验限时与错题本
 
@@ -520,6 +524,10 @@ study.webian.dev/
 - [x] 错题本：课程级（弹窗右侧栏）与全局（学习中心主页入口）两种视图，跨课程聚合，支持关键词搜索（防抖）、科目筛选与分页，客观题选项带对错配色
 - [x] API 层重构：`apps/src/utils/api` 迁移至 `apps/src/services`（git mv 保留文件历史，35 处引用同步更新）
 - [x] AI 调用健壮性：出题 max_tokens 提至 20000 消除偶发截断重试；重试日志区分「截断自愈」与「空响应故障」
+
+### Phase 11 - 数据安全与运维
+
+- [x] 数据库每日邮件备份：SQLite 库每日定时打包成 zip 并以邮件外发（SMTP 发送 + IMAP 回检确保送达），实现异地容灾；默认全关（BACKUP_ENABLED=false），通过 BACKUP_TIME / BACKUP_MAX_ATTACHMENT_MB / IMAP_* 等变量配置，详见「数据库每日备份」章节
 
 ## 本地开发
 
