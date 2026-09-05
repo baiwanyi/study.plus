@@ -1,440 +1,597 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>学迹Plus — 让成长有迹可循 | 面向家庭的积分制学习管理工具</title>
-  <meta name="description" content="学迹Plus 是面向 3-15 岁家庭的积分制学习管理工具：作业评分、学习周报、费曼学习法闭环，DeepSeek AI 全程赋能。MIT 开源，本地部署，数据完全自持。">
-  <meta property="og:title" content="学迹Plus — 让成长有迹可循">
-  <meta property="og:description" content="以积分制为核心，融合作业管理、周报分析与费曼学习法，DeepSeek AI 全程赋能。开源、自托管，数据全在你自己手里。">
-  <link rel="icon" type="image/svg+xml" href="./assets/images/favicon.svg">
-  <link rel="stylesheet" href="./assets/style.css">
-</head>
-<body>
+<html lang="zh-CN" data-page-node-id="DLauzstflkJmIBDUF0BSA2">
 
-  <!-- ===== 顶部公告条 ===== -->
-  <div class="announce" role="note">
-    <p>
-      本地部署版本已停止功能开发，仅做 Bug 修复；全新功能开发集中于 CloudBase 版本。
-      <a href="https://github.com/baiwanyi/study.plus/blob/cloudbase/README.md" target="_blank" rel="noopener">查看 CloudBase 分支</a>
-    </p>
-  </div>
+    <head data-page-node-id="gC4iwk7wxVX8JjqdTCnJdZ">
+        <meta charset="UTF-8" data-page-node-id="TSOW2ZUaoNI4srGtHlIUgL">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0"
+              data-page-node-id="MDhMM3pZTXOUvgHRpFihzy">
+        <title>学迹Plus — 让成长有迹可循 | 面向家庭的积分制学习管理工具</title>
+        <meta name="description"
+              content="学迹Plus 是面向 3-15 岁家庭的积分制学习管理工具：作业评分、学习周报、费曼学习法闭环，DeepSeek AI 全程赋能。MIT 开源，本地部署，数据完全自持。"
+              data-page-node-id="TxZjscrT1LoS0N2lrgJ7Wf">
+        <meta property="og:title" content="学迹Plus — 让成长有迹可循" data-page-node-id="d3owq9LXAULSHFPqU0bDHa">
+        <meta property="og:description" content="以积分制为核心，融合作业管理、周报分析与费曼学习法，DeepSeek AI 全程赋能。开源、自托管，数据全在你自己手里。"
+              data-page-node-id="HYRXiIna0IDvznmJjzqdIm">
+        <link rel="icon" type="image/svg+xml" href="./assets/images/favicon.svg"
+              data-page-node-id="Ui5ARZuICGN5Uz3akVKzOk">
+        <link rel="stylesheet" href="./assets/style.css" data-page-node-id="lvRlmB5gzSxdBYc1H1z5AT">
+    </head>
 
-  <!-- ===== 导航 ===== -->
-  <header class="nav" id="nav">
-    <div class="nav__inner">
-      <a class="nav__brand" href="#top" aria-label="学迹Plus 首页">
-        <img src="./assets/images/logo.svg" alt="" width="26" height="26" aria-hidden="true">
-        <span>学迹Plus</span>
-      </a>
-      <nav class="nav__links" id="nav-links" aria-label="页面导航">
-        <a href="#features">功能</a>
-        <a href="#tech">技术栈</a>
-        <a href="#roadmap">路线图</a>
-        <a href="#faq">常见问题</a>
-        <a class="nav__cta" href="https://github.com/baiwanyi/study.plus" target="_blank" rel="noopener">GitHub</a>
-      </nav>
-      <button class="nav__burger" id="nav-burger" type="button" aria-expanded="false" aria-controls="nav-links" aria-label="打开菜单">
-        <span></span><span></span>
-      </button>
-    </div>
-  </header>
+    <body data-page-node-id="rQlMyAB7xiDPNEbnQdmNnO">
 
-  <main id="top">
+        <!-- ===== 导航 ===== -->
+        <header class="nav" id="nav" data-page-node-id="t4LSFLwjhjCHDi5JQrE2ac">
+            <div class="nav__inner" data-page-node-id="GSTGBzzUcXHwQfrl07Zw4a">
+                <a class="nav__brand" href="#top" aria-label="学迹Plus 首页" data-page-node-id="7EA8jcnhqnUXHtqEb9M07s">
+                    <img src="./assets/images/logo.svg" alt="" width="26" height="26" aria-hidden="true"
+                         data-page-node-id="LaqqOQ9U813YjcYcnOf7HG">
+                    <span data-page-node-id="NiMcmQlMj4OKEWACucbZdO">学迹Plus</span>
+                </a>
+                <nav class="nav__links" id="nav-links" aria-label="页面导航" data-page-node-id="rF6Lo87VZ3VmOwU7hHWuXO">
+                    <a href="#features" data-page-node-id="GPkjDmjAAY6PuTsYnJTE3W">功能</a>
+                    <a href="#tech" data-page-node-id="mfhyLrBrcMah3gsmaQ7bDI">技术栈</a>
+                    <a href="#roadmap" data-page-node-id="DxQYLCyH4khPKI7MwKyU3Q">路线图</a>
+                    <a href="#faq" data-page-node-id="Y8g9w3vCPQM7Pd8fhECHYN">常见问题</a>
+                    <a class="nav__cta" href="https://github.com/baiwanyi/study.plus" target="_blank" rel="noopener"
+                       data-page-node-id="O8oOZQHGXlKvEg1EM5Vqjy">GitHub</a>
+                </nav>
+                <button class="nav__burger" id="nav-burger" type="button" aria-expanded="false"
+                        aria-controls="nav-links" aria-label="打开菜单" data-page-node-id="lOnbj0EajeovSWbOL8whqX">
+                    <span data-page-node-id="74bEcTbPR8gTQblbjWJxIY"></span><span
+                          data-page-node-id="p47ILtUEegBogY2XDvlc87"></span>
+                </button>
+            </div>
+        </header>
 
-    <!-- ===== Hero ===== -->
-    <section class="hero">
-      <div class="container hero__inner reveal">
-        <p class="hero__badge">MIT 开源 · 自托管 · 面向 3-15 岁家庭</p>
-        <h1 class="hero__title">让成长有迹可循，<br>让每一分努力都闪闪发光</h1>
-        <p class="hero__lead">面向 3-15 岁家庭的智能学习管理工具。以积分制为核心，DeepSeek AI 全程参与作业评分、周报分析与费曼学习闭环，把习惯培养变成一件孩子愿意参与的事。</p>
-        <div class="hero__actions">
-          <a class="btn btn--primary" href="https://github.com/baiwanyi/study.plus" target="_blank" rel="noopener">在 GitHub 获取源码</a>
-          <a class="btn btn--ghost" href="https://github.com/baiwanyi/study.plus/blob/main/README.md" target="_blank" rel="noopener">阅读完整文档</a>
-        </div>
-        <ul class="hero__trust" aria-label="关键特性">
-          <li>MIT 协议</li>
-          <li>SQLite 本地存储</li>
-          <li>DeepSeek AI 驱动</li>
-          <li>Node 20.11 起可用</li>
-        </ul>
+        <main id="top" data-page-node-id="Xe4SNoFXN7LwOiDiuFpCYT">
 
-        <!-- 纯 CSS 仪表盘模型 -->
-        <div class="hero__shot" role="img" aria-label="学迹Plus 首页看板示意">
-          <div class="mock">
-            <div class="mock__bar"><span></span><span></span><span></span><em>学迹Plus · 首页看板</em></div>
-            <div class="mock__body">
-              <div class="mock__stats">
-                <div class="mock__stat"><small>学期积分</small><strong>1,280</strong><i class="up">+120 本周</i></div>
-                <div class="mock__stat"><small>本周作业</small><strong>12</strong><i>已评 9 份</i></div>
-                <div class="mock__stat"><small>连续打卡</small><strong>21 天</strong><i class="up">创新高</i></div>
-              </div>
-              <div class="mock__chart">
-                <div class="mock__chart-head"><small>近 8 周积分趋势</small><small>单位：分</small></div>
-                <div class="mock__bars">
-                  <i style="--h:38%"></i><i style="--h:52%"></i><i style="--h:44%"></i><i style="--h:63%"></i>
-                  <i style="--h:58%"></i><i style="--h:74%"></i><i style="--h:86%"></i><i style="--h:96%"></i>
+            <!-- ===== Hero ===== -->
+            <section class="hero" data-page-node-id="cWFzScVigWTV5RspUDk0S0">
+                <div class="container hero__inner reveal" data-page-node-id="bMMZxrA2pOQgkbOfEgdBmL">
+                    <p class="hero__badge" data-page-node-id="aGv0bBN1rRpfNW9kEY5DGk">MIT 开源 · 自托管 · 面向 3-15 岁家庭</p>
+                    <h1 class="hero__title" data-page-node-id="0oAQw1HuPZfnZ1d9QUUSci">让成长有迹可循，<br
+                            data-page-node-id="0seUsBrb2chhjGDWuEu65U">让每一分努力都闪闪发光</h1>
+                    <p class="hero__lead" data-page-node-id="lqB3sTq8zT9ueJUMmjG1Lo">面向 3-15
+                        岁家庭的智能学习管理工具。以积分制为核心，DeepSeek AI 全程参与作业评分、周报分析与费曼学习闭环，把习惯培养变成一件孩子愿意参与的事。</p>
+                    <div class="hero__actions" data-page-node-id="thtItl7rX21E1iq85BHVUh">
+                        <a class="btn btn--primary" href="https://github.com/baiwanyi/study.plus" target="_blank"
+                           rel="noopener" data-page-node-id="DHXcCvXXFLxjsLIy7vGrXf">在 GitHub 获取源码</a>
+                        <a class="btn btn--ghost" href="https://github.com/baiwanyi/study.plus/blob/main/README.md"
+                           target="_blank" rel="noopener" data-page-node-id="njuPeXE6TNwy0Ja6xqoLf1">阅读完整文档</a>
+                    </div>
+                    <ul class="hero__trust" aria-label="关键特性" data-page-node-id="SDoiBp2GU37MYaOfXXbkJ7">
+                        <li data-page-node-id="7ZzdUezoekHE2f8oRZiY2Z">MIT 协议</li>
+                        <li data-page-node-id="AQMf2PsUNDOKxCcl9kAy0K">SQLite 本地存储</li>
+                        <li data-page-node-id="1RjYh4Q83H49Vwha3L8IsO">DeepSeek AI 驱动</li>
+                        <li data-page-node-id="IiD1cU2POznGzhR8WzybtS">Node 20.11 起可用</li>
+                    </ul>
+
+                    <!-- 纯 CSS 仪表盘模型 -->
+                    <div class="hero__shot" role="img" aria-label="学迹Plus 首页看板示意"
+                         data-page-node-id="i7AkrNdDVxLTQrgVRDH6TQ">
+                        <div class="mock" data-page-node-id="PnMYCOxWaC4RjObQPwhaBO">
+                            <div class="mock__bar" data-page-node-id="nxsgN8RILdShy3tGlVPQor"><span
+                                      data-page-node-id="JV7OlNg1cqwa297gA2PVpm"></span><span
+                                      data-page-node-id="jIg41FGlp0bFuxLJI4jcs9"></span><span
+                                      data-page-node-id="3lcePR8GN10vATDcCuvQg7"></span><em
+                                    data-page-node-id="JwcNOhBoNUL0pPNAP2c2tK">学迹Plus · 首页看板</em></div>
+                            <div class="mock__body" data-page-node-id="wrSP2G7BCXdkhykbBVhUGk">
+                                <div class="mock__stats" data-page-node-id="8X9abeVgJrYoAy1AnzANBj">
+                                    <div class="mock__stat" data-page-node-id="ABtq0ws4KjthfHhwixW20v"><small
+                                               data-page-node-id="QCAGS0Bqd9IhsHC4C6GojY">学期积分</small><strong
+                                                data-page-node-id="55MC4UdzTAifOV0M0LQ5M5">1,280</strong><i class="up"
+                                           data-page-node-id="XYCZo4gC0EIPMzpE9ABpHI">+120 本周</i></div>
+                                    <div class="mock__stat" data-page-node-id="1fKsat8NVTizOqVlT1tOFA"><small
+                                               data-page-node-id="PlqPZlQjqsZxMgGmYBekx6">本周作业</small><strong
+                                                data-page-node-id="24SO5oUwBspR1k8KjQgVDj">12</strong><i
+                                           data-page-node-id="hX39A57bZCRVoIfzn2vR2j">已评 9 份</i></div>
+                                    <div class="mock__stat" data-page-node-id="Tim3ZauQ4sznOVILurSW5L"><small
+                                               data-page-node-id="fKy3hO1NlXNZKz361RdfXN">连续打卡</small><strong
+                                                data-page-node-id="65dLzC1iCUIx4ThxXyu5PO">21 天</strong><i class="up"
+                                           data-page-node-id="1OEIiulke45CC037VSWkI4">创新高</i></div>
+                                </div>
+                                <div class="mock__chart" data-page-node-id="NKAruGiwK8zNrNOWqMLuWN">
+                                    <div class="mock__chart-head" data-page-node-id="XHhG1RZkjldI6R0yUwH5Wz"><small
+                                               data-page-node-id="nMrdSemP9HUwgtGJSJUuc1">近 8 周积分趋势</small><small
+                                               data-page-node-id="BmbErIowHHhzBkuKBKvlon">单位：分</small></div>
+                                    <div class="mock__bars" data-page-node-id="VL2HmA11lBO6Tf7RZvRMH1">
+                                        <i style="--h:38%" data-page-node-id="YEcN5l1IyigtBvdHTpvD9y"></i><i
+                                           style="--h:52%" data-page-node-id="K16GjCZQK8CpNxInkMBx2P"></i><i
+                                           style="--h:44%" data-page-node-id="fPuD12LAZ0kfqugM9lSUOA"></i><i
+                                           style="--h:63%" data-page-node-id="nYAiLDP8WBNlGSt4oMuqF6"></i>
+                                        <i style="--h:58%" data-page-node-id="xjiPoKDRfNFpx9rBCirr4p"></i><i
+                                           style="--h:74%" data-page-node-id="FYWrkIrvDJvNZLU0be8FGc"></i><i
+                                           style="--h:86%" data-page-node-id="hsocJuPFkYAfHuzaTctoX0"></i><i
+                                           style="--h:96%" data-page-node-id="QQHdA6PSrJLSMLLbzXXqzz"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
-              </div>
+            </section>
+
+            <!-- ===== 核心功能 ===== -->
+            <section class="features section" id="features" data-page-node-id="ev1L2eClh7gONmfRQWaB4Q">
+                <div class="container" data-page-node-id="bovhBje4hBOAD5JhHRgEgo">
+                    <header class="section__head reveal" data-page-node-id="ug08MjYDNVGI7J7EhbSHo2">
+                        <p class="kicker" data-page-node-id="GP2a3JknJaGEkGYZrJlT7b">核心功能</p>
+                        <h2 data-page-node-id="aDQBP2JDD5GN7gveDddtyr">三个模块，串成一条完整的学习闭环</h2>
+                        <p class="section__sub" data-page-node-id="evScGHT92obVmn9RrattQF">
+                            作业完成即得分，得分沉淀为周报，周报引出反思，反思再回到作业——孩子看得见自己的进步，家长省得下陪伴的心力。</p>
+                    </header>
+
+                    <!-- Block 1 作业管理 -->
+                    <article class="feature-block reveal" data-page-node-id="CfuDRtKgqW4Oc07JzTQDIK">
+                        <div class="feature-block__text" data-page-node-id="BfeqCrjBE7rOfVsHh7FqfB">
+                            <p class="kicker" data-page-node-id="vph8dLiVYnI7TJFX4VMQyX">作业管理</p>
+                            <h3 data-page-node-id="FIJRHFb5h7iz1X9pXjhcQY">每一份作业，都被认真计价</h3>
+                            <p data-page-node-id="Otbur39yqLj2NQe4BG0nFN">A+ 到 E 的评分档位直接映射 +50 至 -50
+                                积分，规则透明、奖惩分明。DeepSeek AI 自动生成针对性评语，家长复核后生效，既省力又不失把关。</p>
+                            <ul class="check-list" data-page-node-id="o57HMI9IeBivZPnFhaL8fK">
+                                <li data-page-node-id="4pOmhZk7mjBwmuhgDrwi1S">A+~E 六档评分，对应 +50 至 -50 积分</li>
+                                <li data-page-node-id="VXTTSOE8j5OuuBCowE4DVm">DeepSeek AI 自动生成个性化评语</li>
+                                <li data-page-node-id="jBh4oa1heVDH6zCfYBEaYD">家长复核确认，积分才会入账</li>
+                                <li data-page-node-id="pd5S5jxnYCMbXgWyCBz4bR">读书笔记专属评分：摘抄赏析 50 + 读后感 40 + 好词 10</li>
+                            </ul>
+                        </div>
+                        <div class="feature-block__visual" role="img" aria-label="作业评分示意"
+                             data-page-node-id="akpXjfQWFoknUF9eGxtbDZ">
+                            <div class="mini-card" data-page-node-id="SXNH5ywrjYZLNssszidyZO">
+                                <div class="mini-card__row" data-page-node-id="2cYl0f6OYXvKQ60WH27yc7">
+                                    <span class="grade grade--a" data-page-node-id="inAo1Kidh5HAJDI5pCtUtQ">A+</span>
+                                    <div data-page-node-id="L3beiFRMgbVnYBEHJRLejg"><strong
+                                                data-page-node-id="nQMBz27RVoMy8yFL1rZJvm">数学口算 第 14 页</strong><small
+                                               data-page-node-id="fIxTGF35xcmC1EVH1y0XF5">计算全对，书写工整</small></div>
+                                    <b class="delta delta--up" data-page-node-id="pWyoH3uOgyNvJ0S0JmPob9">+50</b>
+                                </div>
+                                <div class="mini-card__row" data-page-node-id="y6GronFLbcF4uNyK6g51Aa">
+                                    <span class="grade grade--b" data-page-node-id="Saa91DkomwbEIssQFGKAPX">B</span>
+                                    <div data-page-node-id="jwC4SrlnROt9kVJtisXj49"><strong
+                                                data-page-node-id="JBqAhkOaSJlvL3vxhkmGOG">语文生字抄写</strong><small
+                                               data-page-node-id="xzQbOKhsi2NAtFlGUV8IP0">两处笔顺需要订正</small></div>
+                                    <b class="delta delta--up" data-page-node-id="IEVqgymCEiOhjIzk4gFZtC">+10</b>
+                                </div>
+                                <div class="mini-card__row" data-page-node-id="8TDKYCLmU2FfH1ark1I0Is">
+                                    <span class="grade grade--c" data-page-node-id="jPlwbD8GKe5sVJS6oDYe5n">C</span>
+                                    <div data-page-node-id="35gFpt7sO4aKHsQeyrAsPE"><strong
+                                                data-page-node-id="2lHV9s9lMaDSHu3vrezSJC">英语跟读打卡</strong><small
+                                               data-page-node-id="N9IngY8hwHKOqImNMGvjwC">未完成，与孩子约定补交</small></div>
+                                    <b class="delta delta--down" data-page-node-id="97Z0ci3pc44sIngpmQDcNg">-10</b>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Block 2 学习周报 -->
+                    <article class="feature-block feature-block--flip reveal"
+                             data-page-node-id="tJHn2KWoJVDskuETBhQ3oB">
+                        <div class="feature-block__text" data-page-node-id="ad9Ce3IMCfNWlPNUa3BY2d">
+                            <p class="kicker" data-page-node-id="JE2TAA2dwX7ahpK86Ksd8P">学习周报</p>
+                            <h3 data-page-node-id="GOeidZrKNLbdXzBhriayG4">一周的积累，自动汇成一份看得懂的报告</h3>
+                            <p data-page-node-id="dOQs0JdDJGL0p2A0qj4kq7">
+                                作业、积分、心得按周自动归档，趋势一目了然。周报不只是给家长看的报表，更是和孩子复盘时的最好谈资。</p>
+                            <ul class="check-list" data-page-node-id="yG8oipNDA5nVAAboOgHVds">
+                                <li data-page-node-id="G1aWf3BUnOcQZ9WesusLRs">作业量、积分走势按周自动统计</li>
+                                <li data-page-node-id="wupNMOUdhTeYb72AldDADu">历史回看：任意一周的成长记录随时调取</li>
+                                <li data-page-node-id="pyY6xRcXX0bwxws5qwS6z7">全局错题本：跨周汇总薄弱知识点</li>
+                                <li data-page-node-id="Gm6nAtTelBK1ZeqeEc9Ahq">支持导出分享卡片，发给家人一起见证</li>
+                            </ul>
+                        </div>
+                        <div class="feature-block__visual" role="img" aria-label="学习周报示意"
+                             data-page-node-id="3kV0D5qH1t3WTdfMk67gBf">
+                            <div class="mini-card" data-page-node-id="p2OHLRgbFvb3iuW6V1uhoa">
+                                <div class="mini-card__report" data-page-node-id="Y90EoYrOZPG27J5UMayWNf">
+                                    <small data-page-node-id="f8YMh9uREKQ6kdYLntupjl">第 36 周 · 学习周报</small>
+                                    <strong data-page-node-id="KZSSM8wDC2Kciy8Lv2ocQm">积分 286 分，环比 +18%</strong>
+                                    <div class="mini-card__meter" data-page-node-id="qETgWTprEO0nTEDzD20Hym"><i
+                                           style="--w:72%" data-page-node-id="xnMzPGBEI9xpIiBnJadaMm"></i></div>
+                                    <small data-page-node-id="jGW42O6GzgdSWcAWM2DbI8">作业完成 14 / 15 · 错题订正 9 / 9</small>
+                                    <div class="mini-card__meter" data-page-node-id="dPxgYZ7JcaZxQkVNGeq0qX"><i
+                                           style="--w:93%" data-page-node-id="T9QTysTe8YBlQ48rPmgb7h"></i></div>
+                                    <small data-page-node-id="N2iSFEh6cPJzbahsHDo0H9">读书笔记 2 篇 · 费曼讲解 1 次</small>
+                                    <div class="mini-card__meter" data-page-node-id="ooAFSGRoSAofEVqmcgBVix"><i
+                                           style="--w:55%" data-page-node-id="mUdzx3pYWGKSt9AA9M7cHh"></i></div>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+
+                    <!-- Block 3 费曼学习中心 -->
+                    <article class="feature-block reveal" data-page-node-id="SFIfd6kUPycAGLemCnoXCD">
+                        <div class="feature-block__text" data-page-node-id="FlAgGFO7V5T4SqqJ4sJp93">
+                            <p class="kicker" data-page-node-id="p53TeMA6blloZF6zQaizp4">费曼学习中心</p>
+                            <h3 data-page-node-id="CUgpLeGzJ6oMcf53WfTPxV">能讲明白，才是真的学会了</h3>
+                            <p data-page-node-id="0eAed8dcyDI9rQVWO3Ncfy">按费曼学习法设计的输出闭环：孩子先回答费曼四问讲清概念，AI 评估讲解质量，达到 80
+                                分即解锁 20 题 45 分钟限时测验，用测验检验讲解是否到位。</p>
+                            <ul class="check-list" data-page-node-id="GCpB3qtyJRzD26HpuvwPrl">
+                                <li data-page-node-id="jkMVIxFIfxKAPtJiGpCMe5">费曼四问引导，把知识讲给别人听</li>
+                                <li data-page-node-id="nsJ0HykpZWn9n73NCNc489">DeepSeek AI 评估讲解完整度与准确性</li>
+                                <li data-page-node-id="MsPAqJhXR4utoYUhaPIYwh">评估 ≥ 80 分解锁配套限时测验</li>
+                                <li data-page-node-id="PX1jhQWsmar5R4hV59rF4F">20 题 · 45 分钟，成绩计入积分体系</li>
+                            </ul>
+                        </div>
+                        <div class="feature-block__visual" role="img" aria-label="费曼学习流程示意"
+                             data-page-node-id="kIkSDwG5MWWSkvobMnjvKN">
+                            <div class="mini-card" data-page-node-id="YVWmrEvV2QYa5xza0vGof9">
+                                <ol class="mini-card__steps" data-page-node-id="L1bPpTPc6eDAV1yXhSEaHC">
+                                    <li data-page-node-id="pkGTXEIdBK0xBBIgIlpBqF"><b
+                                           data-page-node-id="FjG9ClPbpzo2lYP9LSGOPV">1</b>
+                                        <div data-page-node-id="fPYyXbbn4kdEEY3hbbvZLk"><strong
+                                                    data-page-node-id="6SF440dLJhME4p68xYByhP">讲解</strong><small
+                                                   data-page-node-id="liievAUliuFjEWK37HJw1V">回答费曼四问，讲给 AI 听</small>
+                                        </div><span class="pill pill--done"
+                                              data-page-node-id="VpAb9n4sMhH9WTW8dq5LUo">已完成</span>
+                                    </li>
+                                    <li data-page-node-id="3Kuu1J8ISHXIc6jNaR9sEO"><b
+                                           data-page-node-id="JyCE0a28FPyF0LNCt3PMvH">2</b>
+                                        <div data-page-node-id="F6oBCcPaxLxKkJwOCGhNW8"><strong
+                                                    data-page-node-id="ujuiWuuJuWk0d4TYrQE5Sp">AI 评估</strong><small
+                                                   data-page-node-id="WnSSg0MXHZ0SGpdkKdP6JT">完整度 86 分 · 表达清晰</small>
+                                        </div><span class="pill pill--done"
+                                              data-page-node-id="cEeJGRzDTAca0OIsEYS2u9">≥80 通过</span>
+                                    </li>
+                                    <li data-page-node-id="11pDSsrTDxd8Lsj3bBCy63"><b
+                                           data-page-node-id="MkWlRLxkGhhvRLtdAW9MmS">3</b>
+                                        <div data-page-node-id="kJGFfGQ5gfMkSKswB2r6nH"><strong
+                                                    data-page-node-id="QJasO0XlzDXq8k3tkzUy74">限时测验</strong><small
+                                                   data-page-node-id="wQSExzylrcYyIBCmFhTQHB">20 题 · 45 分钟倒计时</small>
+                                        </div><span class="pill pill--go"
+                                              data-page-node-id="jARAW0HcL8gDKoZ4ElDrvy">去挑战</span>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+            </section>
+
+            <!-- ===== 更多能力 ===== -->
+            <section class="capabilities section section--parchment" data-page-node-id="aFe4wMBemcjTqWoaVuZXPZ">
+                <div class="container" data-page-node-id="j0HmDY0vNGTTJVNtji4Bfr">
+                    <header class="section__head reveal" data-page-node-id="SAmCPOEApzmGu5vWI8Gavz">
+                        <p class="kicker" data-page-node-id="KDxsBJ8kPOwkRPUz9kXe6i">更多能力</p>
+                        <h2 data-page-node-id="JKq6WbS3IpeQc4r8myUfnp">不止作业，还有一整套家庭学习基础设施</h2>
+                        <p class="section__sub" data-page-node-id="LT393A2y0y66JzHMuXXfKm">
+                            积分、分享、电台、阅读与数据安全，全都跑在你自己机器上的同一个应用里。</p>
+                    </header>
+                    <div class="card-grid reveal" data-page-node-id="S3PLnFBz12kA7UQJ4220YC">
+                        <article class="card" data-page-node-id="XsvSqe9lYXHi4jBpNCllGD">
+                            <div class="card__icon" aria-hidden="true" data-page-node-id="gdc6spIAizvGILWzdaLH9C">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round"
+                                     data-page-node-id="yB4SKxPk5ouQkWSHVvWOdF">
+                                    <circle cx="12" cy="8" r="5" data-page-node-id="ub4dTAvdDY8iBykFKlaCRZ" />
+                                    <path d="M8.5 12.5 7 21l5-3 5 3-1.5-8.5"
+                                          data-page-node-id="fESFplo3dRaEFy4wRvq8yH" />
+                                </svg>
+                            </div>
+                            <h3 data-page-node-id="6BfqUO3x9fuOBo0F2685UF">积分奖惩与兑换</h3>
+                            <p data-page-node-id="GK9McIvN5GMFwfYMk68RDF">
+                                完成作业赚积分，可兑换娱乐时间或现金。月初始积分、特权最低积分与兑换比例都可在规则页在线编辑。</p>
+                        </article>
+                        <article class="card" data-page-node-id="gr2I3v5cb69pt3aCNR044Y">
+                            <div class="card__icon" aria-hidden="true" data-page-node-id="P9bvFqXFTbRTzRGlRphdUP">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round"
+                                     data-page-node-id="QlHuCHDBYVWDAJDV9IEXmP">
+                                    <rect x="3" y="6" width="18" height="13" rx="2"
+                                          data-page-node-id="EB6dUVKfHQU3LzBPa3TbzD" />
+                                    <path d="M3 10h18M7 15h4" data-page-node-id="l51vnp5t5akKx3TdTZX9Rb" />
+                                </svg>
+                            </div>
+                            <h3 data-page-node-id="mfgFme8M7fkMk0oGTSehlF">积分预支与分期</h3>
+                            <p data-page-node-id="xeHYahw3Am15oBITy46eIy">积分不够时可预支 10-9999 分，支持 1-12 期分期，每月 1
+                                号自动从当月可用积分扣款还款。</p>
+                        </article>
+                        <article class="card" data-page-node-id="PC9VgMauMr8llgmdYt32SD">
+                            <div class="card__icon" aria-hidden="true" data-page-node-id="E3CycC3mrU8R0WwB1gJVfD">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round"
+                                     data-page-node-id="Qgb4CVYfBFzhtSYvHDdZZf">
+                                    <circle cx="6" cy="12" r="2.5" data-page-node-id="piqpJHGlwQ79pp1rKkAlwy" />
+                                    <circle cx="17" cy="6" r="2.5" data-page-node-id="C2DtTTsmUSMHODJGmRcs8C" />
+                                    <circle cx="17" cy="18" r="2.5" data-page-node-id="Px1k2VnxN90RA5WVpGovaU" />
+                                    <path d="m8.3 10.8 6.4-3.6M8.3 13.2l6.4 3.6"
+                                          data-page-node-id="SQYBFlQU2fEXx9y6jsDjE4" />
+                                </svg>
+                            </div>
+                            <h3 data-page-node-id="Oz8g3ULEU3dSI0alaLf2R1">学习分享卡片</h3>
+                            <p data-page-node-id="duwxW3HgimL6vrbcClXR5I">积分、作业、周报、学习心得一键导出长图，多套背景可选，把成长瞬间做成可以发出去的图。</p>
+                        </article>
+                        <article class="card" data-page-node-id="GBYWstocXS8tjKtEKVgS8a">
+                            <div class="card__icon" aria-hidden="true" data-page-node-id="xu0hIW0zcqwntakDl9ujnP">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round"
+                                     data-page-node-id="ztAsOAM6rYrYkyiibEGvEz">
+                                    <rect x="3" y="5" width="18" height="14" rx="2"
+                                          data-page-node-id="fAUAXrcgaid3GWcPYLebCH" />
+                                    <path d="m10 9 5 3-5 3V9Z" data-page-node-id="ROtPhGs9swu3v50ByJ9APH" />
+                                </svg>
+                            </div>
+                            <h3 data-page-node-id="Y4AVHm8UHKC9m8QNADaZrI">学迹电台</h3>
+                            <p data-page-node-id="4FfcJpS8K3OmG4GHpLGJWW">扫描本地视频目录随机轮播，支持续播记忆与收藏管理，键盘方向键快进快退、空格暂停。</p>
+                        </article>
+                        <article class="card" data-page-node-id="5oZ7NfhwMMBNw6F7DLfBCV">
+                            <div class="card__icon" aria-hidden="true" data-page-node-id="vHOhhRmeFmXuHANXPaT4Mt">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round"
+                                     data-page-node-id="mHED6nZNnPkDTK1RnDBGl6">
+                                    <path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"
+                                          data-page-node-id="1zQi8jJjNd70G4ZT6Md0I4" />
+                                    <circle cx="5" cy="19" r="1.5" data-page-node-id="zMXEcTXA8wyAEfGyK6SGiV" />
+                                </svg>
+                            </div>
+                            <h3 data-page-node-id="6ZcdHEauWNocqCJTXhb94h">RSS 科普阅读</h3>
+                            <p data-page-node-id="suClYspmwnXkeFyfaIZ7Iz">订阅环球科学 RSS 源，分类浏览前沿科普文章，把碎片时间变成有质量的阅读时间。</p>
+                        </article>
+                        <article class="card" data-page-node-id="ikIm0vTBtLh96TJa9wIdIy">
+                            <div class="card__icon" aria-hidden="true" data-page-node-id="bfmsQGDzVUF6mFipZJLKid">
+                                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"
+                                     stroke-linecap="round" stroke-linejoin="round"
+                                     data-page-node-id="qKuGefMeDmxkC4CSG9aCAR">
+                                    <ellipse cx="12" cy="5.5" rx="8" ry="2.8"
+                                             data-page-node-id="CJhXsmtHNLdYhuBcAVrtST" />
+                                    <path d="M4 5.5V12c0 1.6 3.6 2.8 8 2.8s8-1.2 8-2.8V5.5M4 12v6.5c0 1.6 3.6 2.8 8 2.8s8-1.2 8-2.8V12"
+                                          data-page-node-id="7Dq2B9mFJNJFxMLGu8X4j3" />
+                                </svg>
+                            </div>
+                            <h3 data-page-node-id="2ZKIGQeieqgKGcvhZGKIfn">数据库每日备份</h3>
+                            <p data-page-node-id="zyISbfYAUedXWF937KBkq6">WAL checkpoint 后打包成 zip
+                                邮件外发，做异地容灾；保留份数与单次清理上限均可配置，默认全关。</p>
+                        </article>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== 技术栈 ===== -->
+            <section class="tech section section--tile section--tile-1" id="tech"
+                     data-page-node-id="eOHKG1eWUwxYQ5cuymBfXs">
+                <div class="container" data-page-node-id="BIqJJr6FOThg5k5DnJbzO7">
+                    <header class="section__head section__head--dark reveal" data-page-node-id="YEK2DfhQrMifcRAurOEXf6">
+                        <p class="kicker kicker--on-dark" data-page-node-id="YpwMP9P5wvtBuGXax6J0Li">技术栈</p>
+                        <h2 data-page-node-id="HWqCite8NT1qY4663H28JA">为长期维护而选的每一项依赖</h2>
+                        <p class="section__sub" data-page-node-id="upGqCdCqImNl2uK7kufpGd">pnpm workspace 管理的
+                            Monorepo：前端、后端与共享类型各居其位，一条命令跑起全栈。</p>
+                    </header>
+                    <div class="tech__grid reveal" data-page-node-id="926RJhi54ebJpJLljkyl6E">
+                        <div class="tech__col" data-page-node-id="4XGEjEIM3QKl3VGaBzzeKE">
+                            <h3 data-page-node-id="HRyM9ljfb3AAodKhjHDoxC">前端 · apps/</h3>
+                            <ul data-page-node-id="isyCs87vQVJGsT4ujvkPag">
+                                <li data-page-node-id="WFTxwEfjeGYvA7jSU4WkNL">React 19</li>
+                                <li data-page-node-id="SC8EXFWAVkF7hUwplHLnzc">React Router 7</li>
+                                <li data-page-node-id="xHNHYVCxjQ5XE1dTdmNAIq">TypeScript</li>
+                                <li data-page-node-id="R6y0Jh1s2kpXlTCN0pTnnK">Tailwind CSS 4</li>
+                                <li data-page-node-id="EAwV70kPKLMjXHtOI2PoI9">Vite 8</li>
+                                <li data-page-node-id="CM9Q4ERsTGrZ8LMb5qy0Nn">Mermaid 11</li>
+                                <li data-page-node-id="K6wN6Yuw3W0AOXnIEki9PM">React Compiler</li>
+                            </ul>
+                        </div>
+                        <div class="tech__col" data-page-node-id="aioIzHPBjBfEZa39hpMbRK">
+                            <h3 data-page-node-id="zOOhSne2bzZfVbJjvwta3G">后端 · server/</h3>
+                            <ul data-page-node-id="xbldGmlWcD4eaNyLVa9iIq">
+                                <li data-page-node-id="u9PoqUUGqfvJBxOD74A3l2">Express 5</li>
+                                <li data-page-node-id="2u8JoNwFP4sbQNRunbWJYr">SQLite + libSQL</li>
+                                <li data-page-node-id="TVuUWpXTzovEX1kTUd9RuE">Drizzle ORM</li>
+                                <li data-page-node-id="f6IkQKvbtp8PaKDowxtoX3">Zod 4</li>
+                                <li data-page-node-id="pNvbTqxx5J3lDT08DrWqqH">DeepSeek API</li>
+                                <li data-page-node-id="bSJBB2rbfupYjwgBxD0THn">helmet / CORS</li>
+                                <li data-page-node-id="nnRgzgeTdevqCV2ppOq3yC">express-rate-limit</li>
+                            </ul>
+                        </div>
+                        <div class="tech__col" data-page-node-id="h9kMuJ9oITx1RWBHJ4qXIu">
+                            <h3 data-page-node-id="wcUavpjWvTVHxFStZFtJhY">工程与质量</h3>
+                            <ul data-page-node-id="mtX9WTm0UYFGgjJRkxvW7N">
+                                <li data-page-node-id="PnFiLwT3BVDe5GGklzYdwe">pnpm workspace</li>
+                                <li data-page-node-id="hU6JiP5jJwjXfUICLAbx9l">Monorepo · apps / server / shared</li>
+                                <li data-page-node-id="vCU9Lp7sT4hkLCpn7MLr2l">Node ≥ 20.11</li>
+                                <li data-page-node-id="MCIo2UjshUmYaUSJZVbNFh">Zod 全链路入参校验</li>
+                                <li data-page-node-id="xy8wN84JNrUUuptZPGU3GG">每日 WAL 备份</li>
+                                <li data-page-node-id="3JZTPABdD8myu8JTjtUibP">自包含 deploy 目录</li>
+                                <li data-page-node-id="cawCq4Pt00O64Vavzm8FvF">MIT License</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div class="tech__arch reveal" role="img" aria-label="架构示意：apps 与 server 通过 shared 共享类型"
+                         data-page-node-id="quXkGMejayE54RqV4dcBkq">
+                        <span class="arch-node" data-page-node-id="akqAjP2t9ekaDrvIT2U0Ds">apps<small
+                                   data-page-node-id="6f5sLLN9o4vHhdEHKq11CE">React 19 前端</small></span>
+                        <span class="arch-link" aria-hidden="true" data-page-node-id="oSACsJCgqiwGKGEeepGbYE"></span>
+                        <span class="arch-node arch-node--mid" data-page-node-id="3HF6xciGP9zR1ukGrFm541">shared<small
+                                   data-page-node-id="ONNSzqCZMtFiHhrJcWqKUP">类型与工具</small></span>
+                        <span class="arch-link" aria-hidden="true" data-page-node-id="BcoWWKr7Iouvbj42x3xCrO"></span>
+                        <span class="arch-node" data-page-node-id="ubkK9P8VSNoc8IQVak7vXw">server<small
+                                   data-page-node-id="AKSy5Xpv8CBeyk1b6CTqBx">Express 5 + SQLite</small></span>
+                    </div>
+                    <p class="tech__note reveal" data-page-node-id="FJiEJXmXNypnVAXTVIVyB6">shared 包承载前后端共享的 TypeScript
+                        类型与 Zod schema，接口约定只有一份真相；deploy 目录自包含全部产物，交付到服务器无需再装 node_modules。</p>
+                </div>
+            </section>
+
+            <!-- ===== 开发路线 ===== -->
+            <section class="roadmap section section--tile section--tile-2" id="roadmap"
+                     data-page-node-id="hbi21tODRmAz9pUgAFcLNF">
+                <div class="container" data-page-node-id="9XnCkDLDS63uzCXhHA5HAY">
+                    <header class="section__head section__head--dark reveal" data-page-node-id="S3Tejw0u7aBvkg1XznIkhy">
+                        <p class="kicker kicker--on-dark" data-page-node-id="cbHs7Gemmonx3UbFqUlFxD">开发计划</p>
+                        <h2 data-page-node-id="998xRyOmPoSFiC70rEohhg">11 个阶段，全部如期交付</h2>
+                        <p class="section__sub" data-page-node-id="U5Ux9vFtceeUvlyfx105A1">从项目奠基到运维与交付，每个 Phase
+                            都按计划完成——这是一份已经走完的路线图。</p>
+                    </header>
+                    <div class="phase-grid reveal" data-page-node-id="DZrittd5IBhsBsVfSYs0pG">
+                        <article class="phase" data-page-node-id="ZGP3HArOg84VDmHQ04Xgmo">
+                            <p class="phase__tag" data-page-node-id="aheIDxykQnqNFLhA7Sjcp2">Phase 1-2</p>
+                            <h3 data-page-node-id="Gwmovzl3NDk5595AaKxcnQ">项目奠基</h3>
+                            <p data-page-node-id="JLQsXlM05P9PcKElUFUovW">Monorepo 工程搭建、SQLite 数据库 19 张表设计、积分核心账本与规则引擎。
+                            </p>
+                            <span class="phase__done" data-page-node-id="ZqcM43sJS1M02FNn8pAKnh">已交付</span>
+                        </article>
+                        <article class="phase" data-page-node-id="UdznkAs8LENYfnjplHIIem">
+                            <p class="phase__tag" data-page-node-id="52MG2N9fg6VfLnNLPXnu2j">Phase 3-4</p>
+                            <h3 data-page-node-id="lRe1I3ybilm0Zl5oHvlSAg">作业与积分</h3>
+                            <p data-page-node-id="P3hYD1DNXFpAdlk6RKMxAZ">A+~E 作业评分接入 DeepSeek 评语，积分奖惩、兑换与预支分期全流程跑通。</p>
+                            <span class="phase__done" data-page-node-id="LAaBFg1RIwj7oRQHsQMq1D">已交付</span>
+                        </article>
+                        <article class="phase" data-page-node-id="jF3FFal7ICAJ78GOIpfa6O">
+                            <p class="phase__tag" data-page-node-id="cuG8A1EgYzv6pTT6xEKLK5">Phase 5-6</p>
+                            <h3 data-page-node-id="UUbENaBCFvo7rJWyS6vB3v">周报与心得</h3>
+                            <p data-page-node-id="57KxkgdWFdWDCNS1xy5YC8">学习周报自动汇总与趋势分析，读书笔记专属评分与学习心得沉淀。</p>
+                            <span class="phase__done" data-page-node-id="i37CoinHE8GLoRKxUhttuc">已交付</span>
+                        </article>
+                        <article class="phase" data-page-node-id="Xd8roZt42Vbou20hhntUbI">
+                            <p class="phase__tag" data-page-node-id="Sr3cilWtkKKgnt9RxESFUB">Phase 7-8</p>
+                            <h3 data-page-node-id="eJ0vJcFUAItYotZrG83kzG">费曼学习闭环</h3>
+                            <p data-page-node-id="234isybKrBDwOqSpz2K5rm">费曼四问引导、AI 评估打分，≥80 分解锁 20 题 45 分钟限时测验。</p>
+                            <span class="phase__done" data-page-node-id="RvSr6Cm3HZif6CSbLKZDtz">已交付</span>
+                        </article>
+                        <article class="phase" data-page-node-id="ODVBnM6WjSRpFotueJEnxL">
+                            <p class="phase__tag" data-page-node-id="ijDgnrpWXJRPKYkyVIsSTX">Phase 9-10</p>
+                            <h3 data-page-node-id="uapS8XAzFtngRXT8Eo07oW">周边能力</h3>
+                            <p data-page-node-id="PSCuDudzFKYtoBioaowstx">学迹电台、RSS 科普阅读、分享卡片、历史回看与全局错题本。</p>
+                            <span class="phase__done" data-page-node-id="NGVmOkBy2c1V6GqCJZLQDY">已交付</span>
+                        </article>
+                        <article class="phase" data-page-node-id="nF3PySZTBpfOkoqA2RvDKh">
+                            <p class="phase__tag" data-page-node-id="iEtE2RLKF4xrUgR4swJ2Q6">Phase 11</p>
+                            <h3 data-page-node-id="xv5UiMCWnI0Zwd9EtERGXv">运维与交付</h3>
+                            <p data-page-node-id="xw2IIs77MIHaf5xzpOSUQ6">数据库每日 zip 邮件备份、Windows Server 打包部署与 nssm 服务化。
+                            </p>
+                            <span class="phase__done" data-page-node-id="qJRA3mmKbb8BiotFTRsBTS">已交付</span>
+                        </article>
+                    </div>
+                    <p class="roadmap__note reveal" data-page-node-id="7WaIYXJX2SH0t77AVBJTGc">本地部署版本已进入维护期（仅 Bug
+                        修复）；下一代功能在 CloudBase 版本上继续演进。<a
+                           href="https://github.com/baiwanyi/study.plus/blob/cloudbase/README.md" target="_blank"
+                           rel="noopener" data-page-node-id="5sPOPFepBiGMMqkkHflm3j">了解 CloudBase 版本</a></p>
+                </div>
+            </section>
+
+            <!-- ===== FAQ ===== -->
+            <section class="faq section" id="faq" data-page-node-id="vVnEv3ase7pGTypV8ZkBD0">
+                <div class="container" data-page-node-id="yNVMi3VseT74fB06kbwhho">
+                    <header class="section__head reveal" data-page-node-id="W8FxQK6JL9QUCg8GPCn0TQ">
+                        <p class="kicker" data-page-node-id="3XDGVOy7qTOKGJgkEvLxjv">常见问题</p>
+                        <h2 data-page-node-id="xm90yfz0XSyRm2y7lGPWfC">你可能想先弄清楚的几件事</h2>
+                    </header>
+                    <div class="faq__list reveal" data-page-node-id="qrVuHQLRMfCWR8k6gzlMqT">
+                        <details data-page-node-id="BeyeOwtEeMIalu36hZ1STv">
+                            <summary data-page-node-id="5HlKfWp2qdgQ4MHVzJXwFe">我的数据存在哪里，会不会上传到别人的服务器？<span
+                                      aria-hidden="true" data-page-node-id="OooPD4PD7guTZoGnUwrhB5"></span></summary>
+                            <p data-page-node-id="pYWHet8qtzn7LDIkNeBXFW">全部数据存在你本地机器的 SQLite 数据库里，除你主动调用的 DeepSeek API
+                                外，不依赖任何第三方云服务。数据库每日备份也会发往你自己的邮箱。</p>
+                        </details>
+                        <details data-page-node-id="Rl912lOSZJY6JoBeSyEyyn">
+                            <summary data-page-node-id="Pmpffj6vSQ6ULM0g0yR2FS">部署门槛高吗？需要哪些准备？<span aria-hidden="true"
+                                      data-page-node-id="j6vQsVP4L1n6KRMwYe1dFI"></span></summary>
+                            <p data-page-node-id="T41wvFaFFGcaeoFg50cTAv">只需要 Node.js ≥ 20.11 和 pnpm。deploy
+                                目录完全自包含，拷贝到服务器即可运行，无需再安装 node_modules；Windows Server 上可用 nssm 注册为系统服务。</p>
+                        </details>
+                        <details data-page-node-id="hfWzmXRNb66aZKryviLfdw">
+                            <summary data-page-node-id="0zG6SZ6GL0yIXczGrj5TjC">没有 DeepSeek API Key 也能用吗？<span
+                                      aria-hidden="true" data-page-node-id="9dvYYMLkOpTrPl0C4pqUco"></span></summary>
+                            <p data-page-node-id="B9voMlBxwE7mb6lS21uXFm">可以。作业评分、积分账本、周报、电台、RSS 等核心能力不依赖 AI Key；AI
+                                评语与费曼评估等增强功能需要配置 DeepSeek API Key 后才会启用。</p>
+                        </details>
+                        <details data-page-node-id="hjd0n4VQFqWzMOCrujP3bM">
+                            <summary data-page-node-id="FhcGeNXcVxanqriVe9fWTo">积分规则可以自己改吗？<span aria-hidden="true"
+                                      data-page-node-id="H5K5sWceWChg4qC8OiNGUF"></span></summary>
+                            <p data-page-node-id="UidwANbHd2Nbj4MxYhkGq7">可以。A+~E
+                                各档分值、月初始积分、特权最低积分、兑换比例、预支分期规则都在规则页在线编辑，改完即时生效，不需要重启服务。</p>
+                        </details>
+                        <details data-page-node-id="P1KKGYt61Vf5BFDBt7Gi7a">
+                            <summary data-page-node-id="UDrjwCq4bWECg4AYQZHt6Y">本地部署版还会继续更新吗？<span aria-hidden="true"
+                                      data-page-node-id="HQlC0MIpE6vsZhnHYcKls6"></span></summary>
+                            <p data-page-node-id="wSVOVevm5gux5wdtufgDAo">本地版已停止功能开发，仅做 Bug 修复；全新功能开发集中于 CloudBase
+                                版本。你可以持续使用本地版，也可以跟进 CloudBase 分支的演进。</p>
+                        </details>
+                        <details data-page-node-id="sS7ZPOlzsEVHi1a8JwPk6J">
+                            <summary data-page-node-id="H9MTR39l4I2R5WWZ29wu1E">支持哪些作业类型？<span aria-hidden="true"
+                                      data-page-node-id="eb7LGwORauXjLVJiAQXBE4"></span></summary>
+                            <p data-page-node-id="g1HyiWFqwQXteVRhnuvApQ">日常作业按 A+~E 六档评分；读书笔记有专属评分维度（摘抄赏析 50 分、读后感 40
+                                分、好词好句 10 分）；另支持课堂问答题生成与解锁规则。</p>
+                        </details>
+                    </div>
+                </div>
+            </section>
+
+            <!-- ===== 结尾 CTA ===== -->
+            <section class="cta section section--tile section--tile-3" data-page-node-id="LgIx6jfHECB484EFUXebfd">
+                <div class="container reveal" data-page-node-id="mPCxVs7wGRk4DrYaA23Y4k">
+                    <h2 data-page-node-id="Xou7AwvE1APDTUHx3xKXbi">把习惯培养，交给一套有反馈的系统</h2>
+                    <p data-page-node-id="KJ88T8JrAcCOWfJvlxuarg">开源、可自托管、数据全在你自己手里。现在就把它跑起来。</p>
+                    <div class="cta__actions" data-page-node-id="frzVleYOEtHwtvOmV5IO4J">
+                        <a class="btn btn--primary" href="https://github.com/baiwanyi/study.plus" target="_blank"
+                           rel="noopener" data-page-node-id="OTBbuxaKiAQCD5KgtIZpza">
+                            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"
+                                 data-page-node-id="plb2T4N6W0Inq8aN58GKmc">
+                                <path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"
+                                      data-page-node-id="sjIBTsB8kPHZGd0Mfpa3XL" />
+                            </svg>
+                            在 GitHub 查看源码
+                        </a>
+                        <a class="btn btn--ghost btn--ghost-dark"
+                           href="https://github.com/baiwanyi/study.plus/blob/main/README.md" target="_blank"
+                           rel="noopener" data-page-node-id="3xwHP2vjaTJ6K1cJFbKbSH">阅读完整文档</a>
+                    </div>
+                    <p class="cta__reassure" data-page-node-id="Pcxd1E0PRr6msWyUBAvGJO">MIT License · Node 20.11 起可用 ·
+                        自包含部署无需 node_modules</p>
+                </div>
+            </section>
+        </main>
+
+        <!-- ===== 页脚 ===== -->
+        <footer class="footer section--parchment" data-page-node-id="ZgTG5EHf5YE9vHLgEvYI9L">
+            <div class="container" data-page-node-id="IYsm6UEOJRrODrLEdsvtAD">
+                <div class="footer__top" data-page-node-id="9joZgdRpPgPb2NTxL05Qps">
+                    <div class="footer__brand" data-page-node-id="Fkwnd0nPGdtSUx31EzMdmT">
+                        <a class="nav__brand" href="#top" data-page-node-id="Mjr1HNVM57kywGAvYDRC09">
+                            <img src="./assets/images/logo.svg" alt="" width="26" height="26" aria-hidden="true"
+                                 data-page-node-id="a59sZQy5EfuMIBbZgf3qRM">
+                            <span data-page-node-id="AruRWtUPUZRH4ACyEFq5uJ">学迹Plus</span>
+                        </a>
+                        <p data-page-node-id="Rn47RzYP2hiuRApUqFZBSk">面向 3-15 岁家庭的积分制学习管理工具。<br
+                                data-page-node-id="alRUlqpblYs0KeB4JhJCVm">开源、自托管，让成长有迹可循。</p>
+                    </div>
+                    <nav class="footer__col" aria-label="产品" data-page-node-id="YI7FF8IljITaasBvnOVFDL">
+                        <h3 data-page-node-id="5VaFx8HGcPDFsZU2XZABWl">产品</h3>
+                        <a href="#features" data-page-node-id="9uE1s5ZMlgErElsFZFkmX2">核心功能</a>
+                        <a href="#features" data-page-node-id="4OuQLJqJVYw8KOq82zYsQi">更多能力</a>
+                        <a href="#tech" data-page-node-id="mnZCYopM1E9NC8nP2VKXLY">技术栈</a>
+                        <a href="#roadmap" data-page-node-id="JmTHSNXfpC2LoITjqARoJX">开发计划</a>
+                    </nav>
+                    <nav class="footer__col" aria-label="资源" data-page-node-id="bWzkJyahdH1EsMG8yB3AS0">
+                        <h3 data-page-node-id="l1qbMR9NvAS9xPCKK6nzD6">资源</h3>
+                        <a href="https://github.com/baiwanyi/study.plus" target="_blank" rel="noopener"
+                           data-page-node-id="gKKrD8QziaUPfTOgz4CdTR">GitHub 仓库</a>
+                        <a href="https://github.com/baiwanyi/study.plus/blob/main/README.md" target="_blank"
+                           rel="noopener" data-page-node-id="C0ROss7dIl3vVAVNeDofGb">完整文档</a>
+                        <a href="https://github.com/baiwanyi/study.plus/issues" target="_blank" rel="noopener"
+                           data-page-node-id="E0B7oDyvvTvf8v0qelGYSc">提交 Issue</a>
+                        <a href="https://github.com/baiwanyi/study.plus/blob/cloudbase/README.md" target="_blank"
+                           rel="noopener" data-page-node-id="rGallb38OmhZjAPeoSPwYF">CloudBase 分支</a>
+                    </nav>
+                    <nav class="footer__col" aria-label="说明" data-page-node-id="HBEj8tho2TWVXN8iesJiTW">
+                        <h3 data-page-node-id="kCbSVyZ5HCibCBa3ZcJZRN">说明</h3>
+                        <a href="https://github.com/baiwanyi/study.plus#%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91"
+                           target="_blank" rel="noopener" data-page-node-id="ORAmqMKGB16Dwd8avCJKIk">本地开发</a>
+                        <a href="https://github.com/baiwanyi/study.plus#%E6%89%93%E5%8C%85%E4%B8%8E%E9%83%A8%E7%BD%B2"
+                           target="_blank" rel="noopener" data-page-node-id="SFhGzrwn8pKTBo0MtyI53x">打包与部署</a>
+                        <a href="https://github.com/baiwanyi/study.plus#%E6%95%B0%E6%8D%AE%E5%BA%93%E6%AF%8F%E6%97%A5%E5%A4%87%E4%BB%BD"
+                           target="_blank" rel="noopener" data-page-node-id="JoDEBcKGC4ni4T4Rukkzwm">数据库每日备份</a>
+                        <a href="https://github.com/baiwanyi/study.plus#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F"
+                           target="_blank" rel="noopener" data-page-node-id="DRuBZYILzQOAxdbyG6RfQP">环境变量</a>
+                    </nav>
+                </div>
+                <div class="footer__divider" role="presentation" data-page-node-id="Gt0364pB8GOV94HdoVg3OG"></div>
+                <div class="footer__bottom" data-page-node-id="EAox6Ji43wOzHUFHnWBuZB">
+                    <p data-page-node-id="eRVpUZqpeC29kcKoBmQKl2">2026 学迹Plus · <a
+                           href="https://github.com/baiwanyi/study.plus/blob/main/LICENSE" target="_blank"
+                           rel="noopener" data-page-node-id="FwfwTNFayTmE4CwdusdFxA">MIT License</a></p>
+                    <p data-page-node-id="I4o6E7bJWbHaJXL8nrjOwM">把习惯培养，交给一套有反馈的系统</p>
+                </div>
             </div>
-          </div>
-        </div>
-      </div>
-    </section>
+        </footer>
 
-    <!-- ===== 核心功能 ===== -->
-    <section class="features section" id="features">
-      <div class="container">
-        <header class="section__head reveal">
-          <p class="kicker">核心功能</p>
-          <h2>三个模块，串成一条完整的学习闭环</h2>
-          <p class="section__sub">作业完成即得分，得分沉淀为周报，周报引出反思，反思再回到作业——孩子看得见自己的进步，家长省得下陪伴的心力。</p>
-        </header>
+        <script src="./assets/js/main.js" defer></script>
+    </body>
 
-        <!-- Block 1 作业管理 -->
-        <article class="feature-block reveal">
-          <div class="feature-block__text">
-            <p class="kicker">作业管理</p>
-            <h3>每一份作业，都被认真计价</h3>
-            <p>A+ 到 E 的评分档位直接映射 +50 至 -50 积分，规则透明、奖惩分明。DeepSeek AI 自动生成针对性评语，家长复核后生效，既省力又不失把关。</p>
-            <ul class="check-list">
-              <li>A+~E 六档评分，对应 +50 至 -50 积分</li>
-              <li>DeepSeek AI 自动生成个性化评语</li>
-              <li>家长复核确认，积分才会入账</li>
-              <li>读书笔记专属评分：摘抄赏析 50 + 读后感 40 + 好词 10</li>
-            </ul>
-          </div>
-          <div class="feature-block__visual" role="img" aria-label="作业评分示意">
-            <div class="mini-card">
-              <div class="mini-card__row">
-                <span class="grade grade--a">A+</span>
-                <div><strong>数学口算 第 14 页</strong><small>计算全对，书写工整</small></div>
-                <b class="delta delta--up">+50</b>
-              </div>
-              <div class="mini-card__row">
-                <span class="grade grade--b">B</span>
-                <div><strong>语文生字抄写</strong><small>两处笔顺需要订正</small></div>
-                <b class="delta delta--up">+10</b>
-              </div>
-              <div class="mini-card__row">
-                <span class="grade grade--c">C</span>
-                <div><strong>英语跟读打卡</strong><small>未完成，与孩子约定补交</small></div>
-                <b class="delta delta--down">-10</b>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Block 2 学习周报 -->
-        <article class="feature-block feature-block--flip reveal">
-          <div class="feature-block__text">
-            <p class="kicker">学习周报</p>
-            <h3>一周的积累，自动汇成一份看得懂的报告</h3>
-            <p>作业、积分、心得按周自动归档，趋势一目了然。周报不只是给家长看的报表，更是和孩子复盘时的最好谈资。</p>
-            <ul class="check-list">
-              <li>作业量、积分走势按周自动统计</li>
-              <li>历史回看：任意一周的成长记录随时调取</li>
-              <li>全局错题本：跨周汇总薄弱知识点</li>
-              <li>支持导出分享卡片，发给家人一起见证</li>
-            </ul>
-          </div>
-          <div class="feature-block__visual" role="img" aria-label="学习周报示意">
-            <div class="mini-card">
-              <div class="mini-card__report">
-                <small>第 36 周 · 学习周报</small>
-                <strong>积分 286 分，环比 +18%</strong>
-                <div class="mini-card__meter"><i style="--w:72%"></i></div>
-                <small>作业完成 14 / 15 · 错题订正 9 / 9</small>
-                <div class="mini-card__meter"><i style="--w:93%"></i></div>
-                <small>读书笔记 2 篇 · 费曼讲解 1 次</small>
-                <div class="mini-card__meter"><i style="--w:55%"></i></div>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <!-- Block 3 费曼学习中心 -->
-        <article class="feature-block reveal">
-          <div class="feature-block__text">
-            <p class="kicker">费曼学习中心</p>
-            <h3>能讲明白，才是真的学会了</h3>
-            <p>按费曼学习法设计的输出闭环：孩子先回答费曼四问讲清概念，AI 评估讲解质量，达到 80 分即解锁 20 题 45 分钟限时测验，用测验检验讲解是否到位。</p>
-            <ul class="check-list">
-              <li>费曼四问引导，把知识讲给别人听</li>
-              <li>DeepSeek AI 评估讲解完整度与准确性</li>
-              <li>评估 ≥ 80 分解锁配套限时测验</li>
-              <li>20 题 · 45 分钟，成绩计入积分体系</li>
-            </ul>
-          </div>
-          <div class="feature-block__visual" role="img" aria-label="费曼学习流程示意">
-            <div class="mini-card">
-              <ol class="mini-card__steps">
-                <li><b>1</b><div><strong>讲解</strong><small>回答费曼四问，讲给 AI 听</small></div><span class="pill pill--done">已完成</span></li>
-                <li><b>2</b><div><strong>AI 评估</strong><small>完整度 86 分 · 表达清晰</small></div><span class="pill pill--done">≥80 通过</span></li>
-                <li><b>3</b><div><strong>限时测验</strong><small>20 题 · 45 分钟倒计时</small></div><span class="pill pill--go">去挑战</span></li>
-              </ol>
-            </div>
-          </div>
-        </article>
-      </div>
-    </section>
-
-    <!-- ===== 更多能力 ===== -->
-    <section class="capabilities section section--parchment">
-      <div class="container">
-        <header class="section__head reveal">
-          <p class="kicker">更多能力</p>
-          <h2>不止作业，还有一整套家庭学习基础设施</h2>
-          <p class="section__sub">积分、分享、电台、阅读与数据安全，全都跑在你自己机器上的同一个应用里。</p>
-        </header>
-        <div class="card-grid reveal">
-          <article class="card">
-            <div class="card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="5"/><path d="M8.5 12.5 7 21l5-3 5 3-1.5-8.5"/></svg>
-            </div>
-            <h3>积分奖惩与兑换</h3>
-            <p>完成作业赚积分，可兑换娱乐时间或现金。月初始积分、特权最低积分与兑换比例都可在规则页在线编辑。</p>
-          </article>
-          <article class="card">
-            <div class="card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/></svg>
-            </div>
-            <h3>积分预支与分期</h3>
-            <p>积分不够时可预支 10-9999 分，支持 1-12 期分期，每月 1 号自动从当月可用积分扣款还款。</p>
-          </article>
-          <article class="card">
-            <div class="card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.5"/><circle cx="17" cy="6" r="2.5"/><circle cx="17" cy="18" r="2.5"/><path d="m8.3 10.8 6.4-3.6M8.3 13.2l6.4 3.6"/></svg>
-            </div>
-            <h3>学习分享卡片</h3>
-            <p>积分、作业、周报、学习心得一键导出长图，多套背景可选，把成长瞬间做成可以发出去的图。</p>
-          </article>
-          <article class="card">
-            <div class="card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="m10 9 5 3-5 3V9Z"/></svg>
-            </div>
-            <h3>学迹电台</h3>
-            <p>扫描本地视频目录随机轮播，支持续播记忆与收藏管理，键盘方向键快进快退、空格暂停。</p>
-          </article>
-          <article class="card">
-            <div class="card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11a9 9 0 0 1 9 9M4 4a16 16 0 0 1 16 16"/><circle cx="5" cy="19" r="1.5"/></svg>
-            </div>
-            <h3>RSS 科普阅读</h3>
-            <p>订阅环球科学 RSS 源，分类浏览前沿科普文章，把碎片时间变成有质量的阅读时间。</p>
-          </article>
-          <article class="card">
-            <div class="card__icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><ellipse cx="12" cy="5.5" rx="8" ry="2.8"/><path d="M4 5.5V12c0 1.6 3.6 2.8 8 2.8s8-1.2 8-2.8V5.5M4 12v6.5c0 1.6 3.6 2.8 8 2.8s8-1.2 8-2.8V12"/></svg>
-            </div>
-            <h3>数据库每日备份</h3>
-            <p>WAL checkpoint 后打包成 zip 邮件外发，做异地容灾；保留份数与单次清理上限均可配置，默认全关。</p>
-          </article>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== 技术栈 ===== -->
-    <section class="tech section section--tile section--tile-1" id="tech">
-      <div class="container">
-        <header class="section__head section__head--dark reveal">
-          <p class="kicker kicker--on-dark">技术栈</p>
-          <h2>为长期维护而选的每一项依赖</h2>
-          <p class="section__sub">pnpm workspace 管理的 Monorepo：前端、后端与共享类型各居其位，一条命令跑起全栈。</p>
-        </header>
-        <div class="tech__grid reveal">
-          <div class="tech__col">
-            <h3>前端 · apps/</h3>
-            <ul>
-              <li>React 19</li>
-              <li>React Router 7</li>
-              <li>TypeScript</li>
-              <li>Tailwind CSS 4</li>
-              <li>Vite 8</li>
-              <li>Mermaid 11</li>
-              <li>React Compiler</li>
-            </ul>
-          </div>
-          <div class="tech__col">
-            <h3>后端 · server/</h3>
-            <ul>
-              <li>Express 5</li>
-              <li>SQLite + libSQL</li>
-              <li>Drizzle ORM</li>
-              <li>Zod 4</li>
-              <li>DeepSeek API</li>
-              <li>helmet / CORS</li>
-              <li>express-rate-limit</li>
-            </ul>
-          </div>
-          <div class="tech__col">
-            <h3>工程与质量</h3>
-            <ul>
-              <li>pnpm workspace</li>
-              <li>Monorepo · apps / server / shared</li>
-              <li>Node ≥ 20.11</li>
-              <li>Zod 全链路入参校验</li>
-              <li>每日 WAL 备份</li>
-              <li>自包含 deploy 目录</li>
-              <li>MIT License</li>
-            </ul>
-          </div>
-        </div>
-        <div class="tech__arch reveal" role="img" aria-label="架构示意：apps 与 server 通过 shared 共享类型">
-          <span class="arch-node">apps<small>React 19 前端</small></span>
-          <span class="arch-link" aria-hidden="true"></span>
-          <span class="arch-node arch-node--mid">shared<small>类型与工具</small></span>
-          <span class="arch-link" aria-hidden="true"></span>
-          <span class="arch-node">server<small>Express 5 + SQLite</small></span>
-        </div>
-        <p class="tech__note reveal">shared 包承载前后端共享的 TypeScript 类型与 Zod schema，接口约定只有一份真相；deploy 目录自包含全部产物，交付到服务器无需再装 node_modules。</p>
-      </div>
-    </section>
-
-    <!-- ===== 开发路线 ===== -->
-    <section class="roadmap section section--tile section--tile-2" id="roadmap">
-      <div class="container">
-        <header class="section__head section__head--dark reveal">
-          <p class="kicker kicker--on-dark">开发计划</p>
-          <h2>11 个阶段，全部如期交付</h2>
-          <p class="section__sub">从项目奠基到运维与交付，每个 Phase 都按计划完成——这是一份已经走完的路线图。</p>
-        </header>
-        <div class="phase-grid reveal">
-          <article class="phase">
-            <p class="phase__tag">Phase 1-2</p>
-            <h3>项目奠基</h3>
-            <p>Monorepo 工程搭建、SQLite 数据库 19 张表设计、积分核心账本与规则引擎。</p>
-            <span class="phase__done">已交付</span>
-          </article>
-          <article class="phase">
-            <p class="phase__tag">Phase 3-4</p>
-            <h3>作业与积分</h3>
-            <p>A+~E 作业评分接入 DeepSeek 评语，积分奖惩、兑换与预支分期全流程跑通。</p>
-            <span class="phase__done">已交付</span>
-          </article>
-          <article class="phase">
-            <p class="phase__tag">Phase 5-6</p>
-            <h3>周报与心得</h3>
-            <p>学习周报自动汇总与趋势分析，读书笔记专属评分与学习心得沉淀。</p>
-            <span class="phase__done">已交付</span>
-          </article>
-          <article class="phase">
-            <p class="phase__tag">Phase 7-8</p>
-            <h3>费曼学习闭环</h3>
-            <p>费曼四问引导、AI 评估打分，≥80 分解锁 20 题 45 分钟限时测验。</p>
-            <span class="phase__done">已交付</span>
-          </article>
-          <article class="phase">
-            <p class="phase__tag">Phase 9-10</p>
-            <h3>周边能力</h3>
-            <p>学迹电台、RSS 科普阅读、分享卡片、历史回看与全局错题本。</p>
-            <span class="phase__done">已交付</span>
-          </article>
-          <article class="phase">
-            <p class="phase__tag">Phase 11</p>
-            <h3>运维与交付</h3>
-            <p>数据库每日 zip 邮件备份、Windows Server 打包部署与 nssm 服务化。</p>
-            <span class="phase__done">已交付</span>
-          </article>
-        </div>
-        <p class="roadmap__note reveal">本地部署版本已进入维护期（仅 Bug 修复）；下一代功能在 CloudBase 版本上继续演进。<a href="https://github.com/baiwanyi/study.plus/blob/cloudbase/README.md" target="_blank" rel="noopener">了解 CloudBase 版本</a></p>
-      </div>
-    </section>
-
-    <!-- ===== FAQ ===== -->
-    <section class="faq section" id="faq">
-      <div class="container">
-        <header class="section__head reveal">
-          <p class="kicker">常见问题</p>
-          <h2>你可能想先弄清楚的几件事</h2>
-        </header>
-        <div class="faq__list reveal">
-          <details>
-            <summary>我的数据存在哪里，会不会上传到别人的服务器？<span aria-hidden="true"></span></summary>
-            <p>全部数据存在你本地机器的 SQLite 数据库里，除你主动调用的 DeepSeek API 外，不依赖任何第三方云服务。数据库每日备份也会发往你自己的邮箱。</p>
-          </details>
-          <details>
-            <summary>部署门槛高吗？需要哪些准备？<span aria-hidden="true"></span></summary>
-            <p>只需要 Node.js ≥ 20.11 和 pnpm。deploy 目录完全自包含，拷贝到服务器即可运行，无需再安装 node_modules；Windows Server 上可用 nssm 注册为系统服务。</p>
-          </details>
-          <details>
-            <summary>没有 DeepSeek API Key 也能用吗？<span aria-hidden="true"></span></summary>
-            <p>可以。作业评分、积分账本、周报、电台、RSS 等核心能力不依赖 AI Key；AI 评语与费曼评估等增强功能需要配置 DeepSeek API Key 后才会启用。</p>
-          </details>
-          <details>
-            <summary>积分规则可以自己改吗？<span aria-hidden="true"></span></summary>
-            <p>可以。A+~E 各档分值、月初始积分、特权最低积分、兑换比例、预支分期规则都在规则页在线编辑，改完即时生效，不需要重启服务。</p>
-          </details>
-          <details>
-            <summary>本地部署版还会继续更新吗？<span aria-hidden="true"></span></summary>
-            <p>本地版已停止功能开发，仅做 Bug 修复；全新功能开发集中于 CloudBase 版本。你可以持续使用本地版，也可以跟进 CloudBase 分支的演进。</p>
-          </details>
-          <details>
-            <summary>支持哪些作业类型？<span aria-hidden="true"></span></summary>
-            <p>日常作业按 A+~E 六档评分；读书笔记有专属评分维度（摘抄赏析 50 分、读后感 40 分、好词好句 10 分）；另支持课堂问答题生成与解锁规则。</p>
-          </details>
-        </div>
-      </div>
-    </section>
-
-    <!-- ===== 结尾 CTA ===== -->
-    <section class="cta section section--tile section--tile-3">
-      <div class="container reveal">
-        <h2>把习惯培养，交给一套有反馈的系统</h2>
-        <p>开源、可自托管、数据全在你自己手里。现在就把它跑起来。</p>
-        <div class="cta__actions">
-          <a class="btn btn--primary" href="https://github.com/baiwanyi/study.plus" target="_blank" rel="noopener">
-            <svg viewBox="0 0 16 16" width="16" height="16" fill="currentColor" aria-hidden="true"><path d="M8 0C3.58 0 0 3.58 0 8c0 3.54 2.29 6.53 5.47 7.59.4.07.55-.17.55-.38 0-.19-.01-.82-.01-1.49-2.01.37-2.53-.49-2.69-.94-.09-.23-.48-.94-.82-1.13-.28-.15-.68-.52-.01-.53.63-.01 1.08.58 1.23.82.72 1.21 1.87.87 2.33.66.07-.52.28-.87.51-1.07-1.78-.2-3.64-.89-3.64-3.95 0-.87.31-1.59.82-2.15-.08-.2-.36-1.02.08-2.12 0 0 .67-.21 2.2.82.64-.18 1.32-.27 2-.27s1.36.09 2 .27c1.53-1.04 2.2-.82 2.2-.82.44 1.1.16 1.92.08 2.12.51.56.82 1.27.82 2.15 0 3.07-1.87 3.75-3.65 3.95.29.25.54.73.54 1.48 0 1.07-.01 1.93-.01 2.2 0 .21.15.46.55.38A8.01 8.01 0 0 0 16 8c0-4.42-3.58-8-8-8Z"/></svg>
-            在 GitHub 查看源码
-          </a>
-          <a class="btn btn--ghost btn--ghost-dark" href="https://github.com/baiwanyi/study.plus/blob/main/README.md" target="_blank" rel="noopener">阅读完整文档</a>
-        </div>
-        <p class="cta__reassure">MIT License · Node 20.11 起可用 · 自包含部署无需 node_modules</p>
-      </div>
-    </section>
-  </main>
-
-  <!-- ===== 页脚 ===== -->
-  <footer class="footer section--parchment">
-    <div class="container">
-      <div class="footer__top">
-        <div class="footer__brand">
-          <a class="nav__brand" href="#top">
-            <img src="./assets/images/logo.svg" alt="" width="26" height="26" aria-hidden="true">
-            <span>学迹Plus</span>
-          </a>
-          <p>面向 3-15 岁家庭的积分制学习管理工具。<br>开源、自托管，让成长有迹可循。</p>
-        </div>
-        <nav class="footer__col" aria-label="产品">
-          <h3>产品</h3>
-          <a href="#features">核心功能</a>
-          <a href="#features">更多能力</a>
-          <a href="#tech">技术栈</a>
-          <a href="#roadmap">开发计划</a>
-        </nav>
-        <nav class="footer__col" aria-label="资源">
-          <h3>资源</h3>
-          <a href="https://github.com/baiwanyi/study.plus" target="_blank" rel="noopener">GitHub 仓库</a>
-          <a href="https://github.com/baiwanyi/study.plus/blob/main/README.md" target="_blank" rel="noopener">完整文档</a>
-          <a href="https://github.com/baiwanyi/study.plus/issues" target="_blank" rel="noopener">提交 Issue</a>
-          <a href="https://github.com/baiwanyi/study.plus/blob/cloudbase/README.md" target="_blank" rel="noopener">CloudBase 分支</a>
-        </nav>
-        <nav class="footer__col" aria-label="说明">
-          <h3>说明</h3>
-          <a href="https://github.com/baiwanyi/study.plus#%E6%9C%AC%E5%9C%B0%E5%BC%80%E5%8F%91" target="_blank" rel="noopener">本地开发</a>
-          <a href="https://github.com/baiwanyi/study.plus#%E6%89%93%E5%8C%85%E4%B8%8E%E9%83%A8%E7%BD%B2" target="_blank" rel="noopener">打包与部署</a>
-          <a href="https://github.com/baiwanyi/study.plus#%E6%95%B0%E6%8D%AE%E5%BA%93%E6%AF%8F%E6%97%A5%E5%A4%87%E4%BB%BD" target="_blank" rel="noopener">数据库每日备份</a>
-          <a href="https://github.com/baiwanyi/study.plus#%E7%8E%AF%E5%A2%83%E5%8F%98%E9%87%8F" target="_blank" rel="noopener">环境变量</a>
-        </nav>
-      </div>
-      <div class="footer__divider" role="presentation"></div>
-      <div class="footer__bottom">
-        <p>2026 学迹Plus · <a href="https://github.com/baiwanyi/study.plus/blob/main/LICENSE" target="_blank" rel="noopener">MIT License</a></p>
-        <p>把习惯培养，交给一套有反馈的系统</p>
-      </div>
-    </div>
-  </footer>
-
-  <script src="./assets/js/main.js" defer></script>
-</body>
 </html>
