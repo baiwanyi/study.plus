@@ -104,7 +104,7 @@ describe('课前预习课堂问答题：生成 → 作答 → 评分 → 心得�
         expect(submitRes.body.quiz.results).toHaveLength(3)
         expect(gradePreviewAnswers).toHaveBeenCalledOnce()
 
-        // 列表聚合：评分达 100，心得据此解锁
+        // 列表聚合：已出分（不卡分数高低），心得据此解锁
         const listAfter = await api().get('/api/lessons')
         const itemAfter = listAfter.body.find(
             (l: { id: number }) => l.id === lessonId,

@@ -22,13 +22,11 @@ import { StudynotesSubjectFilter } from './StudynotesSubjectFilter'
 import type { StudyLessonWithStatus, StudynotesItem } from '@shared/types'
 import type { FC } from 'react'
 
-// 心得解锁规则：生成了课堂问答题的课程，需问答评分 ≥ 80 才能写心得；
+// 心得解锁规则：已生成课堂问答题的课程，须完成问答作答（AI 批改出分）后才能写心得，
+// 出分即解锁、不再要求问答得分 ≥ 80，避免用分数二次卡住认真答完的学生；
 // 未填预习或无题目（含预习完整度未达 80 分未能生成）则直接可写，照顾超前未预习的学生
 function canOpenReflection(lesson: StudyLessonWithStatus): boolean {
-    return (
-        !lesson.previewQuizGenerated ||
-        (lesson.previewQuizScore != null && lesson.previewQuizScore >= 80)
-    )
+    return !lesson.previewQuizGenerated || lesson.previewQuizScore != null
 }
 
 export const Studynotes: FC = () => {
@@ -117,9 +115,10 @@ export const Studynotes: FC = () => {
     // 保存时由 lessonId 建立课程与心得的关联，故此处不能因 studynoteId 为空而拦截
     const handleOpenReflection = useCallback(
         (lesson: StudyLessonWithStatus) => {
-            // 已生成课堂问答题的课程须问答达标（≥80）才能打开心得，避免学生跳过课堂问答
+            // 已生成课堂问答题的课程须完成问答作答才能打开心得，避免学生跳过课堂问答；
+            // 只看是否出分，不卡分数高低
             if (!canOpenReflection(lesson)) {
-                showSnackbar('完成预习问答并达到 80 分后才能写心得', 'error')
+                showSnackbar('完成课堂问答题后才能写心得', 'error')
                 return
             }
             setReflectionLesson(lesson)

@@ -164,7 +164,7 @@ export interface StudyLessonWithStatus extends StudyLesson {
     quizScore: number | null
     /** 是否已生成课前预习课堂问答题（预习完整度达标后由学生手动生成） */
     previewQuizGenerated: boolean
-    /** 课堂问答题评分（作答并提交 AI 批改后得到，0-100；未作答/未批改为 null） */
+    /** 课堂问答题评分（作答并提交 AI 批改后得到，0-100；未作答/未批改为 null；出分即解锁心得，不设分数门槛） */
     previewQuizScore: number | null
 }
 

@@ -27,7 +27,7 @@ interface LessonsListTableProps {
     onQuiz: (lesson: StudyLessonWithStatus) => void
     onShare: (lesson: StudyLessonWithStatus) => void
     onDelete: (lesson: StudyLessonWithStatus) => void
-    // 心得解锁判定：已生成课堂问答题的课程需问答评分 ≥ 80 才能写心得；其余直接可写
+    // 心得解锁判定：已生成课堂问答题的课程须完成问答作答（出分）才能写心得，不卡分数；其余直接可写
     canReflection: (lesson: StudyLessonWithStatus) => boolean
 }
 
@@ -272,7 +272,7 @@ export const LessonsListTable: FC<LessonsListTableProps> = ({
                             title={
                                 canReflection(record)
                                     ? '写学习心得'
-                                    : '完成预习问答并达到 80 分后可写心得'
+                                    : '完成课堂问答题后可写心得'
                             }
                             className="btn btn-outline btn-sm">
                             {!canReflection(record) && (

@@ -267,7 +267,7 @@
 四个环节：
 
 - **课前预习**：填写导学案三部分——本节课内容、已有旧知识、课前思考题。保存后可一键生成 AI 预习建议与课堂注意事项；内容变更会自动作废旧分析、触发重新分析（接口限流每小时 30 次）。预习完整度评分达 80 分后，可在预习面板生成 3 道课堂问答题，课后结合课堂所学作答并由 AI 批改评分（含每题参考答案与解析）；未达标时面板仅提示达标要求。
-- **学习心得**：以费曼四问引导填写——①一句话概括核心知识 ②举自己的例子 ③哪里卡住了（可留空）④复习锚点「记忆钩子」（选填）。保存即生成 AI 完整度评估报告，评估失败可二次重试而不重复保存。
+- **学习心得**：以费曼四问引导填写——①一句话概括核心知识 ②举自己的例子 ③哪里卡住了（可留空）④复习锚点「记忆钩子」（选填）。保存即生成 AI 完整度评估报告，评估失败可二次重试而不重复保存。**解锁门控**：课程未生成课堂问答题时可直接写心得；已生成的须完成问答作答（AI 批改出分）后解锁，出分即通过、不再要求问答得分 ≥ 80。
 - **智能测验**：围绕课程自动生成 20 道专属测验（简答题固定 10 道，单选/多选自由分配且各至少 1 道），总分 100 分由 AI 按题型难度自动分配至每题。作答后批改：客观题（单选/多选）本地预判正误并按分值计分，AI 仅生成解析；主观题（简答）由 AI 判分并换算实分。结果含每题得分/参考答案/解析、总体评语与复习建议。**权限门控**：心得评估得分 ≥ 80 分方可开始测验，否则锁定提示。成绩精确到小数，支持「重新测试」覆盖。**45 分钟限时**：以服务端生成时间为锚计算截止时刻（关闭弹窗重开正确续算，不重置不暂停），剩余不足 5 分钟标红提醒，到点自动提交并批改（关闭期间到点则重开时补提交）。
 - **历史测验与错题本**：测验弹窗右侧栏提供【历史】回看（历次成绩列表，点选只读查看完整题目/作答/批改结果）与【错题】面板（课程级错题聚合，客观题带选项对错配色）；学习中心主页提供**全局错题本**（跨课程聚合，支持关键词搜索、科目筛选与分页，每条错题标注来源课程）。
 - **分享卡片**：将学习心得与 AI 评估报告渲染为卡片，一键导出 PNG 长图用于分享。
@@ -296,7 +296,7 @@ study_notes         -> id, summary, example, stuckPoints, memoryHook?, evaluatio
 study_lessons       -> id, subject, topic, createdAt, updatedAt   # 课程（学科/主题，subject+topic 唯一索引）
 study_previews      -> id, lessonId(FK, unique), content, oldKnowledge, questions, aiAnalysis?, aiAnalyzedAt?, createdAt, updatedAt   # 课前导学案
 study_quiz          -> id, studyId(FK), questionsJson, answersJson?, resultsJson?, score(REAL), correctCount?, comment, suggestionsJson, generatedAt, submittedAt?, createdAt   # 智能测验（同一课程未提交测验唯一；成绩为小数 REAL）
-study_preview_quiz  -> id, lessonId(FK, unique), questionsJson, answersJson?, resultsJson?, score(REAL), comment, suggestionsJson, generatedAt, submittedAt?, evaluatedAt?, createdAt   # 课前预习课堂问答题（预习完整度≥80 后生成，课后作答评分）
+study_preview_quiz  -> id, lessonId(FK, unique), questionsJson, answersJson?, resultsJson?, score(REAL), comment, suggestionsJson, generatedAt, submittedAt?, evaluatedAt?, createdAt   # 课前预习课堂问答题（预习完整度≥80 后生成，课后作答评分，出分即解锁心得）
 ```
 
 ### 积分流转全景
