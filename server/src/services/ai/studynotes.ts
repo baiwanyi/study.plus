@@ -77,7 +77,9 @@ export async function evaluateStudynotesReflection(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
-            max_tokens: 2000,
+            // 评估含长评语与多个建议数组，2000 上限常被推理 token 挤占导致 JSON 截断；
+            // 6000 留足余量，若仍截断由 callDeepSeek 自动扩容重试
+            max_tokens: 6000,
             response_format: { type: 'json_object' },
         })
 
@@ -155,7 +157,9 @@ export async function analyzePreview(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
-            max_tokens: 2000,
+            // 分析含 3 个要点数组与长评语，2000 上限常被推理 token 挤占导致 JSON 截断；
+            // 6000 留足余量，若仍截断由 callDeepSeek 自动扩容重试
+            max_tokens: 6000,
             response_format: { type: 'json_object' },
         })
 
