@@ -1,3 +1,10 @@
+/**
+ * 应用布局组件：渲染左侧导航（管理员身份下追加配置入口）、随机学习格言与页面内容出口。
+ * 复用约定：导航项为模块内常量，格言经 quotesApi 获取并回落 defaultQuotes，
+ * 管理员判定复用 @apps/utils/client 的 isAdmin。
+ * 关键约束：NavLink 的 className 回调参数须显式标注类型——react-router v7 下该联合类型
+ * 无法自动推导出参数类型，strict 模式会报 TS7031（隐式 any）。
+ */
 import { useState, useEffect } from 'react'
 import { NavLink, Outlet } from 'react-router-dom'
 import {
@@ -80,7 +87,7 @@ export const Layout: React.FC = () => {
                             key={item.to}
                             to={item.to}
                             end={item.to === '/'}
-                            className={({ isActive }) =>
+                            className={({ isActive }: { isActive: boolean }) =>
                                 `flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-all duration-200 ${
                                     isActive
                                         ? 'bg-primary text-background hover:bg-primary-foreground'

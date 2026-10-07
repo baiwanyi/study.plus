@@ -6,7 +6,11 @@ import {
     defaultSystemSettings,
     DEFAULT_WEEKLY_AI_HELPER,
 } from '@shared/constants'
+import { enableLogTimestamp } from '../utils/logger'
 import { client } from './index'
+
+// 统一为控制台输出注入「时间 + 级别」前缀，使迁移日志同样可按时间检索
+enableLogTimestamp()
 
 console.log('Running database migration...')
 

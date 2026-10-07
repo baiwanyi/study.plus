@@ -5,6 +5,7 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { Layout } from '@components/Layout'
 import { SnackbarProvider } from '@components/Snackbar'
 import { loadConfig, isAdmin } from '@apps/utils/client'
+import { enableLogTimestamp } from '@apps/utils/logger'
 import '@apps/styles/index.css'
 import { Loading } from './components/Loading'
 
@@ -46,6 +47,9 @@ const Studynotes = lazy(() =>
 const Weekly = lazy(() =>
     import('@apps/pages/Weekly').then((m) => ({ default: m.Weekly })),
 )
+
+// 统一为控制台输出注入「时间 + 级别」前缀，须在任何日志产生之前执行
+enableLogTimestamp()
 
 // Preload runtime config (DB overrides env defaults)
 loadConfig()

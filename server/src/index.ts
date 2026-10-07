@@ -34,6 +34,10 @@ import {
     toDateKey,
 } from './services/backup'
 import { readMailConfig } from './services/mailer'
+import { enableLogTimestamp } from './utils/logger'
+
+// 统一为控制台输出注入「时间 + 级别」前缀，须在任何日志产生之前执行
+enableLogTimestamp()
 
 // 安全默认：未显式声明 NODE_ENV=development 时，按生产环境处理
 // （生产环境禁止向客户端返回错误堆栈，见全局错误处理器）。

@@ -29,6 +29,12 @@ import {
 } from './core'
 import { loadSystemSettings } from '../../routes/advance-helper'
 
+/**
+ * 预习分析与心得评估使用的模型档位：可用 DEEPSEEK_MODEL_ANALYSIS 指定更稳定的档位，
+ * 未配置时（undefined）由 callDeepSeek 落回默认模型
+ */
+const ANALYSIS_MODEL = process.env.DEEPSEEK_MODEL_ANALYSIS
+
 /** 从系统设定读取年级并转为中文标签（如"三年级"），读取失败时回退"未定级" */
 async function getGradeLabel(): Promise<string> {
     try {
@@ -41,6 +47,54 @@ async function getGradeLabel(): Promise<string> {
         // 忽略读取异常，使用默认标签
     }
     return '未定级'
+}
+
+/** 校验心得评估 JSON 结构：通过返回 null，否则返回不合格原因，供 AI 重试时附带纠偏提示 */
+function validateEvaluationShape(value: unknown): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return '顶层必须是 JSON 对象'
+    }
+    const record = value as Record<string, unknown>
+    if (typeof record.completenessScore !== 'number') {
+        return 'completenessScore 必须是数字'
+    }
+    if (typeof record.completenessComment !== 'string') {
+        return 'completenessComment 必须是字符串'
+    }
+    if (!Array.isArray(record.missingPoints)) {
+        return 'missingPoints 必须是数组'
+    }
+    if (!Array.isArray(record.errors)) {
+        return 'errors 必须是数组'
+    }
+    if (!Array.isArray(record.improvementSuggestions)) {
+        return 'improvementSuggestions 必须是数组'
+    }
+    return null
+}
+
+/** 校验预习分析 JSON 结构：通过返回 null，否则返回不合格原因，供 AI 重试时附带纠偏提示 */
+function validatePreviewShape(value: unknown): string | null {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) {
+        return '顶层必须是 JSON 对象'
+    }
+    const record = value as Record<string, unknown>
+    if (typeof record.completenessScore !== 'number') {
+        return 'completenessScore 必须是数字'
+    }
+    if (typeof record.completenessComment !== 'string') {
+        return 'completenessComment 必须是字符串'
+    }
+    if (!Array.isArray(record.strengths)) {
+        return 'strengths 必须是数组'
+    }
+    if (!Array.isArray(record.gaps)) {
+        return 'gaps 必须是数组'
+    }
+    if (!Array.isArray(record.classFocusPoints)) {
+        return 'classFocusPoints 必须是数组'
+    }
+    return null
 }
 
 export async function evaluateStudynotesReflection(
@@ -77,10 +131,15 @@ export async function evaluateStudynotesReflection(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
-            // 评估含长评语与多个建议数组，2000 上限常被推理 token 挤占导致 JSON 截断；
-            // 6000 留足余量，若仍截断由 callDeepSeek 自动扩容重试
+            // 评估含长评语与多个建议数组，提示词已写死字数与条目上限；
+            // 6000 为常态预算，仍被截断时由 callDeepSeek 扩容一次并附精简提示重试；
+            // 单次超时放宽到 60s：带纠偏提示重试的请求更长，推理耗时超过默认 30s 会被中断
             max_tokens: 6000,
-            response_format: { type: 'json_object' },
+            model: ANALYSIS_MODEL,
+            // 不发送 response_format：实测该网关会把它混入模型输出（曾回显 {"type": "json_object"}）
+            // 导致首轮必然 JSON 非法；JSON 约束改由提示词 + validateJson + 纠偏重试保证
+            validateJson: validateEvaluationShape,
+            timeoutMs: 60_000,
         })
 
         await logAiUsage(
@@ -157,10 +216,15 @@ export async function analyzePreview(
         const { content: reply, usage } = await callDeepSeek({
             messages: [{ role: 'user', content: prompt }],
             temperature: 0.3,
-            // 分析含 3 个要点数组与长评语，2000 上限常被推理 token 挤占导致 JSON 截断；
-            // 6000 留足余量，若仍截断由 callDeepSeek 自动扩容重试
+            // 分析含 3 个要点数组与长评语，提示词已写死字数与条目上限；
+            // 6000 为常态预算，仍被截断时由 callDeepSeek 扩容一次并附精简提示重试；
+            // 单次超时放宽到 60s：带纠偏提示重试的请求更长，推理耗时超过默认 30s 会被中断
             max_tokens: 6000,
-            response_format: { type: 'json_object' },
+            model: ANALYSIS_MODEL,
+            // 不发送 response_format：实测该网关会把它混入模型输出（曾回显 {"type": "json_object"}）
+            // 导致首轮必然 JSON 非法；JSON 约束改由提示词 + validateJson + 纠偏重试保证
+            validateJson: validatePreviewShape,
+            timeoutMs: 60_000,
         })
 
         await logAiUsage(

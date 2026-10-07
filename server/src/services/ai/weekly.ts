@@ -60,6 +60,8 @@ export async function analyzeWeeklyReport(
             temperature: 0.7,
             max_tokens: 2000,
             response_format: { type: 'json_object' },
+            // 单次超时放宽到 60s：推理模型生成结构化周报的耗时常超过默认 30s
+            timeoutMs: 60_000,
         })
 
         await logAiUsage(
@@ -137,6 +139,8 @@ export async function chatAboutWeeklyReport(
             messages: apiMessages,
             temperature: 0.7,
             max_tokens: 2000,
+            // 单次超时放宽到 60s：推理模型长回复的耗时常超过默认 30s
+            timeoutMs: 60_000,
         })
 
         await logAiUsage(

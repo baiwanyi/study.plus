@@ -45,7 +45,7 @@
 | 校验     | Zod 4                                    | 请求体 / 参数校验                    |
 | 数据库   | SQLite + @libsql/client                   | 轻量级本地数据库                     |
 | ORM      | Drizzle ORM + Drizzle Kit                 | 类型安全的 SQL 查询构建器 + 迁移工具 |
-| AI 能力  | DeepSeek API (deepseek-v4-flash)          | 评分/起名/出题/周报分析/智能对话/预习分析/预习课堂问答生成批改 |
+| AI 能力  | DeepSeek API (deepseek-flash)             | 评分/起名/出题/周报分析/智能对话/预习分析/预习课堂问答生成批改 |
 | 测试     | Vitest + @testing-library/react + jsdom   | 单元测试 + 组件测试 + API 集成测试   |
 | 视频播放 | HTML5 `<video>` + react-player            | 原生视频播放器，支持 Range 请求      |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
@@ -94,7 +94,7 @@
 | 学习心得评估 | AI 评估学习心得完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议）                                                                |
 | 学习心得测验 | 基于心得内容进行20题智能测验（单选/多选/简答混合，总分100分自动分配；客观题本地判分 + AI 出解析，简答题 AI 判分；生成总结报告（错题回顾 + 掌握程度评分 + 复习建议）） |
 
-- 集成 DeepSeek API（deepseek-v4-flash 模型），评分依据题目（如有）或内容进行评判
+- 集成 DeepSeek API（默认模型 deepseek-flash，可用 `DEEPSEEK_MODEL` 调整），评分依据题目（如有）或内容进行评判
 - 评分结果附带评语和改进建议
 - 支持 AI 使用记录查询与 Token 用量统计（按 作业评分/作业起名/作业出题/作业对话/周报分析/周报对话/预习分析/心得评估/测验出题/测验批改/预习课堂问答生成/预习课堂问答批改 分类）
 
@@ -712,6 +712,8 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 | `API_KEY` | **必填**，后端接口鉴权（`X-API-Key`）；缺失时服务器拒绝启动。需与前端构建时的 `VITE_API_KEY` 一致 |
 | `DEEPSEEK_API_KEY` | **使用 AI 功能时必填**（评分 / 起名 / 出题 / 周报分析 / 心得评估 / 智能测验） |
 | `DEEPSEEK_BASE_URL` | DeepSeek 接口地址，默认 `https://api.deepseek.com` |
+| `DEEPSEEK_MODEL` | AI 默认模型档位，默认 `deepseek-flash` |
+| `DEEPSEEK_MODEL_ANALYSIS` | 预习分析 / 心得评估专用模型档位，可选；未设置时沿用 `DEEPSEEK_MODEL` |
 | `PORT` | 监听端口，默认 3006 |
 | `DB_PATH` | 数据库路径，相对部署目录解析，默认 `data/study.db`；生产建议用绝对路径指向 `deploy/` 之外 |
 | `NODE_ENV` | `production`（默认，不返回错误堆栈）或 `development` |
