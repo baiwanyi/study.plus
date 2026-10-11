@@ -16,8 +16,7 @@ import {
     HandCoins,
     SlidersHorizontal,
     Bot,
-    Tv,
-    Rss,
+    BookOpen,
     NotebookPen,
 } from 'lucide-react'
 import { quotesApi } from '@apps/services'
@@ -32,8 +31,7 @@ const baseNavItems = [
     { to: '/points', label: '积分记录', icon: Database },
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
     { to: '/borrow', label: '积分预支', icon: HandCoins },
-    { to: '/tv', label: '学迹电台', icon: Tv },
-    { to: '/rss', label: 'RSS 阅读', icon: Rss },
+    { to: '/library', label: '本地题目', icon: BookOpen },
     { to: '/usage', label: 'AI使用量', icon: Bot },
 ]
 

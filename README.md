@@ -22,13 +22,12 @@
 - **周报管理**：每周学习总结 + SMART 目标规划 + AI 智能分析，支持截图分享
 - **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可进行智能测验，AI 出20道混合题型题（单选/多选/简答，总分100分自动分配）检验知识掌握程度，答完后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议），支持分享
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
-- **本地视频播放**：扫描本地目录，随机轮播视频，支持续播、收藏、键盘/鼠标控制
-- **科普 RSS 阅读器**：订阅环球科学 RSS 源，分类浏览科普文章
+- **本地题目**：自动遍历本地题目目录下的 Markdown 题目，分值标注高亮与满分汇总，支持数学公式（LaTeX）渲染，上一篇/下一篇顺序阅读
 - **数据备份**：数据库每日自动打包并邮件外发，实现异地容灾（详见部署文档「数据库每日备份」章节）
 
 ### 产品定位
 
-一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支、每周学习总结与 AI 分析、RSS 科普阅读的轻量级工具。
+一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支、每周学习总结与 AI 分析、本地题目练习的轻量级工具。
 
 ## 技术栈
 
@@ -47,7 +46,7 @@
 | ORM      | Drizzle ORM + Drizzle Kit                 | 类型安全的 SQL 查询构建器 + 迁移工具 |
 | AI 能力  | DeepSeek API (deepseek-flash)             | 评分/起名/出题/周报分析/智能对话/预习分析/预习课堂问答生成批改 |
 | 测试     | Vitest + @testing-library/react + jsdom   | 单元测试 + 组件测试 + API 集成测试   |
-| 视频播放 | HTML5 `<video>` + react-player            | 原生视频播放器，支持 Range 请求      |
+| 数学公式 | KaTeX + remark-math + rehype-katex        | Markdown 中的 LaTeX 分数/公式渲染    |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
 | 项目管理 | pnpm workspace monorepo                   | 3 包隔离：前端/后端/共享层           |
 
@@ -229,14 +228,14 @@
 - 名言管理：自定义侧边栏名言列表
 - 帮助文档链接（Markdown 语法 / Mermaid 图表语法 / 常见问题）
 
-### 4. 学迹电台（视频播放）
+### 4. 本地题目（Markdown 题库）
 
-- 扫描本地视频目录（mp4/avi/mkv/mov 等格式）
-- 随机轮播播放 + 续播记忆（resumeTime）
-- 收藏管理（收藏/取消收藏）
-- 键盘/鼠标控制（方向键快进快退、空格暂停/播放等）
-- 流式扫描进度展示
-- 视频收藏列表页面
+- 自动遍历本地题目目录（默认 `data/library`，可在「配置选项 → 系统设置 → 本地题目目录路径」改配相对运行目录或绝对路径），递归收集 `.md` 文件并按相对路径自然序排列（`01-`、`02-` 正确排序）
+- 左侧清单支持关键词过滤与点击切换，右侧整篇渲染 Markdown（标题/列表/表格/代码/图片/Mermaid）
+- 底部「上一篇 / 下一篇」顺序切换，支持键盘 ←/→ 翻页；当前文件写入 URL `?file=`，刷新与分享可回到同一份
+- 分值显示：「（N 分）」类标注渲染时高亮，页头汇总满分（front-matter `full_score` 优先，否则取正文分值合计）与分值标注处数
+- 数学公式：整页启用 KaTeX，可渲染 `$\frac{1}{2}$` 一类分数与公式（仅本页开启，不影响其他页面既有内容）
+- 安全约束：仅读取 `.md`，绝对路径、`..` 段与越界路径一律拒绝，跳过符号链接，单文件上限 1 MB
 
 ### 5. 学习周报
 
@@ -286,7 +285,6 @@ options             -> id, key(unique), value
 ai_usage_logs       -> id, project, taskId?, taskTitle?, promptTokens, completionTokens, totalTokens, createdAt
 point_advances      -> id, amount, totalRepayment, installments, installmentAmount, paidInstallments, status(active/completed), createdAt, updatedAt
 month_summary       -> id, month(unique), basePoints(500), totalEarn(0), totalDeduct(0), totalExchanges(0), balance(500)
-videos              -> id, path, title, md5(unique), views(0), resumeTime(0), favorite(0), createdAt
 weekly_reports      -> id, weekNumber, year, content(JSON), analysis(JSON), createdAt, updatedAt
 weekly_conversations-> id, weeklyReportId(FK, unique), createdAt, updatedAt
 weekly_messages     -> id, conversationId(FK), role(user/assistant), content, createdAt
@@ -322,7 +320,7 @@ study.webian.dev/
 │   ├── public/                   # 静态资源（图标/字体/图片/帮助文档）
 │   ├── src/
 │   │   ├── main.tsx             # 前端入口（路由定义 + React.lazy 页面级代码分割 + 渲染挂载）
-│   │   ├── services/            # HTTP 客户端（15 个 API 模块，含 request/system）
+│   │   ├── services/            # HTTP 客户端（按业务域拆分的 API 模块，含 request/system）
 │   │   ├── utils/
 │   │   │   ├── client.ts        # Axios 实例 + 运行时配置加载（loadConfig）
 │   │   │   ├── quizFormat.ts    # 测验答案格式化（字母答案还原为可读选项文本）
@@ -336,7 +334,7 @@ study.webian.dev/
 │   │   │   ├── RulesPage.tsx   # 规则页面包装器
 │   │   │   ├── Loading.tsx     # 加载指示器
 │   │   │   └── AiChatPanel.tsx # AI 聊天面板
-│   │   ├── pages/               # 页面组件（12 个页面目录，共 61 个 .tsx 文件）
+│   │   ├── pages/               # 页面组件（10 个页面目录）
 │   │   │   ├── Dashboard/       # 首页看板（WidgetStats/Balance/PendingTasks 等 11 个组件）
 │   │   │   ├── Tasks/           # 作业管理（BookNoteEditor/TaskEditor/TaskListTable 等 10 个组件）
 │   │   │   ├── Points/          # 积分记录
@@ -345,9 +343,7 @@ study.webian.dev/
 │   │   │   ├── Options/         # 设置选项（管理员）
 │   │   │   ├── AIUsage/         # AI 使用量统计
 │   │   │   ├── Weekly/          # 学习周报
-│   │   │   ├── VideoPlayer/     # 学迹电台
-│   │   │   ├── TVFav/           # 视频收藏
-│   │   │   ├── RssReader/       # 科普 RSS 阅读器
+│   │   │   ├── Library/         # 本地题目（Markdown 题库：清单/渲染/分值/翻页）
 │   │   │   ├── Studynotes/      # 学习中心：课程主线 + 预习/心得/测验/分享闭环
 │   │   │   │   ├── index.tsx               # 学习中心主页（课程列表 + 各模态框编排）
 │   │   │   │   ├── LessonsListTable.tsx    # 课程列表（预习/心得/测验状态与分数着色）
@@ -379,17 +375,16 @@ study.webian.dev/
 │   │   │   ├── index.ts        # 数据库连接（libSQL + Drizzle）
 │   │   │   ├── schema.ts       # Drizzle ORM Schema（20 表）
 │   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据 + 历史成绩重算）
-│   │   ├── routes/             # API 路由（13 个模块）
+│   │   ├── routes/             # API 路由（12 个模块）
 │   │   │   ├── tasks.ts        # 作业管理（含 AI 评分/起名/出题/对话）
 │   │   │   ├── points.ts       # 积分流水（含预支/还款/月度结算）
 │   │   │   ├── exchanges.ts    # 积分兑换
 │   │   │   ├── options.ts      # 系统配置
 │   │   │   ├── ai-usage.ts     # AI 使用记录
-│   │   │   ├── videos.ts       # 视频管理（扫描/流播/收藏）
+│   │   │   ├── library.ts      # 本地题库（Markdown 清单/内容读取）
 │   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
 │   │   │   ├── studynotes.ts   # 学习心得（CRUD + AI 评估 + 测验生成/作答/批改 + 历史测验/错题本）
 │   │   │   ├── lessons.ts      # 课程管理（含课前导学 AI 分析）
-│   │   │   ├── rss.ts          # 科普 RSS 阅读器
 │   │   │   ├── rules-loader.ts # 规则加载与初始化
 │   │   │   ├── summary-helper.ts # 月度汇总计算
 │   │   │   └── advance-helper.ts # 积分预支辅助
@@ -457,14 +452,11 @@ study.webian.dev/
 - [x] 规则配置可自定义（月初始积分、特权最低积分、兑换比例）
 - [x] 兑换记录正确匹配规则配置的兑换比例
 
-### Phase 4 - 视频播放与分享
+### Phase 4 - 分享与本地题目
 
-- [x] 本地视频扫描与流式播放（Range 请求）
-- [x] 随机轮播 + 续播记忆
-- [x] 视频收藏与列表管理
-- [x] 键盘/鼠标控制
 - [x] 学习分享卡片（html-to-image 截图）
 - [x] 分享背景图与字体支持
+- [x] 本地题目：Markdown 题库遍历、分值高亮与满分汇总、KaTeX 数学公式、上一篇/下一篇切换
 
 ### Phase 5 - 文档与体验优化
 
@@ -483,7 +475,6 @@ study.webian.dev/
 - [x] AI 周报对话追问
 - [x] 周报截图分享（html-to-image）
 - [x] Markdown 查看器排版美化
-- [x] 科普 RSS 阅读器
 
 ### Phase 7 - 作业 AI 对话
 
@@ -599,7 +590,7 @@ VITE_ADMIN_DOMAINS=管理员访问的主机名或IP
 
 未配置 `DB_PATH` 时按上表查找；显式配置 `DB_PATH` 则严格相对 `APP_ROOT` 解析，不做回退。
 
-> 视频分发目录与自动保存间隔已改为数据库配置，在「设置」页面维护，不再使用环境变量。
+> 自动保存间隔与本地题目目录已改为数据库配置，在「设置」页面维护，不再使用环境变量。
 
 > ⚠️ `.env` 文件已在 `.gitignore` 中配置，不会被提交到仓库。请勿将 API 密钥硬编码或提交到版本控制。
 

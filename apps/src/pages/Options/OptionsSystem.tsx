@@ -15,7 +15,7 @@ interface SystemSettings {
     grade: number
     advanceRepayRatio: number
     maxPendingAmount: number
-    videoDirectory: string
+    libraryDirectory: string
     weeklyAiName: string
 }
 
@@ -27,7 +27,7 @@ const defaultSettings: SystemSettings = {
     grade: 1,
     advanceRepayRatio: 16,
     maxPendingAmount: 500,
-    videoDirectory: '',
+    libraryDirectory: '',
     weeklyAiName: '费曼',
 }
 export function RulesSystem() {
@@ -108,7 +108,7 @@ export function RulesSystem() {
         grade: 1,
         advanceRepayRatio: 0,
         maxPendingAmount: 0,
-        videoDirectory: 0,
+        libraryDirectory: 0,
     }
 
     const handleSave = async () => {
@@ -122,7 +122,7 @@ export function RulesSystem() {
                 grade: settings.grade,
                 advanceRepayRatio: settings.advanceRepayRatio,
                 maxPendingAmount: settings.maxPendingAmount,
-                videoDirectory: settings.videoDirectory,
+                libraryDirectory: settings.libraryDirectory,
             })
             await quotesApi.update(quotes)
             await optionsAPI.update('exchangeRuleRemarks', exchangeRuleRemarks)
@@ -152,9 +152,9 @@ export function RulesSystem() {
         placeholder: string
     }[] = [
         {
-            key: 'videoDirectory',
-            label: '本地视频目录路径',
-            placeholder: '例如：D:\\Videos\\学习视频',
+            key: 'libraryDirectory',
+            label: '本地题目目录路径',
+            placeholder: '留空默认 data/library，可填相对运行目录或绝对路径',
         },
         {
             key: 'weeklyAiName',

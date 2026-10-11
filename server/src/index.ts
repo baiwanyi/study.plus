@@ -20,12 +20,11 @@ import { isFirstDayOfMonth, repayActiveAdvances } from './routes/advance-helper'
 import { aiUsageRouter } from './routes/ai-usage'
 import { exchangesRouter } from './routes/exchanges'
 import { lessonsRouter } from './routes/lessons'
+import { libraryRouter } from './routes/library'
 import { rulesRouter } from './routes/options'
 import { pointsRouter } from './routes/points'
-import { rssRouter } from './routes/rss'
 import { studynotesRouter } from './routes/studynotes'
 import { tasksRouter } from './routes/tasks'
-import { videosRouter } from './routes/videos'
 import { weeklyRouter } from './routes/weekly'
 import {
     readBackupConfig,
@@ -169,8 +168,7 @@ app.use('/api/exchanges', requireApiKey, exchangesRouter)
 app.use('/api/lessons', requireApiKey, lessonsRouter)
 app.use('/api/ai-usage', requireApiKey, aiUsageRouter)
 app.use('/api/options', requireApiKey, rulesRouter)
-app.use('/api/videos', requireApiKey, videosRouter)
-app.use('/api/rss', requireApiKey, rssRouter)
+app.use('/api/library', requireApiKey, libraryRouter)
 app.use('/api/weekly', requireApiKey, weeklyRouter)
 app.use('/api/study', requireApiKey, studynotesRouter)
 

@@ -29,17 +29,11 @@ const Rules = lazy(() =>
 const Borrow = lazy(() =>
     import('@apps/pages/Borrow').then((m) => ({ default: m.Borrow })),
 )
-const VideoPlayer = lazy(() =>
-    import('@apps/pages/VideoPlayer').then((m) => ({ default: m.VideoPlayer })),
-)
-const TVFav = lazy(() =>
-    import('@apps/pages/TVFav').then((m) => ({ default: m.TVFav })),
-)
 const AIUsage = lazy(() =>
     import('@apps/pages/AIUsage').then((m) => ({ default: m.AIUsage })),
 )
-const RssReader = lazy(() =>
-    import('@apps/pages/RssReader').then((m) => ({ default: m.RssReader })),
+const Library = lazy(() =>
+    import('@apps/pages/Library').then((m) => ({ default: m.Library })),
 )
 const Studynotes = lazy(() =>
     import('@apps/pages/Study').then((m) => ({ default: m.Studynotes })),
@@ -66,12 +60,9 @@ const AppRoutes = () => (
                     <Route path="points" element={<Points />} />
                     <Route path="exchanges" element={<Exchanges />} />
                     <Route path="borrow" element={<Borrow />} />
-                    <Route path="rss" element={<RssReader />} />
+                    <Route path="library" element={<Library />} />
                     <Route path="study" element={<Studynotes />} />
                     <Route path="weekly" element={<Weekly />} />
-                    <Route path="tv/fav" element={<TVFav />} />
-                    <Route path="tv/:md5" element={<VideoPlayer />} />
-                    <Route path="tv" element={<VideoPlayer />} />
                     {isAdmin() && <Route path="options" element={<Rules />} />}
                     <Route path="usage" element={<AIUsage />} />
                     <Route path="*" element={<Navigate to="/" replace />} />

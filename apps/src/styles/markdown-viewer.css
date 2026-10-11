@@ -155,3 +155,12 @@
 .wmde-markdown {
     background-color: transparent;
 }
+
+/* 题库分值标注：由 analyzeLibraryContent 在渲染前注入 <mark class="library-score"> */
+.library-score {
+    background: #fef3c7;
+    color: #b45309;
+    font-weight: 600;
+    padding: 0 0.25em;
+    border-radius: 0.25rem;
+}
