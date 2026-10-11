@@ -154,7 +154,7 @@ export function RulesSystem() {
         {
             key: 'libraryDirectory',
             label: '本地题目目录路径',
-            placeholder: '留空默认 data/library，可填相对运行目录或绝对路径',
+            placeholder: '留空默认 library，可填相对运行目录或绝对路径',
         },
         {
             key: 'weeklyAiName',

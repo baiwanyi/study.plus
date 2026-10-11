@@ -1,40 +1,37 @@
 /**
- * 本地题目页面：左侧题目清单 + 右侧 Markdown 渲染，底部提供上一篇/下一篇切换。
- * 复用 useLibrary 管理 URL 驱动的当前文件状态，MarkdownView 承担只读渲染，
- * analyzeLibraryContent 在渲染前完成分值高亮与总分统计。
+ * 本地题目页面：左侧题目清单 + 右侧 Markdown 渲染。
+ * 复用 useLibrary 管理 URL 驱动的当前文件状态（清单点击或键盘左右键切换），
+ * prepareLibraryContent 在渲染前完成数学定界符归一化与分值高亮，MarkdownView 负责只读渲染。
  * 关键约束：目录未配置或不存在时须给出明确指引；内容渲染开启 KaTeX 以支持数学分数，
- * 该开关只在本页启用，避免影响其他页面既有内容的渲染结果。
+ * 该开关只在本页启用，避免影响其他页面既有内容；Markdown 排版与分值样式依赖随本页引入的样式文件。
  */
 'use client'
 
-import { useMemo } from 'react'
 import { FileQuestion } from 'lucide-react'
+import { useMemo } from 'react'
+import '@apps/styles/markdown-viewer.css'
 import { Loading } from '@components/Loading'
 import { MarkdownView } from '@components/MarkdownView'
-import { LibraryPager } from './components/LibraryPager'
 import { LibrarySidebar } from './components/LibrarySidebar'
 import { useLibrary } from './hooks/useLibrary'
-import { analyzeLibraryContent } from './utils/libraryScore'
+import { prepareLibraryContent } from './utils/libraryScore'
 
 export function Library() {
     const {
         dir,
         exists,
         files,
-        currentIndex,
         detail,
         listLoading,
         detailLoading,
         listError,
         detailError,
         selectFile,
-        goPrev,
-        goNext,
         reload,
     } = useLibrary()
 
-    const summary = useMemo(
-        () => (detail ? analyzeLibraryContent(detail.content) : null),
+    const content = useMemo(
+        () => (detail ? prepareLibraryContent(detail.content) : null),
         [detail],
     )
 
@@ -79,50 +76,26 @@ export function Library() {
     }
 
     return (
-        <div className="flex gap-4 h-[calc(100vh-3rem)] min-h-[32rem]">
+        <div className="flex gap-4 h-[calc(100vh-3rem)] min-h-128">
             <LibrarySidebar
                 files={files}
                 currentPath={detail?.path ?? ''}
                 onSelect={selectFile}
             />
             <section className="flex-1 min-w-0 flex flex-col">
-                <header className="flex items-center flex-wrap gap-3">
-                    <h2 className="text-xl font-semibold text-gray-900 truncate">
-                        {detail?.title ?? '未选择题目'}
-                    </h2>
-                    {detail?.fullScore != null && (
-                        <span className="px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 text-sm font-medium">
-                            满分 {detail.fullScore} 分
-                        </span>
-                    )}
-                    {summary && summary.count > 0 && (
-                        <span className="text-xs text-gray-400">
-                            共 {summary.count} 处分值标注
-                        </span>
-                    )}
-                </header>
-                {detail && (
-                    <p className="text-xs text-gray-400 mt-1">{detail.path}</p>
-                )}
-                <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow-sm p-8 mt-3">
+                <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow-sm p-8">
                     {detailLoading ? (
                         <Loading />
                     ) : detailError ? (
                         <p className="text-gray-500">{detailError}</p>
-                    ) : summary ? (
+                    ) : content ? (
                         <MarkdownView
-                            content={summary.annotated}
+                            content={content}
                             className="markdown-viewer"
                             enableMath
                         />
                     ) : null}
                 </div>
-                <LibraryPager
-                    index={currentIndex >= 0 ? currentIndex : 0}
-                    total={files.length}
-                    onPrev={goPrev}
-                    onNext={goNext}
-                />
             </section>
         </div>
     )

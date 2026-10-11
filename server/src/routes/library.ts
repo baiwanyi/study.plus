@@ -1,6 +1,6 @@
 /**
  * 本地题库路由：实时遍历指定目录下的 Markdown 题目文件，提供清单与单篇内容读取。
- * 目录取自 options 表 system.libraryDirectory；留空时回落 resolveDataDir()/library（与库文件同根），
+ * 目录取自 options 表 system.libraryDirectory；留空时回落 APP_ROOT 下的 library/，
  * 相对路径按 APP_ROOT 解析、绝对路径原样使用，读取逻辑复用 paths 模块而非另建基准。
  * 关键约束：仅允许 .md；相对路径拒绝绝对路径与 .. 段，resolve 后必须落在题库根目录之内（防目录遍历）；
  * 跳过符号链接，限制扫描深度/数量与单文件体积；全部为只读 GET 接口，不产生任何写入副作用。
@@ -10,7 +10,7 @@ import type { Request, Response } from 'express'
 import fs from 'fs'
 import path from 'path'
 import { client } from '../db/index'
-import { resolveDataDir, resolveFromRoot } from '../paths'
+import { resolveFromRoot } from '../paths'
 import type { ApiErrorResponse } from '@shared/types'
 
 const router = Router()
@@ -21,7 +21,7 @@ const MAX_FILE_SIZE = 1024 * 1024
 /** 仅读取文件头部用于解析 front-matter 与标题，避免整篇载入大文件 */
 const HEAD_BYTES = 8192
 const MAX_REL_PATH_LENGTH = 512
-const DEFAULT_DIR_LABEL = 'data/library'
+const DEFAULT_DIR_LABEL = 'library'
 const MD_EXTENSION = /\.md$/i
 
 interface LibraryFrontMatter {
@@ -113,7 +113,7 @@ function scanMarkdownFiles(dir: string, depth = 0): string[] {
     return results
 }
 
-/** 解析题库根目录：配置值优先，绝对路径原样、相对路径按 APP_ROOT 解析，留空回落 data/library */
+/** 解析题库根目录：配置值优先，绝对路径原样、相对路径按 APP_ROOT 解析，留空回落 APP_ROOT/library */
 async function resolveLibraryRoot(): Promise<{
     dirLabel: string
     rootDir: string
@@ -138,7 +138,7 @@ async function resolveLibraryRoot(): Promise<{
         ? path.isAbsolute(configured)
             ? path.resolve(configured)
             : resolveFromRoot(configured)
-        : path.join(resolveDataDir(), 'library')
+        : resolveFromRoot(DEFAULT_DIR_LABEL)
     return { dirLabel: configured || DEFAULT_DIR_LABEL, rootDir }
 }
 

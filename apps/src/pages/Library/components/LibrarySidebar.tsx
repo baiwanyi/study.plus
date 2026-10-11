@@ -1,19 +1,25 @@
 /**
- * 题库侧边栏：展示目录内的题目清单，支持关键词过滤与点击切换。
- * 复用 @apps/services 的清单类型与 lucide 图标，过滤只影响展示，不改变翻页顺序。
+ * 题库侧边栏：按顺序展示目录内的题目清单，支持关键词过滤与点击切换。
+ * 复用 @apps/services 的清单类型与 lucide 图标；序号取自原始顺序、过滤后保持不变，
+ * 以与键盘翻页和 URL 定位的次序一致。
  * 关键约束：过滤无结果时须给出空态提示，避免用户误判目录为空；
- * 当前项需有明确的选中态，且分值徽标仅在存在满分标注时渲染。
+ * 当前项需有明确选中态，分值徽标仅在题目声明满分时渲染。
  */
 'use client'
 
 import { useMemo, useState } from 'react'
-import { FileText, Search } from 'lucide-react'
+import { Search } from 'lucide-react'
 import type { LibraryFileMeta } from '@apps/services'
 
 interface LibrarySidebarProps {
     files: LibraryFileMeta[]
     currentPath: string
     onSelect: (path: string) => void
+}
+
+interface IndexedFile {
+    index: number
+    file: LibraryFileMeta
 }
 
 export function LibrarySidebar({
@@ -23,11 +29,12 @@ export function LibrarySidebar({
 }: LibrarySidebarProps) {
     const [keyword, setKeyword] = useState('')
 
-    const filtered = useMemo(() => {
+    const filtered = useMemo<IndexedFile[]>(() => {
+        const indexed = files.map((file, index) => ({ index, file }))
         const query = keyword.trim().toLowerCase()
-        if (!query) return files
-        return files.filter(
-            (file) =>
+        if (!query) return indexed
+        return indexed.filter(
+            ({ file }) =>
                 file.title.toLowerCase().includes(query) ||
                 file.path.toLowerCase().includes(query),
         )
@@ -54,7 +61,7 @@ export function LibrarySidebar({
                         未匹配到题目
                     </p>
                 ) : (
-                    filtered.map((file) => {
+                    filtered.map(({ index, file }) => {
                         const active = file.path === currentPath
                         return (
                             <button
@@ -63,10 +70,12 @@ export function LibrarySidebar({
                                 onClick={() => onSelect(file.path)}
                                 className={`w-full flex items-center gap-2 px-2.5 py-2 rounded-lg text-sm transition-colors ${
                                     active
-                                        ? 'bg-primary/10 text-primary font-medium'
+                                        ? 'bg-gray-100 text-primary font-medium'
                                         : 'text-gray-600 hover:bg-gray-50'
                                 }`}>
-                                <FileText className="size-4 shrink-0" />
+                                <span className="w-5 shrink-0 text-right text-xs text-gray-400 tabular-nums">
+                                    {index + 1}
+                                </span>
                                 <span className="flex-1 text-left truncate">
                                     {file.title}
                                 </span>

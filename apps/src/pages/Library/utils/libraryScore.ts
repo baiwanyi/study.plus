@@ -1,34 +1,27 @@
 /**
- * 题库分值处理工具：把 Markdown 正文中的「（N 分）」标注高亮，并汇总总分与题量。
- * 复用无第三方依赖的纯函数实现，渲染前一次性完成标注与统计，避免二次遍历 DOM。
- * 关键约束：必须跳过围栏代码块与 `$…$`／`$$…$$` 公式区段，否则代码与公式中的
- * 数字会被误判为分值；注入的 <mark> 依赖预览层已启用的 rehype-raw 才能保留 class。
+ * 题库内容预处理：把题目 Markdown 调整为「可直接渲染」的形态。
+ * 复用纯正则实现，一次完成「数学定界符归一化 + 分值标注高亮」，不引入额外依赖。
+ * 关键约束：必须跳过围栏代码块，并在替换分值前用占位符保护公式段，否则代码与公式中的
+ * 数字会被误判为分值；remark-math 只识别 `$…$`/`$$…$$`，故需把 `\(…\)`/`\[…\]` 归一化；
+ * 注入的 <mark> 依赖预览层默认启用的 rehype-raw 解析，样式须随页面引入 markdown-viewer.css。
  */
 
-/** 分值标注：支持全/半角括号，如「（5 分）」「(10分)」 */
-const SCORE_PATTERN = /[（(]\s*(\d+(?:\.\d+)?)\s*分\s*[)）]/g
-/** 行内公式：$…$，用于保护其中的数字不被当作分值 */
-const INLINE_MATH_PATTERN = /\$[^$\n]+\$/g
+/** 分值标注：兼容「（5 分）」「(共 100 分)」「（每题 5 分）」，排除「（3 分钟）」 */
+const SCORE_PATTERN = /[（(]\s*(?:共|满分|总分|每题|各)?\s*(\d+(?:\.\d+)?)\s*分(?!钟)\s*[)）]/g
+/** 行内数学定界符 `\(…\)`：remark-math 不识别，需归一化为 `$…$` */
+const INLINE_MATH_DELIMITER = /\\\(([\s\S]+?)\\\)/g
+/** 块级数学定界符 `\[…\]`：归一化为 `$$…$$` */
+const BLOCK_MATH_DELIMITER = /\\\[([\s\S]+?)\\\]/g
+/** 已就位的 `$…$` 公式段：替换分值前先占位保护 */
+const DOLLAR_MATH = /\$[^$\n]+\$/g
 /** 围栏代码块起始标记：``` 或 ~~~ */
 const FENCE_PATTERN = /^\s{0,3}(`{3,}|~{3,})/
-/** 行内公式占位符（Unicode 私有使用区，正常正文不会出现） */
+/** 公式占位符（Unicode 私有使用区，正常正文不会出现） */
 const PLACEHOLDER_PATTERN = /\uE000(\d+)\uE000/g
 
-export interface LibraryScoreSummary {
-    /** 已注入高亮标记的 Markdown 文本 */
-    annotated: string
-    /** 正文分值合计（无标注时为 0） */
-    totalScore: number
-    /** 分值标注出现次数 */
-    count: number
-}
-
-export function analyzeLibraryContent(markdown: string): LibraryScoreSummary {
+export function prepareLibraryContent(markdown: string): string {
     const output: string[] = []
     let fenceMarker: string | null = null
-    let inBlockMath = false
-    let totalScore = 0
-    let count = 0
 
     for (const line of markdown.split('\n')) {
         const fenceMatched = FENCE_PATTERN.exec(line)
@@ -46,38 +39,26 @@ export function analyzeLibraryContent(markdown: string): LibraryScoreSummary {
             continue
         }
 
-        const blockDelimiters = line.match(/\$\$/g)?.length ?? 0
-        if (inBlockMath) {
-            if (blockDelimiters % 2 === 1) inBlockMath = false
-            output.push(line)
-            continue
-        }
-        if (blockDelimiters % 2 === 1) {
-            inBlockMath = true
-            output.push(line)
-            continue
-        }
+        const normalized = line
+            .replace(BLOCK_MATH_DELIMITER, (_matched, inner: string) => '$$' + inner + '$$')
+            .replace(INLINE_MATH_DELIMITER, (_matched, inner: string) => '$' + inner + '$')
 
         const mathSegments: string[] = []
-        const protectedLine = line.replace(INLINE_MATH_PATTERN, (matched) => {
+        const protectedLine = normalized.replace(DOLLAR_MATH, (matched) => {
             mathSegments.push(matched)
             return `\uE000${mathSegments.length - 1}\uE000`
         })
-        const annotatedLine = protectedLine.replace(
+        const annotated = protectedLine.replace(
             SCORE_PATTERN,
-            (matched, num: string) => {
-                totalScore += Number(num)
-                count += 1
-                return `<mark class="library-score">${matched}</mark>`
-            },
+            (matched) => `<mark class="library-score">${matched}</mark>`,
         )
         output.push(
-            annotatedLine.replace(
+            annotated.replace(
                 PLACEHOLDER_PATTERN,
                 (_matched, index: string) => mathSegments[Number(index)] ?? '',
             ),
         )
     }
 
-    return { annotated: output.join('\n'), totalScore, count }
+    return output.join('\n')
 }

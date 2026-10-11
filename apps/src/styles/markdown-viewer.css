@@ -156,11 +156,21 @@
     background-color: transparent;
 }
 
-/* 题库分值标注：由 analyzeLibraryContent 在渲染前注入 <mark class="library-score"> */
+/* 题库分值标注：由 prepareLibraryContent 在渲染前注入 <mark class="library-score"> */
 .library-score {
     background: #fef3c7;
     color: #b45309;
     font-weight: 600;
     padding: 0 0.25em;
     border-radius: 0.25rem;
+}
+
+/* 题库数学公式：正文基准字号为 0.9375rem，且行内分数会被 KaTeX 缩为 scriptstyle，
+   视觉上偏小，故按行内/块级分别放大；仅在启用 KaTeX 的页面（题库）生效 */
+.markdown-viewer .katex {
+    font-size: 1.5em;
+}
+
+.markdown-viewer .katex-display {
+    font-size: 1.75em;
 }
