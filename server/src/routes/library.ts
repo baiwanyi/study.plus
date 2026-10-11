@@ -1,7 +1,8 @@
 /**
  * 本地题库路由：实时遍历指定目录下的 Markdown 题目文件，提供清单与单篇内容读取。
- * 目录取自 options 表 system.libraryDirectory；留空时回落 APP_ROOT 下的 library/，
- * 相对路径按 APP_ROOT 解析、绝对路径原样使用，读取逻辑复用 paths 模块而非另建基准。
+ * 目录取自 options 表 system.libraryDirectory；留空时默认取与数据库文件所在目录（data）平级的
+ * library/，即独立于 data 的兄弟目录并随 DB_PATH 迁移（DB_PATH 指向部署目录之外时自动跟随），
+ * 相对配置按 APP_ROOT 解析、绝对配置原样使用，路径推导复用 db 导出的 DB_FILE_PATH。
  * 关键约束：仅允许 .md；相对路径拒绝绝对路径与 .. 段，resolve 后必须落在题库根目录之内（防目录遍历）；
  * 跳过符号链接，限制扫描深度/数量与单文件体积；全部为只读 GET 接口，不产生任何写入副作用。
  */
@@ -9,8 +10,8 @@ import { Router } from 'express'
 import type { Request, Response } from 'express'
 import fs from 'fs'
 import path from 'path'
-import { client } from '../db/index'
-import { resolveFromRoot } from '../paths'
+import { client, DB_FILE_PATH } from '../db/index'
+import { resolveDataDir, resolveFromRoot } from '../paths'
 import type { ApiErrorResponse } from '@shared/types'
 
 const router = Router()
@@ -113,7 +114,17 @@ function scanMarkdownFiles(dir: string, depth = 0): string[] {
     return results
 }
 
-/** 解析题库根目录：配置值优先，绝对路径原样、相对路径按 APP_ROOT 解析，留空回落 APP_ROOT/library */
+/**
+ * 题库默认目录：与 data 目录同级，即同为「数据库文件所在目录的父目录」下的兄弟目录。
+ * 数据目录随 DB_PATH 迁移，题库目录据此自动跟随；测试内存库没有物理路径，
+ * 此时回落 resolveDataDir() 以保持同一语义。
+ */
+function resolveDefaultLibraryDir(): string {
+    const dataFile = DB_FILE_PATH ?? path.join(resolveDataDir(), 'study.db')
+    return path.join(path.dirname(path.dirname(dataFile)), 'library')
+}
+
+/** 解析题库根目录：配置值优先（绝对路径原样、相对路径按 APP_ROOT 解析），留空用 resolveDefaultLibraryDir() */
 async function resolveLibraryRoot(): Promise<{
     dirLabel: string
     rootDir: string
@@ -138,7 +149,7 @@ async function resolveLibraryRoot(): Promise<{
         ? path.isAbsolute(configured)
             ? path.resolve(configured)
             : resolveFromRoot(configured)
-        : resolveFromRoot(DEFAULT_DIR_LABEL)
+        : resolveDefaultLibraryDir()
     return { dirLabel: configured || DEFAULT_DIR_LABEL, rootDir }
 }
 
