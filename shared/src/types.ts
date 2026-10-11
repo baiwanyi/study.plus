@@ -537,26 +537,6 @@ export interface ShareStats {
     availableBalance: number
 }
 
-// ===== Video Types =====
-export interface Video {
-    id: number
-    path: string
-    title: string
-    md5: string
-    views: number
-    resumeTime: number
-    favorite: number
-    createdAt: string
-}
-
-export interface ScanResult {
-    total: number
-    new: number
-    skipped: number
-    deleted: number
-    errors: string[]
-}
-
 // ===== Task Conversation Types =====
 export interface TaskConversation {
     id: number

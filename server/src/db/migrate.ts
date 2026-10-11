@@ -686,36 +686,6 @@ export async function migrate(): Promise<void> {
     }
 
     await client.execute(`
-    CREATE TABLE IF NOT EXISTS videos (
-      id INTEGER PRIMARY KEY AUTOINCREMENT,
-      path TEXT NOT NULL,
-      title TEXT NOT NULL,
-      md5 TEXT NOT NULL UNIQUE,
-      views INTEGER NOT NULL DEFAULT 0,
-      resume_time INTEGER NOT NULL DEFAULT 0,
-      favorite INTEGER NOT NULL DEFAULT 0,
-      created_at TEXT NOT NULL DEFAULT (datetime('now'))
-    )
-  `)
-
-    try {
-        await client.execute(
-            'ALTER TABLE videos ADD COLUMN resume_time INTEGER NOT NULL DEFAULT 0',
-        )
-        console.log('Added resume_time column to videos table.')
-    } catch (e) {
-        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
-    }
-    try {
-        await client.execute(
-            'ALTER TABLE videos ADD COLUMN favorite INTEGER NOT NULL DEFAULT 0',
-        )
-        console.log('Added favorite column to videos table.')
-    } catch (e) {
-        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
-    }
-
-    await client.execute(`
     CREATE TABLE IF NOT EXISTS weekly_reports (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
       week_number INTEGER NOT NULL,

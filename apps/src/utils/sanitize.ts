@@ -1,13 +1,10 @@
+/**
+ * 富文本清洗工具：为 Mermaid 渲染结果提供注入 innerHTML 前的安全过滤。
+ * 复用 DOMPurify 的 svg/svgFilters profile，阻断事件处理器、外链脚本等 XSS 向量。
+ * 关键约束：清洗白名单由 DOMPurify profile 决定，不得改用 html profile 或追加
+ * 自定义属性，否则会放行可执行内容；调用方必须在 innerHTML 赋值前完成清洗。
+ */
 import DOMPurify from 'dompurify'
-
-// 富文本清洗：用于渲染第三方/用户可控 HTML（如 RSS 文章详情），
-// 仅允许安全标签与属性，阻断 script、事件处理器、javascript:/data: 协议等 XSS 向量
-export function sanitizeHtml(dirty: string): string {
-    return DOMPurify.sanitize(dirty, {
-        USE_PROFILES: { html: true },
-        ADD_ATTR: ['target', 'rel'],
-    })
-}
 
 // SVG 清洗：用于 Mermaid 渲染结果（innerHTML 注入前），
 // 仅允许 SVG profile，阻断事件处理器与外链脚本

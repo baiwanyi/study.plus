@@ -142,19 +142,6 @@ export const monthSummary = sqliteTable('month_summary', {
     balance: integer('balance').notNull().default(500),
 })
 
-export const videos = sqliteTable('videos', {
-    id: integer('id').primaryKey({ autoIncrement: true }),
-    path: text('path').notNull(),
-    title: text('title').notNull(),
-    md5: text('md5').notNull().unique(),
-    views: integer('views').notNull().default(0),
-    resumeTime: integer('resume_time').notNull().default(0),
-    favorite: integer('favorite').notNull().default(0),
-    createdAt: text('created_at')
-        .notNull()
-        .$defaultFn(() => new Date().toISOString()),
-})
-
 export const weeklyReports = sqliteTable(
     'weekly_reports',
     {
