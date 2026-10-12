@@ -6,7 +6,11 @@ export { exchangesApi } from './exchanges'
 export { imagesApi } from './images'
 export { lessonsApi } from './lessons'
 export { libraryApi } from './library'
-export type { LibraryFileDetail, LibraryFileMeta } from './library'
+export type {
+    LibraryFileDetail,
+    LibraryFileKind,
+    LibraryFileMeta,
+} from './library'
 export { optionsAPI, remarkApi, quotesApi } from './options'
 export { pointsApi } from './points'
 export { studynotesApi } from './studynotes'

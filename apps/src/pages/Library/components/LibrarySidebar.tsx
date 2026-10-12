@@ -3,12 +3,13 @@
  * 复用 @apps/services 的清单类型与 lucide 图标；序号取自原始顺序、过滤后保持不变，
  * 以与键盘翻页和 URL 定位的次序一致。
  * 关键约束：过滤无结果时须给出空态提示，避免用户误判目录为空；
- * 当前项需有明确选中态，分值徽标仅在题目声明满分时渲染。
+ * 当前项需有明确选中态；分值徽标仅在题目声明满分时渲染，
+ * 图片项没有分值，改以图标标识类型。
  */
 'use client'
 
 import { useMemo, useState } from 'react'
-import { Search } from 'lucide-react'
+import { Image as ImageIcon, Search } from 'lucide-react'
 import type { LibraryFileMeta } from '@apps/services'
 
 interface LibrarySidebarProps {
@@ -79,10 +80,14 @@ export function LibrarySidebar({
                                 <span className="flex-1 text-left truncate">
                                     {file.title}
                                 </span>
-                                {file.fullScore != null && (
-                                    <span className="text-xs text-gray-400 shrink-0">
-                                        {file.fullScore} 分
-                                    </span>
+                                {file.kind === 'image' ? (
+                                    <ImageIcon className="size-3.5 shrink-0 text-gray-400" />
+                                ) : (
+                                    file.fullScore != null && (
+                                        <span className="text-xs text-gray-400 shrink-0">
+                                            {file.fullScore} 分
+                                        </span>
+                                    )
                                 )}
                             </button>
                         )

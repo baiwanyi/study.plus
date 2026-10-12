@@ -1,9 +1,10 @@
 /**
- * 本地题目页面：左侧题目清单 + 右侧 Markdown 渲染。
+ * 本地题目页面：左侧题目清单 + 右侧内容区（Markdown 渲染 / 图片直出）。
  * 复用 useLibrary 管理 URL 驱动的当前文件状态（清单点击或键盘左右键切换），
  * prepareLibraryContent 在渲染前完成数学定界符归一化与分值高亮，MarkdownView 负责只读渲染。
- * 关键约束：目录未配置或不存在时须给出明确指引；内容渲染开启 KaTeX 以支持数学分数，
- * 该开关只在本页启用，避免影响其他页面既有内容；Markdown 排版与分值样式依赖随本页引入的样式文件。
+ * 关键约束：目录未配置或不存在时须给出明确指引；kind 为 image 的文件直接 <img> 渲染 data URL，
+ * 不经过 Markdown 管线与分值预处理；内容渲染开启 KaTeX 以支持数学分数，该开关只在本页启用，
+ * 避免影响其他页面既有内容；Markdown 排版与分值样式依赖随本页引入的样式文件。
  */
 'use client'
 
@@ -30,8 +31,12 @@ export function Library() {
         reload,
     } = useLibrary()
 
+    // 仅 Markdown 走分值/公式预处理；图片的 content 是 data URL，直接交给 <img>
     const content = useMemo(
-        () => (detail ? prepareLibraryContent(detail.content) : null),
+        () =>
+            detail && detail.kind === 'markdown'
+                ? prepareLibraryContent(detail.content)
+                : null,
         [detail],
     )
 
@@ -58,11 +63,11 @@ export function Library() {
                 <FileQuestion className="size-16 text-gray-300" />
                 <p className="text-gray-500">
                     {exists
-                        ? `目录「${dir}」下暂无 Markdown 题目`
+                        ? `目录「${dir}」下暂无题目文件`
                         : `题目目录「${dir}」不存在`}
                 </p>
                 <p className="text-xs text-gray-400">
-                    请将 .md 题目文件放入该目录，或在「配置选项 → 系统设置 →
+                    请将 .md 题目或图片文件放入该目录，或在「配置选项 → 系统设置 →
                     本地题目目录路径」中指定其他目录
                 </p>
                 <button
@@ -88,6 +93,14 @@ export function Library() {
                         <Loading />
                     ) : detailError ? (
                         <p className="text-gray-500">{detailError}</p>
+                    ) : detail?.kind === 'image' ? (
+                        <div className="h-full flex items-center justify-center">
+                            <img
+                                src={detail.content}
+                                alt={detail.title}
+                                className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
+                            />
+                        </div>
                     ) : content ? (
                         <MarkdownView
                             content={content}
