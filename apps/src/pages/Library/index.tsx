@@ -1,10 +1,11 @@
 /**
  * 本地题目页面：左侧题目清单 + 右侧内容区（Markdown 渲染 / 图片直出）。
  * 复用 useLibrary 管理 URL 驱动的当前文件状态（清单点击或键盘左右键切换），
- * prepareLibraryContent 在渲染前完成数学定界符归一化与分值高亮，MarkdownView 负责只读渲染。
+ * prepareLibraryContent 在渲染前完成数学定界符归一化、分数尺寸统一与选项换行，
+ * splitLibraryAnswer 再把「参考答案」段切出交给 LibraryAnswer 默认折叠，MarkdownView 负责只读渲染。
  * 关键约束：目录未配置或不存在时须给出明确指引；kind 为 image 的文件直接 <img> 渲染 data URL，
- * 不经过 Markdown 管线与分值预处理；内容渲染开启 KaTeX 以支持数学分数，该开关只在本页启用，
- * 避免影响其他页面既有内容；Markdown 排版与分值样式依赖随本页引入的样式文件。
+ * 不经过 Markdown 管线与内容预处理；内容渲染开启 KaTeX 以支持数学分数，该开关只在本页启用，
+ * 避免影响其他页面既有内容；Markdown 排版依赖随本页引入的样式文件。
  */
 'use client'
 
@@ -13,9 +14,13 @@ import { useMemo } from 'react'
 import '@apps/styles/markdown-viewer.css'
 import { Loading } from '@components/Loading'
 import { MarkdownView } from '@components/MarkdownView'
+import { LibraryAnswer } from './components/LibraryAnswer'
 import { LibrarySidebar } from './components/LibrarySidebar'
 import { useLibrary } from './hooks/useLibrary'
-import { prepareLibraryContent } from './utils/libraryScore'
+import {
+    prepareLibraryContent,
+    splitLibraryAnswer,
+} from './utils/libraryScore'
 
 export function Library() {
     const {
@@ -31,14 +36,15 @@ export function Library() {
         reload,
     } = useLibrary()
 
-    // 仅 Markdown 走分值/公式预处理；图片的 content 是 data URL，直接交给 <img>
-    const content = useMemo(
-        () =>
-            detail && detail.kind === 'markdown'
-                ? prepareLibraryContent(detail.content)
-                : null,
-        [detail],
-    )
+    // 仅 Markdown 走公式/选项预处理与答案拆分；图片的 content 是 data URL，直接交给 <img>。
+    // 判定用「非 image 即 Markdown」，以便后端尚未同步升级、响应缺少 kind 时仍按原文渲染
+    const article = useMemo(() => {
+        if (!detail || detail.kind === 'image') return null
+        return {
+            path: detail.path,
+            ...splitLibraryAnswer(prepareLibraryContent(detail.content)),
+        }
+    }, [detail])
 
     if (listLoading) return <Loading />
 
@@ -101,12 +107,22 @@ export function Library() {
                                 className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
                             />
                         </div>
-                    ) : content ? (
-                        <MarkdownView
-                            content={content}
-                            className="markdown-viewer"
-                            enableMath
-                        />
+                    ) : article ? (
+                        <>
+                            {article.question ? (
+                                <MarkdownView
+                                    content={article.question}
+                                    className="markdown-viewer"
+                                    enableMath
+                                />
+                            ) : null}
+                            {article.answer ? (
+                                <LibraryAnswer
+                                    key={article.path}
+                                    answer={article.answer}
+                                />
+                            ) : null}
+                        </>
                     ) : null}
                 </div>
             </section>

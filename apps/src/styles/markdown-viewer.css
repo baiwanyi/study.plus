@@ -156,21 +156,25 @@
     background-color: transparent;
 }
 
-/* 题库分值标注：由 prepareLibraryContent 在渲染前注入 <mark class="library-score"> */
-.library-score {
-    background: #fef3c7;
-    color: #b45309;
-    font-weight: 600;
-    padding: 0 0.25em;
-    border-radius: 0.25rem;
-}
-
-/* 题库数学公式：正文基准字号为 0.9375rem，且行内分数会被 KaTeX 缩为 scriptstyle，
-   视觉上偏小，故按行内/块级分别放大；仅在启用 KaTeX 的页面（题库）生效 */
+/* 题库数学公式：正文基准字号为 0.9375rem，公式统一放大到 1.25rem；
+   行内分数的尺寸已由 prepareLibraryContent 改写为 \dfrac 与块级公式对齐，此处只统一基字号；
+   仅在启用 KaTeX 的页面（题库）生效 */
 .markdown-viewer .katex {
-    font-size: 1.5em;
+    font-size: 1.25rem;
 }
 
 .markdown-viewer .katex-display {
-    font-size: 1.75em;
+    font-size: 1.25rem;
+}
+
+/* 题库选项间距：选项换行处由 prepareLibraryContent 注入本占位元素。
+   行内分数（\dfrac，公式字号 1.25rem）上下延伸实测 27.2px / 13.7px，行盒被撑到约 41px，
+   相邻选项行的分子分母因此紧贴甚至压叠；加大 line-height 无效（内容高度已大于行距），
+   故用本占位元素以 inline-block 自身高度参与行盒计算（宽 0，不占横向空间），
+   高度取 3.5rem（56px，须大于分数上下延伸）以撑开行盒，相邻选项之间留出约 15px 间距 */
+.library-line-space {
+    display: inline-block;
+    width: 0;
+    height: 3.5rem;
+    vertical-align: middle;
 }
