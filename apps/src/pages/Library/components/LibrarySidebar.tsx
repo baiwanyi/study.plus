@@ -42,7 +42,7 @@ export function LibrarySidebar({
     }, [files, keyword])
 
     return (
-        <aside className="w-64 shrink-0 bg-white rounded-lg shadow-sm flex flex-col overflow-hidden">
+        <aside className="w-64 shrink-0 bg-white flex-col overflow-hidden border-r border-gray-300 fixed h-full hidden lg:flex">
             <div className="p-3 border-b border-gray-100 space-y-2">
                 <div className="relative">
                     <Search className="size-4 text-gray-400 absolute left-2.5 top-1/2 -translate-y-1/2" />

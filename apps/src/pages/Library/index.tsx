@@ -17,10 +17,8 @@ import { MarkdownView } from '@components/MarkdownView'
 import { LibraryAnswer } from './components/LibraryAnswer'
 import { LibrarySidebar } from './components/LibrarySidebar'
 import { useLibrary } from './hooks/useLibrary'
-import {
-    prepareLibraryContent,
-    splitLibraryAnswer,
-} from './utils/libraryScore'
+import { prepareLibraryContent, splitLibraryAnswer } from './utils/libraryScore'
+import { isAdmin } from '@apps/utils/client'
 
 export function Library() {
     const {
@@ -73,8 +71,8 @@ export function Library() {
                         : `题目目录「${dir}」不存在`}
                 </p>
                 <p className="text-xs text-gray-400">
-                    请将 .md 题目或图片文件放入该目录，或在「配置选项 → 系统设置 →
-                    本地题目目录路径」中指定其他目录
+                    请将 .md 题目或图片文件放入该目录，或在「配置选项 → 系统设置
+                    → 本地题目目录路径」中指定其他目录
                 </p>
                 <button
                     type="button"
@@ -87,44 +85,42 @@ export function Library() {
     }
 
     return (
-        <div className="flex gap-4 h-[calc(100vh-3rem)] min-h-128">
+        <div className="flex -m-6">
             <LibrarySidebar
                 files={files}
                 currentPath={detail?.path ?? ''}
                 onSelect={selectFile}
             />
-            <section className="flex-1 min-w-0 flex flex-col">
-                <div className="flex-1 overflow-y-auto bg-white rounded-lg shadow-sm p-8">
-                    {detailLoading ? (
-                        <Loading />
-                    ) : detailError ? (
-                        <p className="text-gray-500">{detailError}</p>
-                    ) : detail?.kind === 'image' ? (
-                        <div className="h-full flex items-center justify-center">
-                            <img
-                                src={detail.content}
-                                alt={detail.title}
-                                className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
+            <section className="flex-1 lg:ml-64 min-w-0 flex flex-col max-h-full">
+                {detailLoading ? (
+                    <Loading />
+                ) : detailError ? (
+                    <p className="text-gray-500">{detailError}</p>
+                ) : detail?.kind === 'image' ? (
+                    <div className="h-full flex items-center justify-center p-8">
+                        <img
+                            src={detail.content}
+                            alt={detail.title}
+                            className="max-h-full max-w-full object-contain rounded-lg shadow-sm"
+                        />
+                    </div>
+                ) : article ? (
+                    <div className="flex-1 p-8 bg-white">
+                        {article.question ? (
+                            <MarkdownView
+                                content={article.question}
+                                className="markdown-viewer"
+                                enableMath
                             />
-                        </div>
-                    ) : article ? (
-                        <>
-                            {article.question ? (
-                                <MarkdownView
-                                    content={article.question}
-                                    className="markdown-viewer"
-                                    enableMath
-                                />
-                            ) : null}
-                            {article.answer ? (
-                                <LibraryAnswer
-                                    key={article.path}
-                                    answer={article.answer}
-                                />
-                            ) : null}
-                        </>
-                    ) : null}
-                </div>
+                        ) : null}
+                        {article.answer && isAdmin() ? (
+                            <LibraryAnswer
+                                key={article.path}
+                                answer={article.answer}
+                            />
+                        ) : null}
+                    </div>
+                ) : null}
             </section>
         </div>
     )
