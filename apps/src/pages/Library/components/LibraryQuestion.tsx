@@ -95,7 +95,7 @@ export function LibraryQuestion({
                             <div className="flex items-center gap-1">
                                 <button
                                     type="button"
-                                    className="btn btn-link btn-sm gap-1"
+                                    className="btn btn-primary btn-sm gap-1"
                                     disabled={isLoading}
                                     onClick={() => request(true)}>
                                     <RefreshCw className="size-3.5" />
@@ -103,7 +103,7 @@ export function LibraryQuestion({
                                 </button>
                                 <button
                                     type="button"
-                                    className="btn btn-link btn-sm gap-1 text-gray-500"
+                                    className="btn btn-outline bg-white btn-sm gap-1"
                                     onClick={close}>
                                     <X className="size-3.5" />
                                     收起
