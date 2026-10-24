@@ -1,11 +1,13 @@
 /**
- * 本地题目页面：左侧题目清单 + 右侧内容区（Markdown 渲染 / 图片直出）。
- * 复用 useLibrary 管理 URL 驱动的当前文件状态（清单点击或键盘左右键切换），
- * prepareLibraryContent 在渲染前完成数学定界符归一化、分数尺寸统一与选项换行，
- * splitLibraryAnswer 再把「参考答案」段切出交给 LibraryAnswer 默认折叠，MarkdownView 负责只读渲染。
+ * 本地题目页面：左侧题目清单 + 右侧内容区（按小题分块渲染 / 图片直出）。
+ * 复用 useLibrary 管理 URL 驱动的当前文件状态，prepareLibraryContent 完成数学定界符归一化、
+ * 分数尺寸统一与选项换行；@shared/utils 的 splitLibraryHints 剥离文末已保存的思路区、
+ * splitLibraryAnswer 切出答案段交给 LibraryAnswer 折叠、parseLibraryQuestions 把题干拆成小题块，
+ * 逐块渲染 LibraryQuestion（入口在题目正文末尾，已保存的思路随文件加载直接展开）。
  * 关键约束：目录未配置或不存在时须给出明确指引；kind 为 image 的文件直接 <img> 渲染 data URL，
  * 不经过 Markdown 管线与内容预处理；内容渲染开启 KaTeX 以支持数学分数，该开关只在本页启用，
- * 避免影响其他页面既有内容；Markdown 排版依赖随本页引入的样式文件。
+ * 避免影响其他页面既有内容；小题块索引须与解析结果一致（服务端按同一索引取题与写回），
+ * 题块 key 需含文件路径，避免切换题目时复用旧组件的思路状态。
  */
 'use client'
 
@@ -14,10 +16,16 @@ import { useMemo } from 'react'
 import '@apps/styles/markdown-viewer.css'
 import { Loading } from '@components/Loading'
 import { MarkdownView } from '@components/MarkdownView'
+import {
+    parseLibraryQuestions,
+    splitLibraryAnswer,
+    splitLibraryHints,
+} from '@shared/utils'
 import { LibraryAnswer } from './components/LibraryAnswer'
+import { LibraryQuestion } from './components/LibraryQuestion'
 import { LibrarySidebar } from './components/LibrarySidebar'
 import { useLibrary } from './hooks/useLibrary'
-import { prepareLibraryContent, splitLibraryAnswer } from './utils/libraryScore'
+import { prepareLibraryContent } from './utils/libraryScore'
 import { isAdmin } from '@apps/utils/client'
 
 export function Library() {
@@ -34,13 +42,21 @@ export function Library() {
         reload,
     } = useLibrary()
 
-    // 仅 Markdown 走公式/选项预处理与答案拆分；图片的 content 是 data URL，直接交给 <img>。
+    // 仅 Markdown 走公式/选项预处理、思路区剥离、答案拆分与小题解析；图片的 content 是 data URL，直接交给 <img>。
     // 判定用「非 image 即 Markdown」，以便后端尚未同步升级、响应缺少 kind 时仍按原文渲染
     const article = useMemo(() => {
         if (!detail || detail.kind === 'image') return null
+        // 思路区先按原文剥离，正文再走预览预处理：思路正文由 LibraryQuestion 自行预处理一次，
+        // 避免这里处理后再被组件处理第二次（选项行会被重复插入撑高元素）
+        const { body, hints } = splitLibraryHints(detail.content)
+        const { question, answer } = splitLibraryAnswer(
+            prepareLibraryContent(body),
+        )
         return {
             path: detail.path,
-            ...splitLibraryAnswer(prepareLibraryContent(detail.content)),
+            answer,
+            blocks: parseLibraryQuestions(question),
+            hints,
         }
     }, [detail])
 
@@ -106,13 +122,27 @@ export function Library() {
                     </div>
                 ) : article ? (
                     <div className="flex-1 p-8 bg-white">
-                        {article.question ? (
-                            <MarkdownView
-                                content={article.question}
-                                className="markdown-viewer"
-                                enableMath
-                            />
-                        ) : null}
+                        <div className="flex flex-col gap-5">
+                            {article.blocks.map((block) =>
+                                block.kind === 'text' ? (
+                                    <MarkdownView
+                                        key={`${article.path}#${block.index}`}
+                                        content={block.content}
+                                        className="markdown-viewer"
+                                        enableMath
+                                    />
+                                ) : (
+                                    <LibraryQuestion
+                                        key={`${article.path}#${block.index}`}
+                                        path={article.path}
+                                        block={block}
+                                        initialHint={
+                                            article.hints.get(block.index)?.markdown ?? ''
+                                        }
+                                    />
+                                ),
+                            )}
+                        </div>
                         {article.answer && isAdmin() ? (
                             <LibraryAnswer
                                 key={article.path}

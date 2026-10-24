@@ -105,6 +105,11 @@ interface CallDeepSeekOptions {
 interface CallDeepSeekResult {
     content: string
     usage?: DeepSeekUsage
+    /**
+     * 结束原因：'length' 表示输出被 max_tokens 截断。
+     * 纯文本调用不会因截断自动重试（截断内容仍有使用价值），需要调用方自行决定扩容重试。
+     */
+    finishReason?: string
 }
 
 interface JsonParseOutcome {
@@ -413,7 +418,7 @@ async function callDeepSeek(
         )
     }
 
-    return { content, usage: data.usage }
+    return { content, usage: data.usage, finishReason }
 }
 
 /**

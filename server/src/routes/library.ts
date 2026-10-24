@@ -1,18 +1,27 @@
 /**
- * 本地题库路由：实时遍历指定目录下的题目文件（Markdown 与图片），提供清单与单篇内容读取。
+ * 本地题库路由：实时遍历指定目录下的题目文件（Markdown 与图片），提供清单、单篇内容读取与 AI 解题思路。
  * 目录取自 options 表 system.libraryDirectory；留空时默认取与数据库文件所在目录（data）平级的
- * library/，即独立于 data 的兄弟目录并随 DB_PATH 迁移（DB_PATH 指向部署目录之外时自动跟随），
- * 相对配置按 APP_ROOT 解析、绝对配置原样使用，路径推导复用 db 导出的 DB_FILE_PATH。
+ * library/，相对配置按 APP_ROOT 解析、绝对配置原样使用，路径推导复用 db 导出的 DB_FILE_PATH。
  * 关键约束：仅允许 .md 与白名单图片；相对路径拒绝绝对路径与 .. 段，resolve 后必须落在题库根目录之内
- * （防目录遍历）；跳过符号链接，限制扫描深度/数量与单文件体积；图片不经 Markdown 渲染，
- * 内容接口直接以 data URL 返回原始字节，MIME 只取扩展名白名单而不采信文件内容；全部为只读 GET 接口。
+ * （防目录遍历）；图片不经 Markdown 渲染，内容接口直接以 data URL 返回原始字节；
+ * 解题思路只取题干段（剔除参考答案与已存思路区），生成后写回文档末尾的思路区，
+ * 同一文件的写入必须排队串行，写入失败时降级为仅返回内容。
  */
 import { Router } from 'express'
 import type { Request, Response } from 'express'
 import fs from 'fs'
 import path from 'path'
+import {
+    parseLibraryQuestions,
+    splitLibraryAnswer,
+    splitLibraryHints,
+    upsertLibraryHint,
+} from '@shared/utils'
 import { client, DB_FILE_PATH } from '../db/index'
 import { resolveDataDir, resolveFromRoot } from '../paths'
+import { generateLibraryHint } from '../services/ai'
+import { DEEPSEEK_API_KEY } from '../services/ai/core'
+import { libraryHintLimiter } from '../utils/rate-limit'
 import type { ApiErrorResponse } from '@shared/types'
 
 const router = Router()
@@ -326,6 +335,168 @@ router.get('/content', async (req: Request, res: Response) => {
     } catch (err) {
         console.error('读取题目内容失败:', err)
         res.status(500).json({ error: '读取题目内容失败' } satisfies ApiErrorResponse)
+    }
+})
+
+/** 解题思路缓存上限：进程内简易 LRU，超限时丢弃最早写入的一条 */
+/** 进行中的同 key 请求：连点或并发时复用同一个 Promise，避免重复调用 AI 造成重复计费 */
+const hintPending = new Map<string, Promise<string>>()
+/** 按文件的写入队列：读-改-写必须串行，避免同一文件多题同时生成时互相覆盖 */
+const fileWriteChains = new Map<string, Promise<void>>()
+
+/** 把写文件任务挂到该文件的串行队列尾部，返回本次任务的 Promise（失败由调用方处理） */
+function enqueueFileWrite(
+    absPath: string,
+    task: () => Promise<void>,
+): Promise<void> {
+    const previous = fileWriteChains.get(absPath) ?? Promise.resolve()
+    const current = previous.then(task, task)
+    // 队列只负责串行化；吞掉拒绝以免前一次失败阻断后续写入，真实错误由 current 抛给调用方
+    fileWriteChains.set(
+        absPath,
+        current.then(
+            () => undefined,
+            () => undefined,
+        ),
+    )
+    return current
+}
+
+interface LibraryHintResponse {
+    hint: string
+    /** 是否为文件中已保存的思路（未重新调用 AI） */
+    cached: boolean
+    /** 本次结果是否已写入题目文件；写入失败时仍返回内容，仅提示未持久化 */
+    saved: boolean
+}
+
+/**
+ * 生成单道小题的解题思路。
+ * 只接收路径与小题索引，题干由服务端自行读取并剔除参考答案段——
+ * 前端无法借此接口提交任意 prompt，答案也不会被送进模型。
+ */
+router.post('/hint', libraryHintLimiter, async (req: Request, res: Response) => {
+    try {
+        if (!DEEPSEEK_API_KEY) {
+            res.status(503).json({
+                error: 'AI 解题思路未配置，请先在服务端设置 DEEPSEEK_API_KEY',
+            } satisfies ApiErrorResponse)
+            return
+        }
+
+        const body = (req.body ?? {}) as {
+            path?: unknown
+            questionIndex?: unknown
+            regenerate?: unknown
+        }
+        const relPath = typeof body.path === 'string' ? body.path : ''
+        const questionIndex = Number(body.questionIndex)
+        if (!Number.isInteger(questionIndex) || questionIndex < 0) {
+            res.status(400).json({
+                error: '题目序号不合法',
+            } satisfies ApiErrorResponse)
+            return
+        }
+
+        const { rootDir } = await resolveLibraryRoot()
+        const absPath = resolveSafePath(rootDir, relPath)
+        if (!absPath) {
+            res.status(403).json({ error: '题目路径不合法' } satisfies ApiErrorResponse)
+            return
+        }
+        if (!fs.existsSync(absPath) || !fs.statSync(absPath).isFile()) {
+            res.status(404).json({ error: '题目文件不存在' } satisfies ApiErrorResponse)
+            return
+        }
+        // 图片题无法交给文本模型讲解，与前端不渲染按钮的判断保持一致
+        if (!MD_EXTENSION.test(absPath)) {
+            res.status(400).json({
+                error: '图片题目暂不支持解题思路',
+            } satisfies ApiErrorResponse)
+            return
+        }
+        const stat = fs.statSync(absPath)
+        if (stat.size > MAX_FILE_SIZE) {
+            res.status(413).json({
+                error: '题目文件过大，无法生成解题思路',
+            } satisfies ApiErrorResponse)
+            return
+        }
+
+        const markdown = fs.readFileSync(absPath, 'utf8')
+        // 先剥离文末已保存的思路区，题干与小题索引均由共享解析器产出，与前端渲染时的划分完全一致
+        const { body: contentBody, hints } = splitLibraryHints(markdown)
+        const { question } = splitLibraryAnswer(contentBody)
+        const blocks = parseLibraryQuestions(question)
+        const block = blocks[questionIndex]
+        if (!block || block.kind !== 'question') {
+            res.status(400).json({
+                error: '未找到对应的题目，请刷新后重试',
+            } satisfies ApiErrorResponse)
+            return
+        }
+
+        const isRegenerate = body.regenerate === true
+        // 已保存过的思路直接复用，二次查看不再调用 AI
+        const stored = hints.get(questionIndex)
+        if (!isRegenerate && stored) {
+            res.json({
+                hint: stored.markdown,
+                cached: true,
+                saved: true,
+            } satisfies LibraryHintResponse)
+            return
+        }
+
+        const cacheKey = `${relPath}|${stat.mtimeMs}|${questionIndex}`
+        const title = resolveTitle(
+            markdown,
+            path.basename(absPath, path.extname(absPath)),
+        )
+        let pending = isRegenerate ? undefined : hintPending.get(cacheKey)
+        if (!pending) {
+            pending = generateLibraryHint(block.content, title, isRegenerate)
+            if (!isRegenerate) {
+                hintPending.set(cacheKey, pending)
+                // 成功或失败都释放占位，失败由下方 await 统一处理
+                void pending.then(
+                    () => hintPending.delete(cacheKey),
+                    () => hintPending.delete(cacheKey),
+                )
+            }
+        }
+        const hint = await pending
+
+        // 写入题目文件：队列内重新读取最新内容后再改，避免覆盖用户此刻的其它编辑
+        let isSaved = true
+        try {
+            await enqueueFileWrite(absPath, async () => {
+                const latest = await fs.promises.readFile(absPath, 'utf8')
+                const updated = upsertLibraryHint(latest, {
+                    index: questionIndex,
+                    number: block.number,
+                    section: block.section,
+                    content: hint,
+                })
+                if (updated !== latest) {
+                    await fs.promises.writeFile(absPath, updated, 'utf8')
+                }
+            })
+        } catch (writeError: unknown) {
+            // 只读目录或权限不足时不影响本次查看，仅提示未持久化
+            isSaved = false
+            const message =
+                writeError instanceof Error ? writeError.message : String(writeError)
+            console.warn('解题思路写入题目文件失败:', message)
+        }
+
+        res.json({ hint, cached: false, saved: isSaved } satisfies LibraryHintResponse)
+    } catch (error: unknown) {
+        const message = error instanceof Error ? error.message : String(error)
+        console.error('生成解题思路失败:', message)
+        res.status(500).json({
+            error: '生成解题思路失败，请稍后重试',
+        } satisfies ApiErrorResponse)
     }
 })
 
