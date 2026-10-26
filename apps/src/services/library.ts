@@ -1,10 +1,11 @@
 /**
- * 本地题库服务层：对接 /api/library 的清单、内容读取与 AI 解题思路接口。
+ * 本地题库服务层：对接 /api/library 的清单、内容读取、AI 解题思路与 AI 出卷接口。
  * 复用 request 统一携带鉴权头与错误处理，路径在客户端先做基础形态校验后再传输。
  * 关键约束：path 必须是相对题库根目录的 .md 或白名单图片路径，禁止绝对路径与 `..` 段，
  * 服务端仍会二次校验（防目录遍历），此处校验仅用于尽早拦截明显非法入参；
  * 图片的 content 为 data URL，交给 <img> 直接渲染，不走 Markdown；
- * 解题思路接口只提交「路径 + 小题索引」，题干由服务端自行读取，前端不得提交任意题干文本。
+ * 解题思路接口只提交「路径 + 小题索引」，题干由服务端自行读取，前端不得提交任意题干文本；
+ * 出卷接口只付出卷参数，文件命名与落盘由服务端负责，返回的 path 用于定位新文件。
  */
 'use client'
 
@@ -63,6 +64,30 @@ export interface LibraryHintResult {
     saved: boolean
 }
 
+/** AI 出卷入参：标题由服务端按生成内容自拟，此处只提交范围与要求 */
+export interface LibraryGenerateInput {
+    grade: string
+    subject: string
+    /** 题目要求（文字），可为空；仅传图片时也可只提交图片 */
+    requirements: string
+    questionCount: number
+    /** 题目要求附带的参考图片（data URL），最多 9 张；需要服务端配置视觉模型 */
+    images?: string[]
+}
+
+export interface LibraryGenerateResult {
+    /** 新文件相对题库根目录的路径 */
+    path: string
+    title: string
+    content: string
+}
+
+export interface LibraryDeleteResult {
+    deleted: boolean
+    /** 被删除文件的题库相对路径 */
+    path: string
+}
+
 export const libraryApi = {
     list: () => request<LibraryListResult>('/library'),
     content: (relPath: string) => {
@@ -92,5 +117,25 @@ export const libraryApi = {
             }),
             signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
         })
+    },
+    /**
+     * AI 出卷并保存到题库目录；signal 由调用方传入以支持取消。
+     * 整卷生成耗时可达 1~2 分钟（含缺答案时的补写），超时上限放宽到 180s。
+     */
+    generate: (input: LibraryGenerateInput, signal?: AbortSignal) => {
+        const timeout = AbortSignal.timeout(180_000)
+        return request<LibraryGenerateResult>('/library/generate', {
+            method: 'POST',
+            body: JSON.stringify(input),
+            signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+        })
+    },
+    /** 删除题库文件（不可恢复）；路径校验与服务端一致，服务端仍会二次校验越界 */
+    remove: (relPath: string) => {
+        assertValidPath(relPath)
+        return request<LibraryDeleteResult>(
+            `/library/file?path=${encodeURIComponent(relPath)}`,
+            { method: 'DELETE' },
+        )
     },
 }

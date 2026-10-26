@@ -184,6 +184,9 @@ const LIBRARY_DIVIDER = /^[ \t]{0,3}(?:-{3,}|\*{3,}|_{3,})[ \t]*$/
 /** 小题起始行：`1.` `1、` `1)` `（1）` 四种编号写法，编号后必须紧跟题目内容 */
 const LIBRARY_QUESTION_START =
     /^[ \t]{0,3}(?:(\d{1,3})[.、．)）]|[（(](\d{1,3})[）)])[ \t]*(\S.*)$/
+/** 加粗分组标题行：`**（二）先做后合作**` 独占一行，语义等同大题标题，须独立成块 */
+const LIBRARY_GROUP_HEADING =
+    /^[ \t]*\*\*[（(][^）)\n]{1,30}[）)][^\n]*\*\*[ \t]*$/
 /** 解题思路区块的起始标记：独立成行，机器可识别，渲染时作为 HTML 注释被丢弃 */
 const LIBRARY_HINTS_MARK = '<!-- library-hints:start -->'
 /** 单题思路的分隔标记：`<!-- hint:3 -->`，数字为块索引 */
@@ -246,6 +249,36 @@ function trimBlankEdge(lines: string[]): string[] {
 }
 
 /**
+ * 把「做题要求」「做题建议」两段里的数字编号压成无序列表。
+ * 关键约束：parseLibraryQuestions 把行首数字一律视为小题，卷首的编号式要求会被渲染成
+ * 带「解题思路」入口的题目块（误判），故这两段内的 `1.` / `2、` 等一律改写为 `- `；
+ * 段落自加粗标题行起、到分隔线或下一个 Markdown 标题止，段外内容原样保留。
+ */
+export function flattenLibraryInstructionSections(markdown: string): string {
+    const sectionHeading = /\*\*(?:做题要求|做题建议)[：:]?\*\*/
+    let inside = false
+    return markdown
+        .split('\n')
+        .map((line) => {
+            if (sectionHeading.test(line)) {
+                inside = true
+                return line
+            }
+            if (
+                inside &&
+                (/^[ \t]*-{3,}[ \t]*$/.test(line) ||
+                    /^[ \t]{0,3}#{1,6}[ \t]+\S/.test(line))
+            ) {
+                inside = false
+                return line
+            }
+            if (!inside) return line
+            return line.replace(/^[ \t]{0,3}\d{1,3}[.、．)）][ \t]+/, '- ')
+        })
+        .join('\n')
+}
+
+/**
  * 按「参考答案」标题把题目切成题干与答案两段，答案段交给调用方决定是否展示。
  * 关键约束：识别依据是行首的 Markdown 标题（1–6 级）且整行含「参考答案」，
  * 只有占位声明而无实际答案时按「无答案」处理；题干尾部的 `---` 分隔线须一并去掉，
@@ -293,7 +326,8 @@ export function splitLibraryAnswer(markdown: string): LibraryArticle {
 /**
  * 把题干拆成「小题块 + 文本块」，供前端逐题渲染按钮、服务端按索引取题。
  * 关键约束：小题以行首编号识别，块在下一个编号/标题/分隔线处结束；
- * 卷首说明与大题标题归入 text 块（不参与求助）；分隔线只作分界不进任何块；
+ * 卷首说明、大题标题与加粗分组标题（`**（二）…**`）归入 text 块（不参与求助）；
+ * 分隔线只作分界不进任何块；
  * 一段小题都识别不到时（如纯段落式题集）降级为「整篇一个题块」，索引固定为 0。
  */
 export function parseLibraryQuestions(question: string): LibraryQuestionBlock[] {
@@ -358,6 +392,13 @@ export function parseLibraryQuestions(question: string): LibraryQuestionBlock[] 
         if (LIBRARY_HEADING.test(line)) {
             flush()
             section = normalizeSection(line)
+            current = { kind: 'text', number: null, section, lines: [line] }
+            continue
+        }
+        // 加粗分组标题若并入上一题，会跟着题干缩进、无法顶格显示，故独立成块并更新分组
+        if (LIBRARY_GROUP_HEADING.test(line)) {
+            flush()
+            section = normalizeSection(line.replace(/\*\*/g, ''))
             current = { kind: 'text', number: null, section, lines: [line] }
             continue
         }

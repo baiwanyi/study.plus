@@ -7,9 +7,12 @@ export { imagesApi } from './images'
 export { lessonsApi } from './lessons'
 export { libraryApi } from './library'
 export type {
+    LibraryDeleteResult,
     LibraryFileDetail,
     LibraryFileKind,
     LibraryFileMeta,
+    LibraryGenerateInput,
+    LibraryGenerateResult,
 } from './library'
 export { optionsAPI, remarkApi, quotesApi } from './options'
 export { pointsApi } from './points'

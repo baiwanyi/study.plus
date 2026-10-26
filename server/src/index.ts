@@ -128,7 +128,8 @@ const corsOrigins = process.env.CORS_ORIGIN
 app.use(cors({ origin: corsOrigins, credentials: Boolean(corsOrigins) }))
 
 // Body parsers
-app.use(express.json({ limit: '10mb' }))
+// 题库 AI 出卷最多可带 9 张 data URL 参考图片，单张上限 1.5M 字符，故放宽到 20mb
+app.use(express.json({ limit: '20mb' }))
 app.use(express.urlencoded({ extended: true }))
 
 // General API rate limit (anti-abuse / DDoS protection)

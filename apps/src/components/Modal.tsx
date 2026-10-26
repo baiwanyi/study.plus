@@ -10,6 +10,8 @@ export interface ModalProps {
     isLoading?: boolean
     isDisabled?: boolean
     isScroll?: boolean
+    /** 高度随内容自适应；默认撑到 90vh，仅确认类短弹窗需要开启 */
+    autoHeight?: boolean
     title?: ReactNode
     children: ReactNode
     danger?: boolean
@@ -39,6 +41,7 @@ export const Modal: FC<ModalProps> = ({
     isLoading = false,
     isDisabled = false,
     isScroll = false,
+    autoHeight = false,
     title = '',
     children,
     danger,
@@ -65,7 +68,9 @@ export const Modal: FC<ModalProps> = ({
                 onClick={onCancel}
             />
             <div
-                className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} mx-4 max-h-[90vh] h-full flex flex-col`}>
+                className={`relative bg-white rounded-xl shadow-xl w-full ${sizeClasses[size]} mx-4 max-h-[90vh] flex flex-col ${
+                    autoHeight ? '' : 'h-full'
+                }`}>
                 <header className="flex items-center justify-between p-6 pb-3 shrink-0 border-b border-gray-200">
                     <h3>{title}</h3>
                     <button

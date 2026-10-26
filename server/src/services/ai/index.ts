@@ -6,7 +6,7 @@ export {
     scoreComposition,
 } from './task'
 export { analyzeWeeklyReport, chatAboutWeeklyReport } from './weekly'
-export { generateLibraryHint } from './library'
+export { generateLibraryHint, generateLibraryPaper } from './library'
 export {
     analyzePreview,
     evaluateStudynotesReflection,

@@ -98,6 +98,41 @@ describe('全链路：本地题库（Markdown 与图片）', () => {
         expect(res.body.fullScore).toBe(100)
     })
 
+    it('删除文档后文件消失且不再出现在清单中', async () => {
+        const target = path.join(libraryRoot, '02-待删除题目.md')
+        fs.writeFileSync(target, '# 待删除题目\n\n1. 题干。', 'utf8')
+        const removed = await api()
+            .delete('/api/library/file')
+            .query({ path: '02-待删除题目.md' })
+        expect(removed.status).toBe(200)
+        expect(removed.body.deleted).toBe(true)
+        expect(fs.existsSync(target)).toBe(false)
+        const list = await api().get('/api/library')
+        expect(
+            list.body.files.some(
+                (file: { path: string }) => file.path === '02-待删除题目.md',
+            ),
+        ).toBe(false)
+    })
+
+    it('删除不存在的文件返回 404，越界/非白名单返回 403，缺参数返回 400', async () => {
+        const missing = await api()
+            .delete('/api/library/file')
+            .query({ path: 'not-exists.md' })
+        expect(missing.status).toBe(404)
+        const escape = await api()
+            .delete('/api/library/file')
+            .query({ path: '../secret.md' })
+        expect(escape.status).toBe(403)
+        const svg = await api()
+            .delete('/api/library/file')
+            .query({ path: 'logo.svg' })
+        expect(svg.status).toBe(403)
+        expect(fs.existsSync(path.join(libraryRoot, 'logo.svg'))).toBe(true)
+        const empty = await api().delete('/api/library/file')
+        expect(empty.status).toBe(400)
+    })
+
     it('非白名单扩展名与越界路径一律拒绝', async () => {
         const svg = await api()
             .get('/api/library/content')
