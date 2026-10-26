@@ -41,6 +41,9 @@ const Studynotes = lazy(() =>
 const Weekly = lazy(() =>
     import('@apps/pages/Weekly').then((m) => ({ default: m.Weekly })),
 )
+const Handwriting = lazy(() =>
+    import('@apps/pages/Handwriting').then((m) => ({ default: m.Handwriting })),
+)
 
 // 统一为控制台输出注入「时间 + 级别」前缀，须在任何日志产生之前执行
 enableLogTimestamp()
@@ -61,6 +64,7 @@ const AppRoutes = () => (
                     <Route path="exchanges" element={<Exchanges />} />
                     <Route path="borrow" element={<Borrow />} />
                     <Route path="library" element={<Library />} />
+                    <Route path="handwriting" element={<Handwriting />} />
                     <Route path="study" element={<Studynotes />} />
                     <Route path="weekly" element={<Weekly />} />
                     {isAdmin() && <Route path="options" element={<Rules />} />}

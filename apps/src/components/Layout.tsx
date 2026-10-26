@@ -18,6 +18,7 @@ import {
     Bot,
     BookOpen,
     NotebookPen,
+    PenTool,
 } from 'lucide-react'
 import { quotesApi } from '@apps/services'
 import { defaultQuotes } from '@shared/constants'
@@ -29,6 +30,7 @@ const baseNavItems = [
     { to: '/tasks', label: '作业管理', icon: ClipboardList },
     { to: '/study', label: '学习管理', icon: GraduationCap },
     { to: '/library', label: '本地题目', icon: BookOpen },
+    { to: '/handwriting', label: '每日练字', icon: PenTool },
     { to: '/points', label: '积分记录', icon: Database },
     { to: '/exchanges', label: '兑换记录', icon: ArrowLeftRight },
     { to: '/borrow', label: '积分预支', icon: HandCoins },

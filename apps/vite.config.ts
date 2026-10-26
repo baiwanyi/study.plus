@@ -2,6 +2,7 @@ import { defineConfig, loadEnv } from 'vite'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import babel from '@rolldown/plugin-babel'
 import path from 'path'
+import { handwritingFontsPlugin } from './plugins/handwriting-fonts'
 
 export default defineConfig(({ mode }) => {
     // 后端端口取自仓库根目录 .env 的 PORT，避免与 .env 中端口写死导致不一致
@@ -9,7 +10,13 @@ export default defineConfig(({ mode }) => {
     const backendPort = env.PORT || '3001'
     return {
         root: __dirname,
-        plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+        // 最后一个插件扫描 public/fonts 生成内置字体清单，新增字体文件无需改代码；
+        // 目录由 config 显式传入，插件内不依赖 __dirname（config 打包后它的取值不可靠）
+        plugins: [
+            react(),
+            babel({ presets: [reactCompilerPreset()] }),
+            handwritingFontsPlugin(path.resolve(__dirname, 'public', 'fonts')),
+        ],
         resolve: {
             alias: {
                 '@apps': path.resolve(__dirname, 'src'),

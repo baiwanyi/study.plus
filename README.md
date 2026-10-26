@@ -23,11 +23,12 @@
 - **费曼学习法**：创建学习心得（概括/举例/卡壳/记忆钩子），AI 评估完整度（评分环 + 遗漏点 + 错误纠正 + 改进建议），评分达80分后方可进行智能测验，AI 出20道混合题型题（单选/多选/简答，总分100分自动分配）检验知识掌握程度，答完后生成总结报告（错题回顾 + 掌握程度评分 + 复习建议），支持分享
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地题目**：自动遍历本地题目目录下的 Markdown 题目与图片，支持数学公式（LaTeX）渲染，图片直接展示原图，参考答案默认折叠、点击按钮后展开，清单点击或键盘 ←/→ 顺序阅读
+- **每日练字**：把诗词、课文节选或自定义文本排成 A4 硬笔字帖（11 格 × 14 行，田字格/米字格/九宫格），内置字体随站点分发，浏览器直接打印或另存 PDF
 - **数据备份**：数据库每日自动打包并邮件外发，实现异地容灾（详见部署文档「数据库每日备份」章节）
 
 ### 产品定位
 
-一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支、每周学习总结与 AI 分析、本地题目练习的轻量级工具。
+一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支、每周学习总结与 AI 分析、本地题目练习、A4 字帖临写的轻量级工具。
 
 ## 技术栈
 
@@ -48,6 +49,8 @@
 | 测试     | Vitest + @testing-library/react + jsdom   | 单元测试 + 组件测试 + API 集成测试   |
 | 数学公式 | KaTeX + remark-math + rehype-katex        | Markdown 中的 LaTeX 分数/公式渲染    |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
+| 字体        | FontFace + Local Font Access API + Canvas | 内置字体按需加载 / 系统字体授权枚举与探测 |
+| 字帖排版 | 纯函数 + CSS 容器查询（cqw）              | 网格排版与避头避尾；A4 等比缩放与打印 |
 | 项目管理 | pnpm workspace monorepo                   | 3 包隔离：前端/后端/共享层           |
 
 ### 项目架构
@@ -275,6 +278,40 @@
 - **历史测验与错题本**：测验弹窗右侧栏提供【历史】回看（历次成绩列表，点选只读查看完整题目/作答/批改结果）与【错题】面板（课程级错题聚合，客观题带选项对错配色）；学习中心主页提供**全局错题本**（跨课程聚合，支持关键词搜索、科目筛选与分页，每条错题标注来源课程）。
 - **分享卡片**：将学习心得与 AI 评估报告渲染为卡片，一键导出 PNG 长图用于分享。
 
+### 8. 每日练字（A4 字帖）
+
+路由 `/handwriting`。把诗词、课文节选或自定义文本排成可直接打印的 A4 硬笔字帖，纯静态资源驱动，不落库、不调用后端。
+
+#### 8.1 版面与内容
+
+- **版面**：A4 纵向，11 格 × 14 行；页高取 296mm（比 A4 少 1mm），避免 96dpi 取整后多顶出一张空白页
+- **方格**：田字格 / 米字格 / 九宫格，整页底纹合并为单个 SVG 绘制，避免逐格渲染时相邻边框错位成双线；线宽以毫米计（0.1–1.2mm，默认 0.3mm），按字帖尺寸等比换算成 viewBox 单位，屏幕预览与打印粗细一致，外圈描边不做裁切
+- **内容来源**：自定义（文本域手写，每行一句，行首空格即缩进）、古诗词（136 首）、课文节选（70 条）、课外读物（150 条）
+- **语料维护**：`apps/public/handwriting/{poems,textbook,reading}.md`，按「`## 篇名` + `> 朝代作者` + 正文行」约定解析，追加条目后刷新即生效、无需重新构建；节选正文汉字数须在 20–40 之间，越界条目解析阶段丢弃并告警
+
+#### 8.2 排版规则
+
+| 规则 | 说明 |
+| ---- | ---- |
+| 版式自动判定 | 只看正文行数：多行按诗歌（题名与作者居中、正文逐句居中、奇数留白左多右少），单行按节选（首行缩进两格、末尾右对齐署「篇名 + 作者」、顶部不重复题名） |
+| 避头避尾 | 行首闭标点挤入上一行末格并以小字压角显示；行末开标点整体移到下一行 |
+| 标点占格 | 固定按规范占格，不提供切换 |
+| 容量 | 超出单页 14 行即截断，页面顶部提示精简后再打印 |
+
+#### 8.3 字体
+
+字体下拉分两组，均从清单中选择：
+
+- **内置字体**：放在 `apps/public/fonts/` 的 `ttf/otf/woff/woff2`，由构建插件 `apps/plugins/handwriting-fonts.ts` 扫描目录生成 `virtual:handwriting-fonts` 清单；族名由 `normalizeFontFamilyFromFile` 规范化（保留汉字/字母/数字/连字符）。选中哪款才用 `FontFace` 下载加载，因此扩充字体不影响首屏。下拉中按文件名显示，当前内置 4 款：`33华康标题宋W9`、`FZLiuGQKJW-L`、`FZSJ-LXQWTJW`、`FZZJ-DHTYBKSJW`。想再加字体只需把文件放进该目录，dev 下会触发虚拟模块失效并整页刷新
+- **系统字体**：先列候选表（覆盖 Windows/macOS 预装中文字体），用 canvas `measureText` 与 monospace 基准宽度比对筛出真实安装的字体；Chromium 在**安全上下文**（https 或 localhost）下可点「读取全部本地字体」，经授权后 `navigator.queryLocalFonts()` 返回全量列表。局域网 http 访问时该 API 不存在，界面会提示改用 localhost / https 或直接使用内置字体
+
+#### 8.4 样式与打印
+
+- 字体颜色、方格颜色（各带 4 个常用色预设）、字号占格比例（50%–100%，默认 70%）与方格线宽（0.1–1.2mm，默认 0.3mm，步进 0.05mm）可调；连同字体、方格一起持久化到 localStorage，读取值非法或越界时回落默认。线宽下限保证打印不断线，上限避免粗线压住笔画
+- 预览用容器查询单位 `cqw` 等比铺满任意屏宽（字帖宽记为 100cqw），无需 JS 测量，也不存在滚动条引发的宽度抖动
+- 打印：`@page` 边距为 0、页边距由字帖自带；`hw-no-print` 元素（侧栏、设置面板、提示）全部隐藏并解除缩放，浅色虚线靠 `print-color-adjust: exact` 保留；页高少 1mm 与 `min-height: 0` 共同避免多出空白页
+- 安全：字体名与颜色值分别经 `sanitizeFontFamily` / `sanitizeHexColor` 过滤后才拼进 `style`，数值型配置（字号比例、方格线宽）经 `clampGlyphScale` / `clampBorderWidthMm` 夹到可调区间，防止 localStorage 被改写后注入任意 CSS 或越界渲染
+
 ## 数据结构设计
 
 ### 核心数据模型
@@ -321,7 +358,11 @@ study_preview_quiz  -> id, lessonId(FK, unique), questionsJson, answersJson?, re
 ```
 study.webian.dev/
 ├── apps/                         # ★ 前端 (React + Vite)
-│   ├── public/                   # 静态资源（图标/字体/图片/帮助文档）
+│   ├── public/                   # 静态资源（图标/图片/帮助文档）
+│   │   ├── fonts/               # 字帖内置字体（ttf/otf/woff/woff2，构建期扫描成清单）
+│   │   └── handwriting/         # 字帖语料（poems / textbook / reading 三份 Markdown）
+│   ├── plugins/
+│   │   └── handwriting-fonts.ts # Vite 插件：扫描 public/fonts 生成 virtual:handwriting-fonts
 │   ├── src/
 │   │   ├── main.tsx             # 前端入口（路由定义 + React.lazy 页面级代码分割 + 渲染挂载）
 │   │   ├── services/            # HTTP 客户端（按业务域拆分的 API 模块，含 request/system）
@@ -338,7 +379,7 @@ study.webian.dev/
 │   │   │   ├── RulesPage.tsx   # 规则页面包装器
 │   │   │   ├── Loading.tsx     # 加载指示器
 │   │   │   └── AiChatPanel.tsx # AI 聊天面板
-│   │   ├── pages/               # 页面组件（10 个页面目录）
+│   │   ├── pages/               # 页面组件（11 个页面目录）
 │   │   │   ├── Dashboard/       # 首页看板（WidgetStats/Balance/PendingTasks 等 11 个组件）
 │   │   │   ├── Tasks/           # 作业管理（BookNoteEditor/TaskEditor/TaskListTable 等 10 个组件）
 │   │   │   ├── Points/          # 积分记录
@@ -348,6 +389,12 @@ study.webian.dev/
 │   │   │   ├── AIUsage/         # AI 使用量统计
 │   │   │   ├── Weekly/          # 学习周报
 │   │   │   ├── Library/         # 本地题目（Markdown 与图片题库：清单/渲染/分值/翻页）
+│   │   │   ├── Handwriting/     # 每日练字（A4 字帖：内容来源/版式/字体/打印）
+│   │   │   │   ├── index.tsx               # 页面编排（来源与样式状态、localStorage 持久化）
+│   │   │   │   ├── HandwritingForm.tsx      # 配置面板（内容/方格/字体/颜色/字号比例/线宽）
+│   │   │   │   ├── HandwritingSheet.tsx     # A4 字帖渲染（cqw 等比尺寸 + 网格文字层）
+│   │   │   │   ├── SheetPattern.tsx         # 整页方格底纹 SVG
+│   │   │   │   └── hooks/                   # useHandwritingCorpus（语料）/ useLocalFonts（字体）
 │   │   │   ├── Studynotes/      # 学习中心：课程主线 + 预习/心得/测验/分享闭环
 │   │   │   │   ├── index.tsx               # 学习中心主页（课程列表 + 各模态框编排）
 │   │   │   │   ├── LessonsListTable.tsx    # 课程列表（预习/心得/测验状态与分数着色）
@@ -365,6 +412,7 @@ study.webian.dev/
 │   │   │   └── ...                # 每个页面目录均包含 index.tsx 入口及子组件
 │   │   └── styles/              # 全局样式
 │   │       ├── index.css        # Tailwind 4 + 自定义色板
+│   │       ├── handwriting.css  # 字帖 A4 呈现与打印规则
 │   │       ├── markdown-editor.css
 │   │       └── markdown-viewer.css
 │   ├── index.html               # SPA HTML 入口
@@ -403,6 +451,7 @@ study.webian.dev/
 │   │       ├── backup-retention.ts # 邮箱保留策略（IMAP 收件箱/已发送 双文件夹清理）
 │   │       ├── mailer.ts       # 备份邮件发送（SMTP 三类超时 + 指数退避重试）
 │   │       └── points.ts       # 积分计算引擎
+│   ├── __test__/                # Vitest 用例（含 handwriting.test.ts 字帖几何与排版）
 │   ├── package.json
 │   └── tsconfig.json
 ├── shared/                       # ★ 共享层（类型/常量/工具函数）
@@ -410,6 +459,7 @@ study.webian.dev/
 │   │   ├── types.ts             # 所有 TypeScript 类型定义
 │   │   ├── constants.ts         # 默认配置（规则/名言/AI 提示词）
 │   │   ├── weekly.ts            # 周报 Zod Schema + 序列化工具
+│   │   ├── handwriting.ts       # 字帖几何与样式常量、数值校验、语料解析、排版与字体名规范化
 │   │   ├── utils.ts             # 纯工具函数（格式化/状态映射/分页）
 │   │   └── index.ts             # 统一导出
 │   ├── package.json
@@ -523,6 +573,17 @@ study.webian.dev/
 ### Phase 11 - 数据安全与运维
 
 - [x] 数据库每日邮件备份：SQLite 库每日定时打包成 zip 并以邮件外发（SMTP 发送 + IMAP 回检确保送达），实现异地容灾；默认全关（BACKUP_ENABLED=false），通过 BACKUP_TIME / BACKUP_MAX_ATTACHMENT_MB / IMAP_* 等变量配置，详见「数据库每日备份」章节
+
+### Phase 12 - 每日练字
+
+- [x] A4 纵向字帖排版：11 格 × 14 行，田字格 / 米字格 / 九宫格底纹合并为整页 SVG
+- [x] 内容来源：自定义文本 + 古诗词（136 首）/ 课文节选（70 条）/ 课外读物（150 条）Markdown 语料
+- [x] 版式自动判定：多行按诗歌（题名作者与正文逐句居中）、单行按节选（首行缩进两格 + 末尾右对齐署名）
+- [x] 避头避尾排字、标点规范占格、超出单页 14 行截断并提示
+- [x] 字体：内置字体（public/fonts + 构建插件清单 + FontFace 按需加载）与系统字体（候选表探测 + 授权后全量）
+- [x] 样式设置：字色 / 方格色 / 字号占格比例 / 方格线宽（毫米），连同字体与方格持久化到 localStorage
+- [x] 任意屏宽等比预览（容器查询 cqw）、窄屏设置弹层、A4 单页打印样式
+- [x] 纯函数单测：几何自洽、语料解析、节选字数过滤、排版规则与字体名规范化
 
 ## 本地开发
 

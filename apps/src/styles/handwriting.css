@@ -1,0 +1,111 @@
+/**
+ * 每日练字样式：A4 单页字帖的视觉与打印行为。
+ * 复用约定：纸张、格边、行距等毫米值由组件按 @shared/handwriting 常量内联注入，
+ * 本文件只承担视觉呈现与打印规则，避免同一组尺寸在两处维护。
+ * 关键约束：@page 边距必须为 0 且由字帖自带页边距，否则浏览器默认边距会把内容挤到第二页；
+ * 打印时需归零侧栏留白（main 的 ml-56 / p-6）并解除预览缩放；虚线为浅色，
+ * 必须开启 print-color-adjust: exact，否则浏览器会在打印时直接丢弃。
+ */
+
+/* 字色与方格色由组件按设置内联注入，这里只保留与颜色无关的呈现规则 */
+.hw-sheet {
+    box-sizing: border-box;
+    overflow: hidden;
+    background: #ffffff;
+    box-shadow: 0 2px 16px rgb(0 0 0 / 0.14);
+    print-color-adjust: exact;
+    -webkit-print-color-adjust: exact;
+}
+
+.hw-sheet-body {
+    position: relative;
+}
+
+.hw-sheet-pattern {
+    position: absolute;
+    inset: 0;
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.hw-sheet-text {
+    position: relative;
+    display: grid;
+}
+
+.hw-cell {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+}
+
+.hw-glyph {
+    display: block;
+    line-height: 1;
+}
+
+/* 避头挤格与「标点随字」共用的尾部标点：压在前字右下角，字号约为正文的四成 */
+.hw-trailing {
+    position: absolute;
+    right: 3%;
+    bottom: 5%;
+    font-size: 0.4em;
+    line-height: 1;
+}
+
+/* 预览容器：既是宽度基准也是容器查询容器，字帖内部尺寸全用 cqw 表达，
+   因此任意屏宽下都按 210:296 等比铺满，无需 JS 测量也不需要 transform 缩放；
+   overflow 兜底避免子元素把外层撑出横向滚动条 */
+.hw-sheet-viewport {
+    width: 100%;
+    max-width: 100%;
+    overflow: hidden;
+    container-type: inline-size;
+}
+
+@page {
+    size: A4 portrait;
+    margin: 0;
+}
+
+@media print {
+    body,
+    .bg-background {
+        background: #ffffff !important;
+    }
+
+    /* 侧边导航与控制面板不参与打印 */
+    aside,
+    .hw-no-print {
+        display: none !important;
+    }
+
+    /* 主内容区去掉为固定侧栏预留的左边距与内边距 */
+    main {
+        margin-left: 0 !important;
+        padding: 0 !important;
+    }
+
+    .hw-page,
+    .hw-sheet-viewport {
+        width: auto !important;
+        height: auto !important;
+        overflow: visible !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    .hw-sheet {
+        margin: 0 !important;
+        box-shadow: none !important;
+        break-inside: avoid;
+    }
+
+    /* 外层 min-h-screen 在打印时不再撑高，避免多出一张空白页 */
+    .min-h-screen {
+        min-height: 0 !important;
+    }
+}
