@@ -85,15 +85,11 @@ export const Layout: React.FC = () => {
                 </p>
                 <button
                     type="button"
-                    onClick={() => setIsSidebarOpen((prev) => !prev)}
-                    aria-label={isSidebarOpen ? '关闭导航菜单' : '打开导航菜单'}
+                    onClick={() => setIsSidebarOpen(true)}
+                    aria-label="打开导航菜单"
                     aria-expanded={isSidebarOpen}
                     className="shrink-0 p-2 rounded-lg text-sidebar-link transition-colors duration-200 hover:bg-sidebar-hover hover:text-background">
-                    {isSidebarOpen ? (
-                        <X className="size-6" strokeWidth={1.5} />
-                    ) : (
-                        <LayoutGrid className="size-6" strokeWidth={1.5} />
-                    )}
+                    <LayoutGrid className="size-6" strokeWidth={1.5} />
                 </button>
             </header>
 
@@ -120,6 +116,16 @@ export const Layout: React.FC = () => {
                     <div className="flex items-center h-10 text-sm text-sidebar-link leading-relaxed">
                         {quote}
                     </div>
+                </div>
+                {/* 小屏抽屉的关闭按钮，置于导航列表之上 */}
+                <div className="lg:hidden flex justify-end px-3 pt-3">
+                    <button
+                        type="button"
+                        onClick={closeSidebar}
+                        aria-label="关闭导航菜单"
+                        className="p-2 rounded-lg text-sidebar-link transition-colors duration-200 hover:bg-sidebar-hover hover:text-background">
+                        <X className="size-6" strokeWidth={1.5} />
+                    </button>
                 </div>
                 <nav className="flex-1 overflow-y-auto p-3 space-y-1">
                     {navItems.map((item) => (
