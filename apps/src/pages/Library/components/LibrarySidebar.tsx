@@ -135,9 +135,8 @@ export function LibrarySidebar({
                             type="button"
                             onClick={onAdd}
                             aria-label="生成题目"
-                            className="btn btn-primary btn-sm gap-1 shrink-0">
-                            <Plus className="size-4" strokeWidth={2} />
-                            添加
+                            className="btn btn-primary py-2.5">
+                            <Plus className="size-4" />
                         </button>
                     </div>
                     <div className="flex items-center gap-1 rounded-lg bg-gray-100 p-0.5">
