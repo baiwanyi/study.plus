@@ -1,8 +1,8 @@
 /**
  * 本地题库路由：实时遍历指定目录下的题目文件（Markdown 与图片），提供清单、单篇内容读取、
  * AI 解题思路与 AI 出卷落盘。
- * 目录取自 options 表 system.libraryDirectory；留空时默认取与数据库文件所在目录（data）平级的
- * library/，相对配置按 APP_ROOT 解析、绝对配置原样使用，路径推导复用 db 导出的 DB_FILE_PATH。
+ * 清单按文件修改时间降序返回（同一时间戳按路径自然序兜底），使最近做过的题目排在前面。
+ * 目录解析统一走 services/library-root（与每日备份共用同一套推导），避免页面与备份指向不同目录。
  * 关键约束：仅允许 .md 与白名单图片；相对路径拒绝绝对路径与 .. 段，resolve 后必须落在题库根目录之内
  * （防目录遍历）；图片不经 Markdown 渲染，内容接口直接以 data URL 返回原始字节；
  * 解题思路只取题干段（剔除参考答案与已存思路区），生成后写回文档末尾的思路区；
@@ -23,10 +23,9 @@ import {
     splitLibraryHints,
     upsertLibraryHint,
 } from '@shared/utils'
-import { client, DB_FILE_PATH } from '../db/index'
-import { resolveDataDir, resolveFromRoot } from '../paths'
 import { generateLibraryHint, generateLibraryPaper } from '../services/ai'
 import { DEEPSEEK_API_KEY } from '../services/ai/core'
+import { resolveLibraryRoot } from '../services/library-root'
 import { aiLimiter, libraryHintLimiter } from '../utils/rate-limit'
 import type { ApiErrorResponse } from '@shared/types'
 
@@ -40,7 +39,6 @@ const MAX_IMAGE_SIZE = 4 * 1024 * 1024
 /** 仅读取文件头部用于解析 front-matter 与标题，避免整篇载入大文件 */
 const HEAD_BYTES = 8192
 const MAX_REL_PATH_LENGTH = 512
-const DEFAULT_DIR_LABEL = 'library'
 const MD_EXTENSION = /\.md$/i
 /**
  * 图片扩展名 → MIME 白名单：数据库中的 MIME 完全由此表决定，不读取文件内容做嗅探，
@@ -162,45 +160,6 @@ function scanLibraryFiles(dir: string, depth = 0): ScannedFile[] {
 }
 
 /**
- * 题库默认目录：与 data 目录同级，即同为「数据库文件所在目录的父目录」下的兄弟目录。
- * 数据目录随 DB_PATH 迁移，题库目录据此自动跟随；测试内存库没有物理路径，
- * 此时回落 resolveDataDir() 以保持同一语义。
- */
-function resolveDefaultLibraryDir(): string {
-    const dataFile = DB_FILE_PATH ?? path.join(resolveDataDir(), 'study.db')
-    return path.join(path.dirname(path.dirname(dataFile)), 'library')
-}
-
-/** 解析题库根目录：配置值优先（绝对路径原样、相对路径按 APP_ROOT 解析），留空用 resolveDefaultLibraryDir() */
-async function resolveLibraryRoot(): Promise<{
-    dirLabel: string
-    rootDir: string
-}> {
-    let configured = ''
-    try {
-        const rows = await client.execute({
-            sql: "SELECT value FROM options WHERE key = 'system'",
-            args: [],
-        })
-        const value = rows.rows[0]?.value
-        const parsed = value
-            ? (JSON.parse(value as string) as Record<string, unknown>)
-            : {}
-        if (typeof parsed.libraryDirectory === 'string') {
-            configured = parsed.libraryDirectory.trim()
-        }
-    } catch (err) {
-        console.error('读取题库目录配置失败，回落默认目录:', err)
-    }
-    const rootDir = configured
-        ? path.isAbsolute(configured)
-            ? path.resolve(configured)
-            : resolveFromRoot(configured)
-        : resolveDefaultLibraryDir()
-    return { dirLabel: configured || DEFAULT_DIR_LABEL, rootDir }
-}
-
-/**
  * 把前端传来的相对路径解析为绝对路径；任何越界、非 md/图片或异常输入一律返回 null。
  * 校验顺序：长度/空字符 → 绝对路径 → `..` 段 → 扩展名白名单 → resolve 后前缀比对。
  */
@@ -278,7 +237,11 @@ router.get('/', async (_req: Request, res: Response) => {
                 console.error('读取题目文件信息失败:', absPath, err)
             }
         }
-        files.sort((a, b) => compareNatural(a.path, b.path))
+        // 最新修改的排最前，同时间戳再按路径自然序固定次序，保证列表稳定可复现
+        files.sort(
+            (a, b) =>
+                b.mtime.localeCompare(a.mtime) || compareNatural(a.path, b.path),
+        )
         res.json({ dir: dirLabel, exists: true, files })
     } catch (err) {
         console.error('获取题库列表失败:', err)

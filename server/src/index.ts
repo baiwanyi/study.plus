@@ -266,7 +266,7 @@ function setupMonthlyRepayment(): void {
     console.log('[Scheduled] 每月还款定时任务已启动')
 }
 
-// Setup daily database backup.
+// 每日备份调度：数据库一致性快照 + 本地题库目录一起打包外发。
 // 与月度还款同一范式：每小时巡检 + 日期守卫，保证每日至多一份；
 // 启动晚于触发时刻时延迟补发一次，适配非全天开机的家庭服务器。
 // 仅「发送失败」不写入已执行日期，允许后续 tick 在当天重试；
@@ -289,7 +289,7 @@ function setupDailyBackup(): void {
         }
         const result = await runDailyBackup(backupConfig, mailConfig, now)
         if (result.status === 'sent') {
-            console.log('[Backup] 每日数据库备份已发送')
+            console.log('[Backup] 每日备份已发送（数据库快照 + 题库目录）')
         }
         if (result.status !== 'failed') {
             lastBackupDate = toDateKey(now)
@@ -298,7 +298,7 @@ function setupDailyBackup(): void {
     setTimeout(checkAndBackup, 30 * 1000)
     setInterval(checkAndBackup, 60 * 60 * 1000)
     const trigger = `${String(backupConfig.triggerHour).padStart(2, '0')}:${String(backupConfig.triggerMinute).padStart(2, '0')}`
-    console.log(`[Scheduled] 每日数据库备份定时任务已启动，触发时刻 ${trigger}`)
+    console.log(`[Scheduled] 每日备份定时任务已启动，触发时刻 ${trigger}`)
 }
 
 // 以下为生产启动逻辑：仅当以主模块直接运行（node/bun server/src/index.ts）时执行。

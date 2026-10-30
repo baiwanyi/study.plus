@@ -1,9 +1,10 @@
 /**
- * 数据库每日备份编排：一致性快照、zip 打包、邮件外发与调度判定。
- * 数据库路径由外部注入（取自 db 模块的 DB_FILE_PATH），不在本模块重复解析，
- * 以免开发态与部署态指向不同的库；临时文件统一落在系统临时目录并兜底清理。
+ * 每日备份编排：数据库一致性快照、本地题库目录打包、zip 邮件外发与调度判定。
+ * 数据库路径由外部注入（取自 db 模块的 DB_FILE_PATH），题库根目录由 services/library-root 解析，
+ * 两者都不在本模块重复推导，以免开发态与部署态指向不同的位置；临时文件落在系统临时目录并兜底清理。
  * 快照前须执行 wal_checkpoint(TRUNCATE)，否则 WAL 中未落库的事务会被漏掉；
- * attachement 超限直接跳过发送，避免 SMTP 拒收后重试演变为无效流量。
+ * 题库目录递归收录普通文件并跳过软链（防止把题库之外的文件打进邮件附件），目录不存在时只备份数据库；
+ * 附件超限直接跳过发送，避免 SMTP 拒收后重试演变为无效流量。
  */
 import { randomUUID } from 'crypto'
 import fs from 'fs'
@@ -13,6 +14,7 @@ import { ZipArchive } from 'archiver'
 import { sql } from 'drizzle-orm'
 import { db } from '../db/index'
 import { pruneBackupMails, readRetentionConfig } from './backup-retention'
+import { resolveLibraryRoot } from './library-root'
 import type { MailConfig, MailPayload } from './mailer'
 import { BACKUP_SUBJECT_PREFIX, sendBackupMail } from './mailer'
 
@@ -116,11 +118,65 @@ export async function createSnapshot(
     await fs.promises.copyFile(dbPath, targetPath)
 }
 
-/** 把快照打包为 zip，返回前确保输出流已关闭，避免读到半截文件。 */
+/** 题库目录在压缩包内的根节点名，解压后与线上目录结构一致，便于直接回滚 */
+const LIBRARY_ENTRY_ROOT = 'library'
+/** 题库目录递归深度上限：题库实际只有一两层，超深目录多半是异常布局，直接停止避免拖垮打包 */
+const LIBRARY_MAX_DEPTH = 20
+
+/** 判断路径是否为已存在的目录（不存在或不可读都视为否，由调用方降级） */
+async function isDirectory(target: string): Promise<boolean> {
+    try {
+        return (await fs.promises.stat(target)).isDirectory()
+    } catch {
+        return false
+    }
+}
+
+/**
+ * 递归把题库目录写入压缩包：只收普通文件，软链一律跳过，
+ * 避免题库内的软链把目录之外的敏感文件带进邮件附件。
+ */
+async function appendLibraryFiles(
+    archive: ZipArchive,
+    rootDir: string,
+    entryRoot: string,
+    depth = 0,
+): Promise<void> {
+    if (depth > LIBRARY_MAX_DEPTH) {
+        console.error(`[Backup] 题库目录层级过深，跳过打包: ${rootDir}`)
+        return
+    }
+    const entries = await fs.promises.readdir(rootDir, { withFileTypes: true })
+    for (const entry of entries) {
+        if (entry.isSymbolicLink()) continue
+        const absPath = path.join(rootDir, entry.name)
+        const entryName = `${entryRoot}/${entry.name}`
+        if (entry.isDirectory()) {
+            await appendLibraryFiles(archive, absPath, entryName, depth + 1)
+        } else if (entry.isFile()) {
+            archive.file(absPath, { name: entryName })
+        }
+    }
+}
+
+/** 题库目录存在才追加，缺失时视为未启用本地题库，不影响数据库备份 */
+async function appendLibrary(
+    archive: ZipArchive,
+    libraryDir: string | undefined,
+): Promise<void> {
+    if (!libraryDir || !(await isDirectory(libraryDir))) return
+    await appendLibraryFiles(archive, libraryDir, LIBRARY_ENTRY_ROOT)
+}
+
+/**
+ * 把快照打包为 zip（可选追加题库目录），返回前确保输出流已关闭，避免读到半截文件。
+ * 题库收录失败时销毁输出流并抛错，绝不发出内容不完整的备份。
+ */
 export async function createZip(
     sourcePath: string,
     zipPath: string,
     entryName: string,
+    libraryDir?: string,
 ): Promise<void> {
     await new Promise<void>((resolve, reject) => {
         const output = fs.createWriteStream(zipPath)
@@ -130,7 +186,12 @@ export async function createZip(
         archive.on('error', reject)
         archive.pipe(output)
         archive.file(sourcePath, { name: entryName })
-        archive.finalize().catch(reject)
+        appendLibrary(archive, libraryDir)
+            .then(() => archive.finalize())
+            .catch((error: unknown) => {
+                output.destroy()
+                reject(error)
+            })
     })
 }
 
@@ -150,18 +211,20 @@ function buildPayload(
     dateKey: string,
     zipPath: string,
     sizeBytes: number,
+    contents: string,
 ): MailPayload {
     const sizeMb = (sizeBytes / 1024 / 1024).toFixed(2)
     return {
         subject: `${BACKUP_SUBJECT_PREFIX} study-backup-${dateKey}`,
         text: [
-            `学迹Plus 数据库每日备份`,
+            `学迹Plus 每日备份`,
             ``,
             `备份日期：${dateKey}`,
+            `备份内容：${contents}`,
             `压缩包体积：${sizeMb} MB`,
             `附件文件名：study-backup-${dateKey}.zip`,
             ``,
-            `本邮件由服务端定时任务自动发送，内含数据库完整快照，请勿随意外传。`,
+            `本邮件由服务端定时任务自动发送，请勿随意外传。`,
         ].join('\n'),
         attachment: {
             path: zipPath,
@@ -185,7 +248,18 @@ export async function runDailyBackup(
     const zipPath = path.join(os.tmpdir(), `study-backup-${token}.zip`)
     try {
         await createSnapshot(config.dbPath, snapshotPath)
-        await createZip(snapshotPath, zipPath, `study-${dateKey}.db`)
+        // 题库根目录与题库页面同源解析，目录不存在时只打包数据库
+        const { rootDir } = await resolveLibraryRoot()
+        const libraryIncluded = await isDirectory(rootDir)
+        await createZip(
+            snapshotPath,
+            zipPath,
+            `study-${dateKey}.db`,
+            libraryIncluded ? rootDir : undefined,
+        )
+        const contents = libraryIncluded
+            ? `数据库完整快照（study-${dateKey}.db）+ 本地题库目录（${LIBRARY_ENTRY_ROOT}/）`
+            : `数据库完整快照（study-${dateKey}.db），题库目录不存在未收录`
         const { size } = await fs.promises.stat(zipPath)
         if (size > config.maxAttachmentBytes) {
             const limitMb = Math.floor(config.maxAttachmentBytes / 1024 / 1024)
@@ -194,7 +268,10 @@ export async function runDailyBackup(
             )
             return { status: 'skipped', reason: '附件超出体积上限' }
         }
-        await sendBackupMail(mailConfig, buildPayload(dateKey, zipPath, size))
+        await sendBackupMail(
+            mailConfig,
+            buildPayload(dateKey, zipPath, size, contents),
+        )
         const retentionConfig = readRetentionConfig(mailConfig)
         if (retentionConfig) {
             try {

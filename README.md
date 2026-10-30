@@ -24,7 +24,7 @@
 - **学习分享**：一键生成分享卡片（积分/作业/周报/学习心得），记录成长瞬间
 - **本地题目**：自动遍历本地题目目录下的 Markdown 题目与图片，支持数学公式（LaTeX）渲染，图片直接展示原图，参考答案默认折叠、点击按钮后展开，清单点击或键盘 ←/→ 顺序阅读
 - **每日练字**：把诗词、课文节选或自定义文本排成 A4 硬笔字帖（11 格 × 14 行，田字格/米字格/九宫格），内置字体随站点分发，浏览器直接打印或另存 PDF
-- **数据备份**：数据库每日自动打包并邮件外发，实现异地容灾（详见部署文档「数据库每日备份」章节）
+- **数据备份**：数据库与本地题库目录每日自动打包并邮件外发，实现异地容灾（详见部署文档「数据库每日备份」章节）
 
 ### 产品定位
 
@@ -447,8 +447,9 @@ study.webian.dev/
 │   │       │   ├── task.ts    # 作业评分/起名/出题 AI
 │   │       │   ├── weekly.ts  # 周报分析 AI
 │   │       │   └── studynotes.ts # 心得评估 AI + 测验出题 AI + 测验批改 AI（客观题本地判分）+ 预习分析 AI
-│   │       ├── backup.ts       # 每日备份编排（一致性快照 + zip 打包 + 调度判定）
+│   │       ├── backup.ts       # 每日备份编排（一致性快照 + 题库目录打包 + 调度判定）
 │   │       ├── backup-retention.ts # 邮箱保留策略（IMAP 收件箱/已发送 双文件夹清理）
+│   │       ├── library-root.ts # 题库根目录解析（题库路由与备份共用同一套推导）
 │   │       ├── mailer.ts       # 备份邮件发送（SMTP 三类超时 + 指数退避重试）
 │   │       └── points.ts       # 积分计算引擎
 │   ├── __test__/                # Vitest 用例（含 handwriting.test.ts 字帖几何与排版）
@@ -572,7 +573,7 @@ study.webian.dev/
 
 ### Phase 11 - 数据安全与运维
 
-- [x] 数据库每日邮件备份：SQLite 库每日定时打包成 zip 并以邮件外发（SMTP 发送 + IMAP 回检确保送达），实现异地容灾；默认全关（BACKUP_ENABLED=false），通过 BACKUP_TIME / BACKUP_MAX_ATTACHMENT_MB / IMAP_* 等变量配置，详见「数据库每日备份」章节
+- [x] 数据库与题库每日邮件备份：SQLite 库与本地题库目录每日定时打包成 zip 并以邮件外发（SMTP 发送 + IMAP 回检确保送达），实现异地容灾；默认全关（BACKUP_ENABLED=false），通过 BACKUP_TIME / BACKUP_MAX_ATTACHMENT_MB / IMAP_* 等变量配置，详见「数据库每日备份」章节
 
 ### Phase 12 - 每日练字
 
@@ -780,7 +781,7 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 | `DIST_PATH` | 前端产物目录，默认 `APP_ROOT/dist` |
 | `BACKUP_ENABLED` | 数据库每日备份总开关，默认 `false`；置为 `true` 才启用 |
 | `BACKUP_TIME` | 每日触发时刻 `HH:mm`（本地时区），默认 `03:00` |
-| `BACKUP_MAX_ATTACHMENT_MB` | zip 超过该体积则跳过发送并告警，默认 `20` |
+| `BACKUP_MAX_ATTACHMENT_MB` | zip（数据库快照 + 题库目录）超过该体积则跳过发送并告警，默认 `20`；题库图片多时需调高 |
 | `SMTP_HOST` / `SMTP_PORT` / `SMTP_SECURE` | 备份邮件发送服务器；QQ 邮箱为 `smtp.qq.com` / `465` / `true` |
 | `SMTP_USER` / `SMTP_PASS` | 发件账号与**授权码**（在邮箱网页端生成，非登录密码） |
 | `MAIL_FROM` / `MAIL_TO` | 发件人（默认取 `SMTP_USER`）与收件人（多个逗号分隔） |
@@ -795,7 +796,7 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 
 ## 数据库每日备份
 
-把 SQLite 库每天打包成 zip 并以邮件外发，用作异地容灾：本机硬盘故障时，邮箱里仍保留最近若干天的完整快照。功能默认全关，不影响主服务。
+把 SQLite 库与本地题库目录（`library/`，含题目 Markdown 与图片）每天打包成 zip 并以邮件外发，用作异地容灾：本机硬盘故障时，邮箱里仍保留最近若干天的完整快照，恢复时库与题目一起回滚。功能默认全关，不影响主服务。
 
 ### 工作流程
 
@@ -803,13 +804,14 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 | ---- | ---- |
 | 调度 | 每小时巡检一次，到达 `BACKUP_TIME` 且当日未执行过则触发；启动晚于触发时刻时，开机 30 秒后补发一次 |
 | 快照 | 先执行 `PRAGMA wal_checkpoint(TRUNCATE)` 把 WAL 中未落库的事务写回主库，再复制物理文件 |
-| 打包 | 流式压缩为 zip，附件名 `study-backup-YYYY-MM-DD.zip` |
+| 打包 | 流式压缩为 zip：库快照 `study-YYYY-MM-DD.db` + 题库目录 `library/`（递归收录，目录不存在则只打包库），附件名 `study-backup-YYYY-MM-DD.zip` |
 | 发送 | SMTP 直连，附件超过 `BACKUP_MAX_ATTACHMENT_MB` 则跳过发送并告警 |
 | 清理 | 按自定义头与主题前缀命中备份邮件，把超出份数的旧备份移入「已删除」文件夹 |
 
 ### 安全性设计
 
 - **一致性**：直接复制读写中的 SQLite 文件会漏掉 WAL 里未落库的事务，故快照前必须先 checkpoint。
+- **题库软链跳过**：题库目录递归收录时只取普通文件，软链一律略过，防止目录内的软链把题库之外的文件打进邮件附件。
 - **防误删三重防护**：自定义头 `X-StudyPlus-Backup` 精确命中 → 逐封校验主题前缀 `[StudyPlus Backup]` → 单文件夹单次移动不超过 `BACKUP_RETENTION_MAX_DELETE` 封。探测不到「已删除」文件夹时直接放弃清理并打印全部文件夹清单，绝不猜测。
 - **主题前缀刻意使用纯 ASCII**：中文前缀经 SMTP 传输后会被 MIME 编码为 `=?UTF-8?B?…?=`，IMAP 侧取回的主题将无法按前缀匹配，二次校验会恒定失效。
 - **降级不拖垮主服务**：SMTP 或 IMAP 配置缺失时仅打印中文告警并禁用对应能力，API 服务正常启动。

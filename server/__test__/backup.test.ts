@@ -1,6 +1,7 @@
 /**
  * 每日备份主流程测试：配置解析、调度判定、快照一致性、zip 打包与发送编排。
  * 快照与打包走真实临时文件以校验物理产物，邮件发送统一用替身隔离外部网络；
+ * 题库根目录固定指向不存在的临时路径，避免备份流程读到仓库真实题库而随题量增长变慢；
  * 环境变量通过 vi.stubEnv 注入并在每条用例后回滚，避免污染同进程的其他测试。
  */
 import fs from 'fs'
@@ -23,6 +24,22 @@ vi.mock('../src/services/mailer', async (importOriginal) => {
     const actual =
         await importOriginal<typeof import('../src/services/mailer')>()
     return { ...actual, sendBackupMail: vi.fn() }
+})
+
+// 题库目录固定为不存在的路径：备份编排只走「仅数据库」分支，避免读到仓库真实题库。
+// 工厂被提升到文件顶部，故此处用动态导入取 path/os，避免访问尚未初始化的顶层绑定。
+vi.mock('../src/services/library-root', async () => {
+    const osModule = await import('os')
+    const pathModule = await import('path')
+    return {
+        resolveLibraryRoot: async () => ({
+            dirLabel: 'library',
+            rootDir: pathModule.join(
+                osModule.tmpdir(),
+                'study-test-missing-library',
+            ),
+        }),
+    }
 })
 
 const mockedSendBackupMail = vi.mocked(sendBackupMail)
@@ -55,6 +72,11 @@ function makePayload(): MailPayload {
         text: '测试',
         attachment: { path: '/tmp/backup.zip', filename: 'backup.zip' },
     }
+}
+
+/** zip 中央目录里以明文保存条目名，直接按字节查找即可判断条目是否被收录 */
+function zipContains(buffer: Buffer, entryName: string): boolean {
+    return buffer.includes(Buffer.from(entryName, 'utf8'))
 }
 
 async function withTempDir(
@@ -136,6 +158,48 @@ describe('每日备份：快照与打包', () => {
             const buffer = await fs.promises.readFile(zipPath)
             expect(buffer.subarray(0, 4).toString('hex')).toBe('504b0304')
             expect(buffer.length).toBeGreaterThan(0)
+        })
+    })
+
+    it('用例 11 - 题库目录随数据库一起打包到 library/ 下（含子目录）', async () => {
+        await withTempDir(async (dir) => {
+            const source = path.join(dir, 'study.db')
+            const libraryDir = path.join(dir, 'library')
+            const zipPath = path.join(dir, 'backup.zip')
+            await fs.promises.writeFile(source, 'x'.repeat(1024))
+            await fs.promises.mkdir(path.join(libraryDir, 'img'), {
+                recursive: true,
+            })
+            await fs.promises.writeFile(
+                path.join(libraryDir, 'poem.md'),
+                '# 分数练习题',
+            )
+            await fs.promises.writeFile(
+                path.join(libraryDir, 'img', 'sample.png'),
+                'png',
+            )
+            await createZip(source, zipPath, 'study-2026-09-04.db', libraryDir)
+            const buffer = await fs.promises.readFile(zipPath)
+            expect(zipContains(buffer, 'study-2026-09-04.db')).toBe(true)
+            expect(zipContains(buffer, 'library/poem.md')).toBe(true)
+            expect(zipContains(buffer, 'library/img/sample.png')).toBe(true)
+        })
+    })
+
+    it('用例 12 - 题库目录不存在时只打包数据库，不报错', async () => {
+        await withTempDir(async (dir) => {
+            const source = path.join(dir, 'study.db')
+            const zipPath = path.join(dir, 'backup.zip')
+            await fs.promises.writeFile(source, 'x'.repeat(1024))
+            await createZip(
+                source,
+                zipPath,
+                'study-2026-09-04.db',
+                path.join(dir, 'missing-library'),
+            )
+            const buffer = await fs.promises.readFile(zipPath)
+            expect(zipContains(buffer, 'study-2026-09-04.db')).toBe(true)
+            expect(zipContains(buffer, 'library/')).toBe(false)
         })
     })
 })
