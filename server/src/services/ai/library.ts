@@ -367,20 +367,13 @@ export async function generateLibraryPaper(
     }
 
     const images = options.images ?? []
-    const hasImages = images.length > 0
-    // 纯文本档位不会接收 image_url 分片，缺视觉模型时提前失败并给出可操作提示
-    if (hasImages && !DEEPSEEK_VISION_MODEL) {
-        throw new Error(
-            '图片出题需要配置支持视觉的模型，请设置环境变量 DEEPSEEK_VISION_MODEL',
-        )
-    }
-
     const prompt = promptLibraryGeneratePaper
         .replaceAll('{grade}', options.grade)
         .replaceAll('{subject}', options.subject)
         .replaceAll('{questionCount}', String(options.questionCount))
         .replaceAll('{requirements}', options.requirements || '无')
-    const model = hasImages ? DEEPSEEK_VISION_MODEL : undefined
+    // 带图请求走视觉档位；未单独配置时该档位即 DEEPSEEK_MODEL（flash 已原生支持 image_url）
+    const model = images.length > 0 ? DEEPSEEK_VISION_MODEL : undefined
 
     const first = await callDeepSeek({
         messages: buildPaperMessages(prompt, options.images),

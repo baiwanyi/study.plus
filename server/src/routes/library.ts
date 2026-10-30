@@ -8,8 +8,8 @@
  * 解题思路只取题干段（剔除参考答案与已存思路区），生成后写回文档末尾的思路区；
  * 出卷标题由模型按年级、学科与题目要求自拟，文件名取其一级标题净化而来（去 Windows 非法字符与首尾点号），
  * 同名时追加序号，落盘前已由 AI 服务校验过可解析性；
- * 题目要求可附参考图片（data URL，最多 9 张、仅 PNG/JPEG/WebP），此路径必须配置
- * DEEPSEEK_VISION_MODEL，否则直接 503，避免把图片发给纯文本模型；
+ * 题目要求可附参考图片（data URL，最多 9 张、仅 PNG/JPEG/WebP），图片随 user 消息以
+ * image_url 分片发送，模型档位由 DEEPSEEK_VISION_MODEL 决定（缺省即 DEEPSEEK_MODEL）；
  * 同一文件的写入必须排队串行，写入失败时降级为仅返回内容；
  * 删除接口复用同一套路径校验与文件队列，只删文件、不删目录，且不提供回收站。
  */
@@ -26,7 +26,7 @@ import {
 import { client, DB_FILE_PATH } from '../db/index'
 import { resolveDataDir, resolveFromRoot } from '../paths'
 import { generateLibraryHint, generateLibraryPaper } from '../services/ai'
-import { DEEPSEEK_API_KEY, DEEPSEEK_VISION_MODEL } from '../services/ai/core'
+import { DEEPSEEK_API_KEY } from '../services/ai/core'
 import { aiLimiter, libraryHintLimiter } from '../utils/rate-limit'
 import type { ApiErrorResponse } from '@shared/types'
 
@@ -608,13 +608,6 @@ router.post('/generate', aiLimiter, async (req: Request, res: Response) => {
             } satisfies ApiErrorResponse)
             return
         }
-        if (images.length > 0 && !DEEPSEEK_VISION_MODEL) {
-            res.status(503).json({
-                error: '图片出题未配置视觉模型，请先在服务端设置 DEEPSEEK_VISION_MODEL',
-            } satisfies ApiErrorResponse)
-            return
-        }
-
         const markdown = await generateLibraryPaper({
             grade: readShortText(body.grade, 20) || '六年级',
             subject: readShortText(body.subject, 20) || '数学',

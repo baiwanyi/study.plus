@@ -71,7 +71,7 @@ export interface LibraryGenerateInput {
     /** 题目要求（文字），可为空；仅传图片时也可只提交图片 */
     requirements: string
     questionCount: number
-    /** 题目要求附带的参考图片（data URL），最多 9 张；需要服务端配置视觉模型 */
+    /** 题目要求附带的参考图片（data URL），最多 9 张；随消息以多模态分片发送 */
     images?: string[]
 }
 

@@ -8,8 +8,8 @@
  * 绝不返回不可用 JSON 误导调用方；JSON 调用方可经 validateJson 声明所需结构。
  * 整条重试链共用总时长预算，单次超时取「配置值」与「剩余预算」的较小值，避免多次长超时叠加；
  * 截断扩容次数受限（输出过长时提高 max_tokens 无效，须靠精简约束收敛长度）。
- * 多模态：messages 的 content 支持「文本 + 图片」分片，但图片必须由调用方改用
- * DEEPSEEK_VISION_MODEL（纯文本档位不会接收 image_url）。
+ * 多模态：messages 的 content 支持「文本 + 图片」分片，默认模型（flash 档位）已原生接收
+ * image_url；仅当图片需要走另一档模型时，才用 DEEPSEEK_VISION_MODEL 覆盖。
  */
 import type { TaskGrade } from '@shared/types'
 
@@ -30,10 +30,12 @@ const DEFAULT_MAX_TOKENS = 8000
 /** 默认模型档位：可用 DEEPSEEK_MODEL 覆盖，便于切换模型而无需改代码 */
 const DEEPSEEK_MODEL = process.env.DEEPSEEK_MODEL || 'deepseek-flash'
 /**
- * 视觉模型档位：仅在调用方传入图片时启用（纯文本模型不收 image_url 分片）。
- * 未配置时图片类请求会直接报错，而不是把图片发给不支持多模态的模型后收到 400。
+ * 视觉模型档位：仅在调用方传入图片时启用。
+ * flash 档位（deepseek-flash）已原生支持图片输入，故缺省复用 DEEPSEEK_MODEL；
+ * 仅当图片需要走另一档模型（如能力更强的档位）时才用该变量覆盖。
  */
-const DEEPSEEK_VISION_MODEL = process.env.DEEPSEEK_VISION_MODEL || ''
+const DEEPSEEK_VISION_MODEL =
+    process.env.DEEPSEEK_VISION_MODEL || DEEPSEEK_MODEL
 /** 单次请求的默认超时（未显式配置 timeoutMs 时生效） */
 const DEFAULT_ATTEMPT_TIMEOUT_MS = 30_000
 /** 含重试在内的整条调用链总时长预算，超出即停止重试，避免用户长时间等待后仍拿不到结果 */
