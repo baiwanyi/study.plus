@@ -138,6 +138,7 @@ export const taskAILabels: Record<TaskAI, string> = {
     'quiz-question': '测验出题',
     'quiz-marking': '测验批改',
     'library-hint': '题目思路',
+    'library-generate': '题目生成'
 }
 
 export function getCurrentMonth(): string {

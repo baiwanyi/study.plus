@@ -265,6 +265,7 @@ export type TaskAI =
     | 'quiz-question'
     | 'quiz-marking'
     | 'library-hint'
+    | 'library-generate'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =

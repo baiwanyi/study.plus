@@ -3,18 +3,19 @@
  * 复用 useLibrary 管理 URL 驱动的当前文件状态，prepareLibraryContent 完成数学定界符归一化、
  * 分数尺寸统一与选项换行；@shared/utils 的 splitLibraryHints 剥离文末已保存的思路区、
  * splitLibraryAnswer 切出答案段交给 LibraryAnswer 折叠、parseLibraryQuestions 把题干拆成小题块，
- * 逐块渲染 LibraryQuestion（入口在题目正文末尾，已保存的思路随文件加载直接展开）。
+ * 逐块渲染 LibraryQuestion（入口在题目正文末尾，已保存的思路点开即见）。
  * 关键约束：目录未配置或不存在时须给出明确指引；kind 为 image 的文件直接 <img> 渲染 data URL，
  * 不经过 Markdown 管线与内容预处理；内容渲染开启 KaTeX 以支持数学分数，该开关只在本页启用，
  * 避免影响其他页面既有内容；小题块索引须与解析结果一致（服务端按同一索引取题与写回），
- * 题块 key 需含文件路径，避免切换题目时复用旧组件的思路状态。
+ * 题块 key 需含文件路径，避免切换题目时复用旧组件的思路状态；思路面板的展开项由本页统一持有，
+ * 展开新题即收起旧题（同一时刻只展开一道），切换文件时整体收起。
  * 响应式：lg 及以上清单常驻右侧；小屏隐藏清单，改为内容区顶部的「题目列表」按钮唤起右侧抽屉。
  * 出卷入口在清单搜索栏的「添加」按钮与空态页，弹窗生成成功后刷新清单并切换到新文件。
  */
 'use client'
 
 import { FileQuestion, PanelRight, Sparkles } from 'lucide-react'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import '@apps/styles/markdown-viewer.css'
 import { Loading } from '@components/Loading'
 import { MarkdownView } from '@components/MarkdownView'
@@ -37,6 +38,8 @@ import type { LibraryFileMeta } from '@apps/services'
 export function Library() {
     const [isListOpen, setIsListOpen] = useState(false)
     const [isGenerateOpen, setIsGenerateOpen] = useState(false)
+    // 思路面板同时只展开一道小题：记录展开项的键，展开新题即整体替换
+    const [openHintKey, setOpenHintKey] = useState<string | null>(null)
     const [pendingDelete, setPendingDelete] = useState<LibraryFileMeta | null>(
         null,
     )
@@ -99,6 +102,12 @@ export function Library() {
             hints,
         }
     }, [detail])
+
+    // 换题时收起全部思路：新题目的小块键全新，旧键残留会让人误以为只有一道题有思路
+    const articlePath = article?.path ?? ''
+    useEffect(() => {
+        setOpenHintKey(null)
+    }, [articlePath])
 
     if (listLoading) return <Loading />
 
@@ -202,26 +211,35 @@ export function Library() {
                     ) : article ? (
                         <div className="flex-1 p-8 bg-white">
                             <div className="flex flex-col gap-5">
-                                {article.blocks.map((block) =>
-                                    block.kind === 'text' ? (
+                                {article.blocks.map((block) => {
+                                    const blockKey = `${article.path}#${block.index}`
+                                    return block.kind === 'text' ? (
                                         <MarkdownView
-                                            key={`${article.path}#${block.index}`}
+                                            key={blockKey}
                                             content={block.content}
                                             className="markdown-viewer"
                                             enableMath
                                         />
                                     ) : (
                                         <LibraryQuestion
-                                            key={`${article.path}#${block.index}`}
+                                            key={blockKey}
                                             path={article.path}
                                             block={block}
                                             initialHint={
                                                 article.hints.get(block.index)
                                                     ?.markdown ?? ''
                                             }
+                                            isOpen={openHintKey === blockKey}
+                                            onToggle={() =>
+                                                setOpenHintKey(
+                                                    openHintKey === blockKey
+                                                        ? null
+                                                        : blockKey,
+                                                )
+                                            }
                                         />
-                                    ),
-                                )}
+                                    )
+                                })}
                             </div>
                             {article.answer && isAdmin() ? (
                                 <LibraryAnswer

@@ -1,9 +1,10 @@
 /**
- * 单道小题解题思路 Hook：管理思路正文、展开状态、加载态与错误，支持「换一种思路」重新生成。
+ * 单道小题解题思路 Hook：管理思路正文、加载态与错误，支持「换一种思路」重新生成。
  * 复用 libraryApi.hint（只提交路径与小题索引，题干由服务端读取，生成后写回题目文件），
  * 初始内容来自题目文件中已保存的思路区，因此二次进入页面无需重新请求。
- * 关键约束：同一时刻只允许一个请求在飞，重新生成前先中止上一个；组件卸载必须 abort 且不再回写状态；
- * 重新生成失败时保留上一次的可用思路，避免已经看到的引导被清空。
+ * 展开状态由页面受控传入（同时只展开一道小题），本 Hook 只负责按展开态取数与中止请求。
+ * 关键约束：同一时刻只允许一个请求在飞，重新生成前先中止上一个；收起与卸载都必须 abort 且不再回写状态；
+ * 重新生成失败时保留上一次的可用思路，避免已经看到的引导被清空；空思路仅在展开时自动请求一次。
  */
 'use client'
 
@@ -14,16 +15,10 @@ import { formatErrorMessage } from '@apps/utils/client'
 export interface UseLibraryQuestionHintResult {
     /** 思路 Markdown 正文；空串表示尚未生成 */
     hint: string
-    /** 面板是否展开 */
-    isOpen: boolean
     isLoading: boolean
     error: string
     /** 最近一次结果是否成功写入题目文件 */
     isSaved: boolean
-    /** 展开：已有内容直接展开，没有则发起首次生成 */
-    open: () => void
-    /** 收起面板（内容保留，再次展开不再请求） */
-    close: () => void
     /** 生成思路：isRegenerate 为真时要求换一种切入角度并覆盖已保存内容 */
     request: (isRegenerate: boolean) => void
 }
@@ -32,9 +27,9 @@ export function useLibraryQuestionHint(
     relPath: string,
     questionIndex: number,
     initialHint: string,
+    isOpen: boolean,
 ): UseLibraryQuestionHintResult {
     const [hint, setHint] = useState(initialHint)
-    const [isOpen, setIsOpen] = useState(initialHint !== '')
     const [isLoading, setIsLoading] = useState(false)
     const [error, setError] = useState('')
     const [isSaved, setIsSaved] = useState(true)
@@ -52,7 +47,6 @@ export function useLibraryQuestionHint(
             controllerRef.current?.abort()
             const controller = new AbortController()
             controllerRef.current = controller
-            setIsOpen(true)
             setIsLoading(true)
             setError('')
             libraryApi
@@ -74,20 +68,20 @@ export function useLibraryQuestionHint(
         [relPath, questionIndex],
     )
 
-    const open = useCallback(() => {
-        if (hint !== '') {
-            setIsOpen(true)
-            return
-        }
-        request(false)
-    }, [hint, request])
-
-    const close = useCallback(() => {
+    // 收起即中止在飞请求：面板已不可见，结果无需回写，也避免为看不见的思路继续生成
+    useEffect(() => {
+        if (isOpen) return
         controllerRef.current?.abort()
-        setIsOpen(false)
+        controllerRef.current = null
         setError('')
         setIsLoading(false)
-    }, [])
+    }, [isOpen])
 
-    return { hint, isOpen, isLoading, error, isSaved, open, close, request }
+    // 展开时若尚无思路则自动生成一次；已有内容（含文件中已保存的思路）直接展示，不再请求
+    useEffect(() => {
+        if (!isOpen || hint !== '') return
+        request(false)
+    }, [isOpen, hint, request])
+
+    return { hint, isLoading, error, isSaved, request }
 }

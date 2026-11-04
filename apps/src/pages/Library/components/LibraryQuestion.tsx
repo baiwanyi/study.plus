@@ -1,11 +1,11 @@
 /**
  * 题库单题区块：以「题号方块 + 解题思路按钮」起首，题干排在右侧列，展开的思路在下方整行通栏展示。
- * 复用 MarkdownView（开启 KaTeX）渲染题干与思路、useLibraryQuestionHint 管理请求状态，
+ * 复用 MarkdownView（开启 KaTeX）渲染题干与思路、useLibraryQuestionHint 按受控展开态取数，
  * 排版沿用页面引入的 markdown-viewer.css，不引入额外样式文件。
  * 关键约束：题干列与按钮同为 items-start，题号块与入口左右共边（overflow-hidden 容器内）；
- * 思路只含方法与引导问题、不含答案；已保存的思路默认展开，收起后按钮文案回到「解题思路」
- * 且不再请求；生成结果已写回题目文件，未写入时在面板内提示仅本次可见；
- * 展开状态是组件内 UI 状态，切换题目须由父级以 key 重建本组件来重置。
+ * 思路只含方法与引导问题、不含答案；展开与否由页面统一持有（同时只展开一道小题），
+ * 本组件只透传 isOpen 并在点击时回调 onToggle；收起后按钮文案回到「思路」，再次展开已有内容不再请求；
+ * 生成结果已写回题目文件，未写入时在面板内提示仅本次可见。
  */
 'use client'
 
@@ -23,15 +23,25 @@ interface LibraryQuestionProps {
     block: LibraryQuestionBlock
     /** 题目文件中已保存的思路（含条目标题行）；无则为空串 */
     initialHint: string
+    /** 思路面板是否展开：由页面统一持有，保证同时只展开一道小题 */
+    isOpen: boolean
+    /** 切换本小题的展开状态：页面据此收起其他小题 */
+    onToggle: () => void
 }
 
 export function LibraryQuestion({
     path,
     block,
     initialHint,
+    isOpen,
+    onToggle,
 }: LibraryQuestionProps) {
-    const { hint, isOpen, isLoading, error, isSaved, open, close, request } =
-        useLibraryQuestionHint(path, block.index, initialHint)
+    const { hint, isLoading, error, isSaved, request } = useLibraryQuestionHint(
+        path,
+        block.index,
+        initialHint,
+        isOpen,
+    )
     const body = stripLibraryHintHeading(hint)
     // 与题干用同一套预处理：`\(…\)` 归一化为 `$…$`、`\frac` 改写为 `\dfrac`，
     // 否则 KaTeX 只认 `$` 定界符，AI 输出的 `\( \)` 会显示成裸 LaTeX
@@ -46,7 +56,8 @@ export function LibraryQuestion({
                     </span>
                     <button
                         type="button"
-                        onClick={isOpen ? close : open}
+                        onClick={onToggle}
+                        aria-expanded={isOpen}
                         className="btn btn-sm">
                         {isOpen ? '收起' : '思路'}
                     </button>
