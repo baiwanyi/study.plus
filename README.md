@@ -25,28 +25,31 @@
 - **本地题目**：自动遍历本地题目目录下的 Markdown 题目与图片，支持数学公式（LaTeX）渲染，图片直接展示原图，参考答案默认折叠、点击按钮后展开，清单点击或键盘 ←/→ 顺序阅读
 - **每日练字**：把诗词、课文节选或自定义文本排成 A4 硬笔字帖（11 格 × 14 行，田字格/米字格/九宫格），内置字体随站点分发，浏览器直接打印或另存 PDF
 - **数据备份**：数据库与本地题库目录每日自动打包并邮件外发，实现异地容灾（详见部署文档「数据库每日备份」章节）
+- **看图说话**：从 Unsplash 搜索并采集图片到本地，支持为图片编写描述草稿与关键词，提交后由 AI 评分并展示分项结果与改进建议
 
 ### 产品定位
 
-一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支、每周学习总结与 AI 分析、本地题目练习、A4 字帖临写的轻量级工具。
+一款面向 **3-15岁** 孩子的家庭，以积分制为核心，帮助家长管理孩子学习习惯，同时支持孩子在线提交作文/思维导图并获得 AI 评分、积分兑换与预支、每周学习总结与 AI 分析、本地题目练习、A4 字帖临写、看图说话描述训练的轻量级工具。
 
 ## 技术栈
 
 | 类别     | 技术选型                                  | 说明                                 |
 | -------- | ----------------------------------------- | ------------------------------------ |
 | 前端框架 | React 19 + React Router 7 + TypeScript 6  | SPA 单页应用                         |
+| 服务端状态 | TanStack Query 5                        | 请求缓存 / 失效与页面级代码分割      |
 | CSS      | Tailwind CSS 4                            | 原子化 CSS，自定义色板               |
 | 图标库   | Lucide React                              | 轻量级 SVG 图标库                    |
-| Markdown | @uiw/react-md-editor (4.x)                | Markdown 编辑器 + 实时预览           |
+| Markdown | @uiw/react-md-editor (4.x, nohighlight)   | Markdown 编辑器 + 实时预览；启用 nohighlight 入口，不引入 prism/refractor 语法高亮（Mermaid 代码块由项目自行渲染） |
 | 思维导图 | Mermaid.js 11.15                          | Markdown 语法渲染思维导图            |
-| 编译优化 | React Compiler (Babel 插件)               | 自动记忆化编译优化                   |
+| 编译优化 | React Compiler (@rolldown/plugin-babel)   | 自动记忆化编译优化；仅处理组件 `.tsx` 与 `hooks/*.ts`，避免工具模块进入 Babel |
 | 后端服务 | Express 5 + tsx                           | RESTful API（端口由环境变量 `PORT` 配置）|
 | 安全中间件 | helmet + cors + express-rate-limit      | 安全头 / 跨域 / 接口限流（防账单刷爆）|
 | 校验     | Zod 4                                    | 请求体 / 参数校验                    |
 | 数据库   | SQLite + @libsql/client                   | 轻量级本地数据库                     |
 | ORM      | Drizzle ORM + Drizzle Kit                 | 类型安全的 SQL 查询构建器 + 迁移工具 |
-| AI 能力  | DeepSeek API (deepseek-flash)             | 评分/起名/出题/周报分析/智能对话/预习分析/预习课堂问答生成批改 |
-| 测试     | Vitest + @testing-library/react + jsdom   | 单元测试 + 组件测试 + API 集成测试   |
+| AI 能力  | DeepSeek API (deepseek-flash)             | 评分/起名/出题/周报分析/智能对话/预习分析/预习课堂问答生成批改/看图说话评分 |
+| 图片来源 | Unsplash API                              | 看图说话图片检索与采集（仅在服务端使用 Access Key） |
+| 测试     | Vitest + Supertest                        | 后端单元测试与 API 集成测试（`pnpm test`） |
 | 数学公式 | KaTeX + remark-math + rehype-katex        | Markdown 中的 LaTeX 分数/公式渲染    |
 | 图片导出 | html-to-image                             | DOM 节点截图生成分享卡片             |
 | 字体        | FontFace + Local Font Access API + Canvas | 内置字体按需加载 / 系统字体授权枚举与探测 |
@@ -63,9 +66,9 @@
 
 **依赖关系**：`apps → shared`、`server → shared`，前端和后端之间无直接依赖。
 
-- **数据库**：SQLite 本地数据库 (`data/study.db`)，使用 Drizzle ORM 进行数据操作
-- **开发模式**：通过 Vite 代理配置将 `/api` 请求转发到 Express 后端
-- **生产部署**：Vite 构建前端到 `dist/`，Express 在生产模式下 serve 静态文件
+- **数据库**：SQLite 本地数据库，使用 Drizzle ORM 进行数据操作；本地调试位于仓库根 `.deploy/data/study.db`，部署态位于部署目录的 `data/study.db`
+- **开发模式**：通过 Vite 代理配置将 `/api` 请求转发到 Express 后端；服务启动时自动执行一次幂等迁移
+- **生产部署**：Vite 构建前端到 `deploy/dist/`，Express 在生产模式下 serve 静态文件；服务启动同样自动迁移，失败则中止启动
 
 ## 功能需求
 
@@ -75,7 +78,7 @@
 
 - 使用 `@uiw/react-md-editor` Markdown 编辑器，支持实时预览
 - 支持思维导图编辑（基于 Mermaid 语法渲染）
-- 自动保存功能（可通过 `AUTOSAVE_INTERVAL` 环境变量配置间隔秒数）
+- 自动保存功能（间隔由「设置」页面维护并存入数据库 `options` 表，不再使用环境变量）
 - 读书笔记专用的结构化编辑器：书籍信息（书名/篇目/作者）、摘抄赏析、好词积累、读后感
 - 保存时自动更新标题为 `{作者}：《{书名}》{篇目}读后感`
 - 自动保存成功后标题即时更新在编辑器头部
@@ -312,6 +315,15 @@
 - 打印：`@page` 边距为 0、页边距由字帖自带；`hw-no-print` 元素（侧栏、设置面板、提示）全部隐藏并解除缩放，浅色虚线靠 `print-color-adjust: exact` 保留；页高少 1mm 与 `min-height: 0` 共同避免多出空白页
 - 安全：字体名与颜色值分别经 `sanitizeFontFamily` / `sanitizeHexColor` 过滤后才拼进 `style`，数值型配置（字号比例、方格线宽）经 `clampGlyphScale` / `clampBorderWidthMm` 夹到可调区间，防止 localStorage 被改写后注入任意 CSS 或越界渲染
 
+### 9. 看图说话
+
+路由：`/phototalk`（图片列表）、`/phototalk/pick`（添加图片）、`/phototalk/:id`（练习与评分）。
+
+- **图片采集**：服务端调用 Unsplash API 按关键词搜索，选中后按图片 ID 幂等保存到本地 `unsplash/` 目录；Access Key 仅在服务端 `.env` 中使用，不向前端暴露。未配置时相关接口返回 503，其余功能不受影响
+- **图片列表**：卡片网格展示已采集图片，并标注描述/评分状态；图片本体由服务端读取为 data URL 优先展示，Unsplash 缩略图仅作兼容回退
+- **描述练习**：为图片编写描述，可保存草稿与关键词；提交后由 DeepSeek 评分并展示结果与改进建议，进入练习页时回显该图片最近一次评分
+- **数据落地**：图片元数据存 `picture_images`，练习提交与 AI 结果存 `picture_saying_submissions`（图片删除时级联清理提交记录）
+
 ## 数据结构设计
 
 ### 核心数据模型
@@ -336,6 +348,8 @@ study_lessons       -> id, subject, topic, createdAt, updatedAt   # 课程（学
 study_previews      -> id, lessonId(FK, unique), content, oldKnowledge, questions, aiAnalysis?, aiAnalyzedAt?, createdAt, updatedAt   # 课前导学案
 study_quiz          -> id, studyId(FK), questionsJson, answersJson?, resultsJson?, score(REAL), correctCount?, comment, suggestionsJson, generatedAt, submittedAt?, createdAt   # 智能测验（同一课程未提交测验唯一；成绩为小数 REAL）
 study_preview_quiz  -> id, lessonId(FK, unique), questionsJson, answersJson?, resultsJson?, score(REAL), comment, suggestionsJson, generatedAt, submittedAt?, evaluatedAt?, createdAt   # 课前预习课堂问答题（预习完整度≥80 后生成，课后作答评分，出分即解锁心得）
+picture_images      -> id, unsplashId(unique), filePath, width, height, sourceDescription?, thumbnailUrl?, draftContent?, keywords?, createdAt   # 看图说话：本地图片元数据（含草稿与关键词）
+picture_saying_submissions -> id, imageId(FK, cascade), content, score?, aiResult?, scoredAt?, createdAt, updatedAt   # 看图说话：描述提交与 AI 评分
 ```
 
 ### 积分流转全景
@@ -379,7 +393,7 @@ study.webian.dev/
 │   │   │   ├── RulesPage.tsx   # 规则页面包装器
 │   │   │   ├── Loading.tsx     # 加载指示器
 │   │   │   └── AiChatPanel.tsx # AI 聊天面板
-│   │   ├── pages/               # 页面组件（11 个页面目录）
+│   │   ├── pages/               # 页面组件（15 个目录，main.tsx 注册 12 个路由）
 │   │   │   ├── Dashboard/       # 首页看板（WidgetStats/Balance/PendingTasks 等 11 个组件）
 │   │   │   ├── Tasks/           # 作业管理（BookNoteEditor/TaskEditor/TaskListTable 等 10 个组件）
 │   │   │   ├── Points/          # 积分记录
@@ -409,7 +423,12 @@ study.webian.dev/
 │   │   │   │   ├── StudynotesModalShare.tsx   # 心得分享卡片（导出 PNG 长图）
 │   │   │   │   ├── StudynotesSubjectFilter.tsx # 学科筛选（写入 URL query）
 │   │   │   │   └── hooks/                   # useLessons / useStudynotesQuiz（20 题答案状态 + 自动保存）/ useQuizCountdown（45 分钟限时倒计时）
-│   │   │   └── ...                # 每个页面目录均包含 index.tsx 入口及子组件
+│   │   │   ├── phototalk/       # 看图说话（列表 / 采集 / 练习评分）
+│   │   │   │   ├── index.tsx               # 图片列表（状态徽标 + 添加入口）
+│   │   │   │   ├── Pick.tsx / ImagePicker.tsx # Unsplash 搜索与按 ID 幂等保存
+│   │   │   │   ├── Practice.tsx / PracticePanel.tsx # 描述输入与提交评分
+│   │   │   │   └── ScoreResult.tsx         # 评分结果与改进建议
+│   │   │   └── ...                # RssReader/TVFav/VideoPlayer 等目录及每个页面的 index.tsx 入口
 │   │   └── styles/              # 全局样式
 │   │       ├── index.css        # Tailwind 4 + 自定义色板
 │   │       ├── handwriting.css  # 字帖 A4 呈现与打印规则
@@ -422,12 +441,13 @@ study.webian.dev/
 │   └── eslint.config.js
 ├── server/                       # ★ 后端 (Express + SQLite)
 │   ├── src/
-│   │   ├── index.ts             # Express 入口（路由注册 + 静态文件服务）
+│   │   ├── index.ts             # Express 入口（路由注册 + 启动自动迁移 + 静态文件服务）
+│   │   ├── paths.ts             # 路径基准解析（APP_ROOT / CLIENT_ROOT / RUNTIME_ROOT）
 │   │   ├── db/                  # 数据库层
 │   │   │   ├── index.ts        # 数据库连接（libSQL + Drizzle）
-│   │   │   ├── schema.ts       # Drizzle ORM Schema（20 表）
-│   │   │   └── migrate.ts      # 迁移脚本（初始化表 + 默认数据 + 历史成绩重算）
-│   │   ├── routes/             # API 路由（12 个模块）
+│   │   │   ├── schema.ts       # Drizzle ORM Schema（21 表）
+│   │   │   └── migrate.ts      # 迁移脚本（建表 + 补列 + 默认数据 + 历史成绩重算）
+│   │   ├── routes/             # API 路由（10 个路由模块 + 3 个辅助模块）
 │   │   │   ├── tasks.ts        # 作业管理（含 AI 评分/起名/出题/对话）
 │   │   │   ├── points.ts       # 积分流水（含预支/还款/月度结算）
 │   │   │   ├── exchanges.ts    # 积分兑换
@@ -437,6 +457,7 @@ study.webian.dev/
 │   │   │   ├── weekly.ts       # 周报管理（CRUD + AI 分析 + 对话）
 │   │   │   ├── studynotes.ts   # 学习心得（CRUD + AI 评估 + 测验生成/作答/批改 + 历史测验/错题本）
 │   │   │   ├── lessons.ts      # 课程管理（含课前导学 AI 分析）
+│   │   │   ├── phototalk.ts    # 看图说话（Unsplash 图片采集 / 描述练习 / AI 评分）
 │   │   │   ├── rules-loader.ts # 规则加载与初始化
 │   │   │   ├── summary-helper.ts # 月度汇总计算
 │   │   │   └── advance-helper.ts # 积分预支辅助
@@ -451,7 +472,8 @@ study.webian.dev/
 │   │       ├── backup-retention.ts # 邮箱保留策略（IMAP 收件箱/已发送 双文件夹清理）
 │   │       ├── library-root.ts # 题库根目录解析（题库路由与备份共用同一套推导）
 │   │       ├── mailer.ts       # 备份邮件发送（SMTP 三类超时 + 指数退避重试）
-│   │       └── points.ts       # 积分计算引擎
+│   │       ├── points.ts       # 积分计算引擎
+│   │       └── unsplash.ts     # Unsplash 图片检索与本地保存（看图说话）
 │   ├── __test__/                # Vitest 用例（含 handwriting.test.ts 字帖几何与排版）
 │   ├── package.json
 │   └── tsconfig.json
@@ -465,8 +487,8 @@ study.webian.dev/
 │   │   └── index.ts             # 统一导出
 │   ├── package.json
 │   └── tsconfig.json
-├── server/data/                 # SQLite 数据库文件（study.db，含迁移备份 .bak）
-├── dist/                         # 构建输出目录（前端）
+├── .deploy/                      # 本地调试的运行时数据目录（不提交）：data/ library/ unsplash/
+├── deploy/                       # 纯产物目录（每次打包整体重建）：server.mjs / migrate.mjs / dist/
 ├── .env                          # 环境变量（不提交到仓库）
 ├── .gitignore                    # Git 忽略配置
 ├── package.json                  # 根 workspace 编排脚本
@@ -586,6 +608,13 @@ study.webian.dev/
 - [x] 任意屏宽等比预览（容器查询 cqw）、窄屏设置弹层、A4 单页打印样式
 - [x] 纯函数单测：几何自洽、语料解析、节选字数过滤、排版规则与字体名规范化
 
+### Phase 13 - 看图说话
+
+- [x] Unsplash 图片搜索与按 ID 幂等采集，图片落本地 `unsplash/`，Access Key 仅在服务端使用
+- [x] 图片列表（描述/评分状态徽标）与独立添加页，图片本体由服务端读取为 data URL 优先展示
+- [x] 描述练习：草稿与关键词保存、DeepSeek AI 评分与最近评分回显
+- [x] 新增 `picture_images` / `picture_saying_submissions` 表及旧库补列迁移；服务启动自动执行幂等迁移，失败即中止启动
+
 ## 本地开发
 
 ```bash
@@ -595,7 +624,7 @@ pnpm install
 # 配置环境变量（模板位于 server/.env.example）
 cp server/.env.example .env
 
-# 初始化数据库
+# 数据库由服务启动时自动迁移；如需单独初始化可执行（通常无需）
 pnpm db:migrate
 
 # 同时启动前后端开发服务器
@@ -614,7 +643,7 @@ pnpm build
 pnpm start               # Express 启动，serve 前端构建产物 + API
 
 # 运行测试
-pnpm test                # 运行所有测试
+pnpm test                # 运行后端测试套件（Vitest + Supertest）
 ```
 
 ### 环境变量（根目录 .env）
@@ -632,6 +661,11 @@ API_KEY=自定义一个密钥
 # DeepSeek API（使用 AI 功能时必填）
 DEEPSEEK_API_KEY=你的API密钥
 DEEPSEEK_BASE_URL=https://api.deepseek.com
+DEEPSEEK_MODEL=deepseek-flash
+DEEPSEEK_VISION_MODEL=               # 可选，带图请求专用档位，留空复用 DEEPSEEK_MODEL
+
+# 看图说话图片来源（可选；未配置时相关接口返回 503）
+UNSPLASH_ACCESS_KEY=
 
 # 服务端口
 PORT=3006
@@ -668,10 +702,10 @@ VITE_ADMIN_DOMAINS=管理员访问的主机名或IP
 | ----------------- | ------------------------------------------------------- |
 | `pnpm dev`        | 仅启动前端开发服务器（Vite，端口 5173）                 |
 | `pnpm dev:all`    | 同时启动前后端开发服务器（concurrently）                |
-| `pnpm build`      | 构建前端到 `dist/`                                      |
+| `pnpm build`      | 构建前端到 `deploy/dist/`                               |
 | `pnpm start`      | 启动生产模式 Express 服务器（serve 前端产物 + API）      |
-| `pnpm test`       | 运行所有测试（Vitest）                                  |
-| `pnpm db:migrate` | 数据库迁移与初始化（等价 `pnpm --filter server db:migrate`）|
+| `pnpm test`       | 运行后端测试套件（Vitest + Supertest）                   |
+| `pnpm db:migrate` | 手动执行数据库迁移（服务启动已自动执行，通常无需单独运行）|
 
 **server 包脚本（`pnpm --filter server <script>`）：**
 
@@ -679,7 +713,7 @@ VITE_ADMIN_DOMAINS=管理员访问的主机名或IP
 | ----------------- | ------------------------------------- |
 | `dev`             | 启动后端开发服务器（tsx watch，端口由 PORT 配置）|
 | `start`           | 启动后端生产服务器（tsx）             |
-| `db:migrate`      | 运行迁移脚本（建表 + 默认数据 + 历史成绩重算）|
+| `db:migrate`      | 运行迁移脚本（建表 + 补列 + 默认数据 + 历史成绩重算；服务启动已自动执行）|
 | `db:generate`     | 生成 Drizzle 迁移文件                 |
 | `db:push`         | Drizzle Kit 直接推送 Schema 到数据库  |
 
@@ -687,7 +721,7 @@ VITE_ADMIN_DOMAINS=管理员访问的主机名或IP
 
 日常打包只需一条命令，产物是一个**不依赖 `node_modules` 的自包含目录**，拷贝到服务器后直接 `node` 启动即可。
 
-`deploy/` 是**纯产物目录**，每次打包整体删除重建；运行时文件（`.env`、数据库）由部署端维护，不参与版本管理。
+`deploy/` 是**纯产物目录**，每次打包整体删除重建；运行时文件（`.env`、数据库）由部署端维护，不参与版本管理。服务启动时会自动执行一次幂等迁移，无需手动运行 `migrate.mjs`（该脚本保留用于手动修复）。
 
 ```bash
 # 一条命令：先清空重建后端产物，再由 Vite 构建前端
@@ -705,7 +739,7 @@ deploy/
 ├── server.mjs            # 后端单文件（express/helmet/cors/zod/drizzle/dotenv 等全部内联）
 ├── migrate.mjs           # 数据库迁移单文件
 ├── dist/                 # 前端静态产物（Vite 直接输出到此处）
-├── data/study.db         # 首次执行迁移时生成（APP_ROOT/data）
+├── data/study.db         # 首次启动服务时由自动迁移生成（APP_ROOT/data）
 ├── .env                  # 由部署端创建，不随打包分发
 └── node_modules/         # 仅 libsql 原生运行时（4 个包），不是依赖树
     ├── libsql/
@@ -728,10 +762,7 @@ cd C:\study-plus
 # 3. 创建环境变量（字段见下方「环境变量」，或参考仓库中的 server/.env.example）
 notepad .env
 
-# 4. 初始化数据库（建表 + 灌入默认规则）
-node migrate.mjs
-
-# 5. 启动服务
+# 4. 启动服务（启动时自动执行幂等迁移：建表 + 补列 + 灌入默认规则；失败则中止）
 node server.mjs
 ```
 
@@ -755,11 +786,12 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 
 | 事项 | 说明 |
 | ---- | ---- |
-| 前端环境变量是**构建期注入** | `VITE_API_KEY`、`VITE_ADMIN_DOMAINS` 会被编译进 `dist` 的 JS。更换服务器或修改 `API_KEY` 后必须重新执行 `pnpm build`，否则前端携带旧 Key 请求会全部 401 |
+| 前端环境变量是**构建期注入** | `VITE_API_KEY`、`VITE_ADMIN_DOMAINS` 会被编译进 `deploy/dist` 的 JS。更换服务器或修改 `API_KEY` 后必须重新执行 `pnpm build`，否则前端携带旧 Key 请求会全部 401 |
 | `VITE_ADMIN_DOMAINS` 要填主机名或 IP | 否则管理员页面（设置 / 规则配置）因 `isAdmin()` 判定失败而不可用 |
 | 重新打包会**整体删除** `deploy/` | `data/` 与 `.env` 一并清除。生产环境请将 `DB_PATH` 设为 `deploy/` 之外的绝对路径（如 `DB_PATH=D:\study-data\study.db`），或在打包前备份 |
 | 平台必须与打包机一致 | 产物中的原生二进制为 `@libsql/win32-x64-msvc`；若目标平台不同，需在目标机器上重新打包 |
-| 本地题目目录跟随数据库位置 | 题库默认取与 `data` 目录同级的 `library/`，两者同属「数据库文件所在目录的父目录」：把 `DB_PATH` 配成 `D:\study-plus\data\study.db`，题库目录即为 `D:\study-plus\library`，覆盖式部署不受影响；需要独立布局时在「系统设置 → 本地题目目录路径」显式指定 |
+| 运行时数据目录随运行形态切换 | 部署态 `data/`、`library/`、`unsplash/` 均位于部署目录，题库默认取与 `data` 同级的 `library/`（如 `DB_PATH=D:\study-plus\data\study.db` 时题库为 `D:\study-plus\library`），覆盖式部署不受影响；本地调试则统一位于仓库根 `.deploy/` 下。需要独立布局时在「系统设置 → 本地题目目录路径」显式指定 |
+| 看图说话图片目录 | 采集的图片保存在与题库同级的 `unsplash/`（部署态为部署目录下，本地调试为 `.deploy/unsplash/`）；未配置 `UNSPLASH_ACCESS_KEY` 时相关接口返回 503，其余功能不受影响 |
 
 ### 环境变量（部署目录 `.env`）
 
@@ -772,12 +804,14 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 | `DEEPSEEK_BASE_URL` | DeepSeek 接口地址，默认 `https://api.deepseek.com` |
 | `DEEPSEEK_MODEL` | AI 默认模型档位，默认 `deepseek-flash` |
 | `DEEPSEEK_MODEL_ANALYSIS` | 预习分析 / 心得评估专用模型档位，可选；未设置时沿用 `DEEPSEEK_MODEL` |
+| `DEEPSEEK_VISION_MODEL` | 带图请求（题库「生成题目」参考图片）专用档位，可选；留空复用 `DEEPSEEK_MODEL` |
+| `UNSPLASH_ACCESS_KEY` | 看图说话图片检索与采集，可选；未配置时相关接口返回 503。**仅在服务端使用**，禁止配置到 `VITE_` 前缀 |
 | `PORT` | 监听端口，默认 3006 |
-| `DB_PATH` | 数据库路径，相对部署目录解析，默认 `data/study.db`；生产建议用绝对路径指向 `deploy/` 之外 |
+| `DB_PATH` | 数据库路径，相对运行时数据基准解析（部署态即部署目录），默认 `data/study.db`；生产建议用绝对路径指向 `deploy/` 之外 |
 | `NODE_ENV` | `production`（默认，不返回错误堆栈）或 `development` |
 | `ENABLE_HSTS` | HSTS 开关，默认 `false`；仅确有 TLS 终端时才设为 `true` |
 | `CORS_ORIGIN` | 允许的跨域源，逗号分隔；留空表示同源部署 |
-| `APP_ROOT` | 应用根目录，默认取进程工作目录 |
+| `APP_ROOT` | 应用根目录覆盖；开发态默认取仓库根，部署态默认取 bundle 自身所在目录（不依赖进程工作目录） |
 | `DIST_PATH` | 前端产物目录，默认 `APP_ROOT/dist` |
 | `BACKUP_ENABLED` | 数据库每日备份总开关，默认 `false`；置为 `true` 才启用 |
 | `BACKUP_TIME` | 每日触发时刻 `HH:mm`（本地时区），默认 `03:00` |
@@ -796,7 +830,7 @@ netsh advfirewall firewall add rule name="StudyPlus" dir=in action=allow protoco
 
 ## 数据库每日备份
 
-把 SQLite 库与本地题库目录（`library/`，含题目 Markdown 与图片）每天打包成 zip 并以邮件外发，用作异地容灾：本机硬盘故障时，邮箱里仍保留最近若干天的完整快照，恢复时库与题目一起回滚。功能默认全关，不影响主服务。
+把 SQLite 库与本地题库目录（部署态 `library/`、本地调试 `.deploy/library/`，含题目 Markdown 与图片）每天打包成 zip 并以邮件外发，用作异地容灾：本机硬盘故障时，邮箱里仍保留最近若干天的完整快照，恢复时库与题目一起回滚。功能默认全关，不影响主服务。
 
 ### 工作流程
 
