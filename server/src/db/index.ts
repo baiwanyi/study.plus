@@ -2,16 +2,16 @@
  * 数据库连接与 Drizzle 客户端初始化，为全部路由与服务提供唯一的 db 实例。
  * 配置统一从应用根目录（APP_ROOT）下的 .env 加载，表结构定义复用同目录 schema。
  * 测试环境可通过 TEST_DB_URL 切换为隔离的内存库，避免污染真实数据；
- * 数据库与 .env 同在 APP_ROOT 下（开发态为仓库根，部署态为部署目录），
- * 数据库目录在启动时按需创建；未配置 DB_PATH 时按「APP_ROOT/data → 上一级 data」查找，
- * 使仓库内试跑产物能复用仓库根的数据库；显式配置 DB_PATH 则严格相对 APP_ROOT 解析。
+ * .env 位于 APP_ROOT，数据库目录以 RUNTIME_ROOT 为基准（本地调试为 .deploy/data，
+ * 部署态为部署目录/data），目录在启动时按需创建；未配置 DB_PATH 时用 RUNTIME_ROOT/data/study.db，
+ * 显式配置则相对 RUNTIME_ROOT 解析，打包态仍兼容回退上一级 data。
  */
 import fs from 'fs'
 import path from 'path'
 import { createClient } from '@libsql/client'
 import dotenv from 'dotenv'
 import { drizzle } from 'drizzle-orm/libsql'
-import { resolveDataDir, resolveEnvPath, resolveFromRoot } from '../paths'
+import { resolveDataDir, resolveEnvPath, resolveFromRuntimeRoot } from '../paths'
 import * as schema from './schema'
 
 // env 文件按「应用根目录 → 其上一级」的顺序查找：
@@ -24,7 +24,7 @@ const TEST_DB_URL = process.env.TEST_DB_URL
 const DB_PATH = TEST_DB_URL
     ? TEST_DB_URL
     : process.env.DB_PATH
-      ? resolveFromRoot(process.env.DB_PATH)
+      ? resolveFromRuntimeRoot(process.env.DB_PATH)
       : path.join(resolveDataDir(), 'study.db')
 
 // 仅当使用真实文件数据库时才确保目录存在；内存库 / 远程 URL 无需建目录。

@@ -1,3 +1,9 @@
+/**
+ * 数据库迁移脚本：按幂等原则创建业务表、补齐存量库缺失字段并初始化默认规则数据。
+ * 复用约定：统一通过 libSQL 客户端执行 DDL，所有 ALTER 均捕获异常以兼容不同版本的旧库；
+ * 迁移仅在脚本直接运行时触发，被测试导入时不产生副作用。
+ * 关键约束：新增字段必须同步补充 ALTER 分支，否则旧部署库会因列缺失导致查询失败。
+ */
 import {
     defaultQuotes,
     defaultHomeworkRules,
@@ -12,9 +18,8 @@ import { client } from './index'
 // 统一为控制台输出注入「时间 + 级别」前缀，使迁移日志同样可按时间检索
 enableLogTimestamp()
 
-console.log('Running database migration...')
-
 export async function migrate(): Promise<void> {
+    console.log('Running database migration...')
     await client.execute(`
     CREATE TABLE IF NOT EXISTS tasks (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1318,6 +1323,15 @@ export async function migrate(): Promise<void> {
         console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
     }
 
+    try {
+        await client.execute(
+            'ALTER TABLE picture_images ADD COLUMN keywords TEXT',
+        )
+        console.log('Added keywords column to picture_images table.')
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
     await client.execute(`
     CREATE TABLE IF NOT EXISTS picture_saying_submissions (
       id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -1344,8 +1358,10 @@ export async function migrate(): Promise<void> {
     console.log('Migration completed successfully!')
 }
 
-// 仅当作为脚本直接运行时执行迁移；被测试 import 时不触发，避免 vitest 内意外退出。
-if (import.meta.main) {
+// 仅当作为迁移脚本直接运行时执行；服务入口 import 本模块时不触发，
+// 避免打包后的 server.mjs 内与启动流程重复执行一遍迁移。
+const invokedAsScript = /(?:^|[\\/])migrate\.(?:mjs|ts)$/.test(process.argv[1] ?? '')
+if (invokedAsScript) {
     migrate().catch((err: Error) => {
         console.error('Migration failed:', err.message)
         process.exit(1)

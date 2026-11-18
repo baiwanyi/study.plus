@@ -14,6 +14,7 @@ import path from 'path'
 import { fileURLToPath } from 'url'
 import type { NextFunction, Request, Response } from 'express'
 import { DB_FILE_PATH, db } from './db/index'
+import { migrate } from './db/migrate'
 import { options } from './db/schema'
 import { resolveFromClientRoot } from './paths'
 import { isFirstDayOfMonth, repayActiveAdvances } from './routes/advance-helper'
@@ -303,15 +304,26 @@ function setupDailyBackup(): void {
     console.log(`[Scheduled] 每日备份定时任务已启动，触发时刻 ${trigger}`)
 }
 
-// 以下为生产启动逻辑：仅当以主模块直接运行（node/bun server/src/index.ts）时执行。
-// 被测试 import 时 isMain 为 false，跳过定时任务与端口监听，避免污染测试环境。
-if (isMain) {
+// 生产启动流程：先同步数据库结构再开放端口，确保请求进来时表结构已就绪。
+// 被测试 import 时不执行，避免内存库被迁移脚本写入默认数据。
+async function startServer(): Promise<void> {
     if (!API_KEY) {
         console.error(
             'FATAL: 环境变量 API_KEY 未设置。出于安全考虑，服务器拒绝在无认证的情况下启动。',
         )
         process.exit(1)
     }
+
+    try {
+        await migrate()
+    } catch (err) {
+        console.error(
+            'FATAL: 数据库迁移失败，服务启动中止:',
+            err instanceof Error ? err.message : err,
+        )
+        process.exit(1)
+    }
+
     setupMonthlyRepayment()
     setupDailyBackup()
 
@@ -327,4 +339,9 @@ if (isMain) {
         }
         process.exit(1)
     })
+}
+
+// 仅当以主模块直接运行（node/bun server/src/index.ts）时启动生产流程。
+if (isMain) {
+    void startServer()
 }

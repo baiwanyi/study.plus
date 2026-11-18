@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor/nohighlight'
 import { toPng } from 'html-to-image'
 import { BookOpen, Target, Wrench, Sparkles, Share2 } from 'lucide-react'
 import { useRef, useCallback } from 'react'

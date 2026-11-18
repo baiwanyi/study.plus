@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor/nohighlight'
 import { X, CircleQuestionMark } from 'lucide-react'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { createPortal } from 'react-dom'

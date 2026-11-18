@@ -1,14 +1,14 @@
 /**
  * 题库根目录解析：题库路由与每日备份共用同一套「配置值 → 绝对路径」推导，
  * 避免两处各写一份时把备份打包到与页面展示不同的目录。
- * 复用约定：配置取自 options 表 system.libraryDirectory，绝对路径原样使用、相对路径按 APP_ROOT 解析，
+ * 复用约定：配置取自 options 表 system.libraryDirectory，绝对路径原样使用、相对路径按 RUNTIME_ROOT 解析，
  * 留空回落到与数据库文件所在目录（data）平级的 library/，路径推导复用 db 的 DB_FILE_PATH 与 paths 工具。
  * 关键约束：读取配置失败必须回落默认目录而非抛错（题库路由与备份都依赖该降级）；
  * 本模块只解析路径，不判断目录是否存在、也不创建目录。
  */
 import path from 'path'
 import { client, DB_FILE_PATH } from '../db/index'
-import { resolveDataDir, resolveFromRoot } from '../paths'
+import { resolveDataDir, resolveFromRuntimeRoot } from '../paths'
 
 /** 未配置自定义目录时，清单与备份中展示的目录名 */
 const DEFAULT_DIR_LABEL = 'library'
@@ -23,7 +23,7 @@ function resolveDefaultLibraryDir(): string {
     return path.join(path.dirname(path.dirname(dataFile)), 'library')
 }
 
-/** 解析题库根目录：配置值优先（绝对路径原样、相对路径按 APP_ROOT 解析），留空用默认目录 */
+/** 解析题库根目录：配置值优先（绝对路径原样、相对路径按 RUNTIME_ROOT 解析），留空用默认目录 */
 export async function resolveLibraryRoot(): Promise<{
     dirLabel: string
     rootDir: string
@@ -47,7 +47,7 @@ export async function resolveLibraryRoot(): Promise<{
     const rootDir = configured
         ? path.isAbsolute(configured)
             ? path.resolve(configured)
-            : resolveFromRoot(configured)
+            : resolveFromRuntimeRoot(configured)
         : resolveDefaultLibraryDir()
     return { dirLabel: configured || DEFAULT_DIR_LABEL, rootDir }
 }

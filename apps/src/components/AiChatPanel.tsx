@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor/nohighlight'
 import { Bot, Send, Loader2, Sparkles } from 'lucide-react'
 import { useRef, useEffect, useState } from 'react'
 import type { ChatMessage } from '@shared/types'

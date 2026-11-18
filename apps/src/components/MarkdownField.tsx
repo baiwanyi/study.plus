@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor/nohighlight'
 
 export interface MarkdownFieldProps {
     label?: string

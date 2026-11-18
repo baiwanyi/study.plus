@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor/nohighlight'
 import { toPng } from 'html-to-image'
 import { BookOpen, Sparkles } from 'lucide-react'
 import mermaid from 'mermaid'

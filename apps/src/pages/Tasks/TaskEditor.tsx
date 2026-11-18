@@ -1,6 +1,6 @@
 'use client'
 
-import MDEditor from '@uiw/react-md-editor'
+import MDEditor from '@uiw/react-md-editor/nohighlight'
 import { Loader2, Check, ChevronDown, ChevronUp } from 'lucide-react'
 import mermaid from 'mermaid'
 import { useState, useEffect, useCallback, useRef, useMemo, memo } from 'react'

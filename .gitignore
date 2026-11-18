@@ -1,8 +1,6 @@
 node_modules/
 dist/
 deploy/
-.deploy-stale-*/
-data/
-unsplash/
+.deploy/
 .env
 *.log

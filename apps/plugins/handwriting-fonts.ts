@@ -8,8 +8,8 @@
  */
 import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
-import type { BuiltinFont } from '../../shared/src/handwriting'
-import { normalizeFontFamilyFromFile } from '../../shared/src/handwriting'
+import type { BuiltinFont } from '../../shared/src/handwriting.ts'
+import { normalizeFontFamilyFromFile } from '../../shared/src/handwriting.ts'
 import type { Plugin } from 'vite'
 
 const virtualModuleId = 'virtual:handwriting-fonts'

@@ -636,7 +636,7 @@ DEEPSEEK_BASE_URL=https://api.deepseek.com
 # 服务端口
 PORT=3006
 
-# 数据库路径（相对 APP_ROOT 解析，开发态即仓库根/data/study.db）
+# 数据库路径（相对运行时数据基准解析，本地调试即仓库根 .deploy/data/study.db）
 DB_PATH=data/study.db
 
 # 前端构建期变量：编译进 dist 的 JS，需与后端配合
@@ -646,15 +646,15 @@ VITE_ADMIN_DOMAINS=管理员访问的主机名或IP
 
 完整字段与说明见 `server/.env.example`。
 
-**不同运行形态下 `.env` 的读取位置**：
+**不同运行形态下 `.env` 的读取位置与运行时数据目录**：
 
-| 运行形态 | `.env` 读取位置 | 数据库目录 |
+| 运行形态 | `.env` 读取位置 | 运行时数据目录（data / library / unsplash） |
 | ---- | ---- | ---- |
-| 开发态（`pnpm start` / `pnpm dev`） | 仓库根 `.env` | 仓库根 `data/` |
-| 仓库内试跑产物（`node deploy/server.mjs`） | 仓库根 `.env`（取上一级） | `deploy/data/`，不存在时回退仓库根 `data/` |
-| 服务器独立部署（`C:\study-plus\server.mjs`） | 自身目录 `.env` | 自身目录 `data/` |
+| 开发态（`pnpm start` / `pnpm dev`） | 仓库根 `.env` | 仓库根 `.deploy/` 下 |
+| 仓库内试跑产物（`node deploy/server.mjs`） | 仓库根 `.env`（取上一级） | `deploy/` 下，`data/` 不存在时回退仓库根 `data/` |
+| 服务器独立部署（`C:\study-plus\server.mjs`） | 自身目录 `.env` | 自身目录下，与原来一致 |
 
-未配置 `DB_PATH` 时按上表查找；显式配置 `DB_PATH` 则严格相对 `APP_ROOT` 解析，不做回退。
+未配置 `DB_PATH` 时按运行时数据基准查找；显式配置 `DB_PATH` 则相对该基准解析（本地调试为 `.deploy/`，部署态为部署目录），打包态仍兼容回退上一级 `data/`。
 
 > 自动保存间隔与本地题目目录已改为数据库配置，在「设置」页面维护，不再使用环境变量。
 

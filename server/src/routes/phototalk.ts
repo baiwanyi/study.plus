@@ -126,6 +126,9 @@ function respondServiceError<T>(
     }
     const message = error instanceof Error ? error.message : fallback
     console.warn('[PhotoTalk] 服务调用失败:', message)
+    if (error instanceof Error && 'cause' in error && error.cause) {
+        console.error('[PhotoTalk] 数据库底层错误:', error.cause)
+    }
     res.status(502).json({ error: message || fallback })
 }
 
