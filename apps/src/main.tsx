@@ -44,6 +44,17 @@ const Weekly = lazy(() =>
 const Handwriting = lazy(() =>
     import('@apps/pages/Handwriting').then((m) => ({ default: m.Handwriting })),
 )
+const PhotoTalk = lazy(() =>
+    import('@apps/pages/phototalk').then((m) => ({ default: m.PhotoTalk })),
+)
+const PhotoTalkPick = lazy(() =>
+    import('@apps/pages/phototalk/Pick').then((m) => ({ default: m.PhotoTalkPick })),
+)
+const PhotoTalkPractice = lazy(() =>
+    import('@apps/pages/phototalk/Practice').then((m) => ({
+        default: m.PhotoTalkPractice,
+    })),
+)
 
 // 统一为控制台输出注入「时间 + 级别」前缀，须在任何日志产生之前执行
 enableLogTimestamp()
@@ -65,6 +76,9 @@ const AppRoutes = () => (
                     <Route path="borrow" element={<Borrow />} />
                     <Route path="library" element={<Library />} />
                     <Route path="handwriting" element={<Handwriting />} />
+                    <Route path="phototalk" element={<PhotoTalk />} />
+                    <Route path="phototalk/pick" element={<PhotoTalkPick />} />
+                    <Route path="phototalk/:id" element={<PhotoTalkPractice />} />
                     <Route path="study" element={<Studynotes />} />
                     <Route path="weekly" element={<Weekly />} />
                     {isAdmin() && <Route path="options" element={<Rules />} />}

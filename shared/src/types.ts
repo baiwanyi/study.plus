@@ -261,11 +261,14 @@ export type TaskAI =
     | 'weekly-analyze'
     | 'weekly-chat'
     | 'preview-analyze'
+    | 'preview-quiz-generate'
     | 'notes-evaluate'
     | 'quiz-question'
     | 'quiz-marking'
     | 'library-hint'
     | 'library-generate'
+    | 'phototalk-keywords'
+    | 'phototalk-score'
 export type PointCategoryType = 'exam' | 'submission' | 'custom'
 export type PointRecordType = 'earn' | 'deduct'
 export type RelatedType =
@@ -593,5 +596,76 @@ export interface WeeklyMessage {
     conversationId: number
     role: 'user' | 'assistant'
     content: string
+    createdAt: string
+}
+
+// ===== 看图说话类型 =====
+/** Unsplash 搜索候选项：仅暴露展示所需字段，AccessToken 与原始响应不下发前端 */
+export interface PictureSearchItem {
+    id: string
+    thumbnailUrl: string
+    author: string
+    description: string
+}
+
+/** 已采集图片的元数据，keywords 已由 JSON 字符串还原为数组 */
+export interface PictureImageRecord {
+    id: number
+    unsplashId: string
+    filePath: string
+    width: number
+    height: number
+    sourceDescription: string | null
+    /** 采集时保存的 Unsplash 官方缩略图地址，列表页用它展示图片本体 */
+    thumbnailUrl: string | null
+    /** 用户正在撰写的描述草稿，用于练习页恢复与自动保存 */
+    draftContent: string | null
+    keywords: string[]
+    createdAt: string
+}
+
+/** 列表项：附带最近一次描述状态与评分，供列表页直接展示 */
+export interface PictureImageListItem extends PictureImageRecord {
+    /** 从本地 unsplash/ 目录读出的图片 data URL，列表优先用它展示，避免依赖外网 CDN */
+    thumbnailDataUrl: string
+    described: boolean
+    /** 最近一次描述的内容，供列表页直接展示 */
+    lastContent: string | null
+    lastScore: number | null
+    lastScoredAt: string | null
+}
+
+/** 练习页所需的图片详情：imageDataUrl 由本地文件读出，可直接交给 <img> */
+export interface PictureDetail extends PictureImageRecord {
+    imageDataUrl: string
+    /** 该图片最近一次评分记录，进入练习页时直接展示历史评分 */
+    lastSubmission: PictureSubmissionRecord | null
+}
+
+export interface PictureScoreDimension {
+    key: string
+    label: string
+    score: number
+    max: number
+    comment: string
+}
+
+/** AI 评分结果：四个维度得分之和等于 totalScore，服务端已做一致性校验 */
+export interface PictureScoreResult {
+    totalScore: number
+    dimensions: PictureScoreDimension[]
+    highlights: string[]
+    improvements: string[]
+    keywordCoverage: { covered: string[]; missed: string[] }
+    referenceDescription: string
+}
+
+export interface PictureSubmissionRecord {
+    id: number
+    imageId: number
+    content: string
+    score: number | null
+    aiResult: PictureScoreResult | null
+    scoredAt: string | null
     createdAt: string
 }

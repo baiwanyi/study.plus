@@ -112,6 +112,11 @@
         &.badge-revoked {
             @apply bg-danger-background text-danger;
         }
+
+        /* 看图说话：关键词提示徽章 */
+        &.badge-keyword {
+            @apply bg-white border border-warning text-warning;
+        }
     }
 
     .regular-text {

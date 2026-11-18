@@ -8,6 +8,10 @@ export {
 export { analyzeWeeklyReport, chatAboutWeeklyReport } from './weekly'
 export { generateLibraryHint, generateLibraryPaper } from './library'
 export {
+    generatePictureKeywords,
+    scorePictureDescription,
+} from './phototalk'
+export {
     analyzePreview,
     evaluateStudynotesReflection,
     generatePreviewQuestions,

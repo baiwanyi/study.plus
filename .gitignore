@@ -3,5 +3,6 @@ dist/
 deploy/
 .deploy-stale-*/
 data/
+unsplash/
 .env
 *.log

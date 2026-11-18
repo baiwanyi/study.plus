@@ -444,6 +444,8 @@ export async function migrate(): Promise<void> {
         ['studynotes-evaluate', 'notes-evaluate'],
         ['studynotes-quiz-generate', 'quiz-question'],
         ['studynotes-quiz-grade', 'quiz-marking'],
+        ['picture-saying-keywords', 'phototalk-keywords'],
+        ['picture-saying-score', 'phototalk-score'],
     ] as const
     for (const [from, to] of aiProjectRenameMap) {
         await client.execute({
@@ -1279,6 +1281,64 @@ export async function migrate(): Promise<void> {
         console.log('Added deadline_at column to study_quiz table.')
     } catch (e) {
         console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
+    // ===== 看图说话：采集图片与练习提交 =====
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS picture_images (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      unsplash_id TEXT NOT NULL UNIQUE,
+      file_path TEXT NOT NULL,
+      width INTEGER NOT NULL,
+      height INTEGER NOT NULL,
+      source_description TEXT,
+      thumbnail_url TEXT,
+      draft_content TEXT,
+      keywords TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created picture_images table.')
+
+    try {
+        await client.execute(
+            'ALTER TABLE picture_images ADD COLUMN thumbnail_url TEXT',
+        )
+        console.log('Added thumbnail_url column to picture_images table.')
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
+    try {
+        await client.execute(
+            'ALTER TABLE picture_images ADD COLUMN draft_content TEXT',
+        )
+        console.log('Added draft_content column to picture_images table.')
+    } catch (e) {
+        console.warn('迁移步骤跳过（通常因对象已存在）:', (e as Error).message)
+    }
+
+    await client.execute(`
+    CREATE TABLE IF NOT EXISTS picture_saying_submissions (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      image_id INTEGER NOT NULL REFERENCES picture_images(id) ON DELETE CASCADE,
+      content TEXT NOT NULL,
+      score INTEGER,
+      ai_result TEXT,
+      scored_at TEXT,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      updated_at TEXT NOT NULL DEFAULT (datetime('now'))
+    )
+  `)
+    console.log('Created picture_saying_submissions table.')
+
+    try {
+        await client.execute(
+            'CREATE INDEX IF NOT EXISTS picture_saying_submissions_image_id_idx ON picture_saying_submissions(image_id)',
+        )
+        console.log('Created index on picture_saying_submissions.image_id.')
+    } catch (e) {
+        console.warn('创建看图说话提交索引跳过:', (e as Error).message)
     }
 
     console.log('Migration completed successfully!')

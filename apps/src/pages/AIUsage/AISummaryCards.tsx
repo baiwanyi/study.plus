@@ -1,6 +1,11 @@
+/**
+ * AI 用量汇总卡片：展示总调用次数与总消耗 Token 两项全局指标。
+ * 复用约定：数据由父组件传入，数值格式统一复用 formatNumber。
+ * 关键约束：卡片只汇总全局指标，各使用项目的明细交由汇总表与日志表呈现。
+ */
 'use client'
 
-import { formatNumber, taskAILabels } from '@apps/utils/client'
+import { formatNumber } from '@apps/utils/client'
 import type { AIUsageSummary } from '@shared/types'
 
 interface AISummaryCardsProps {
@@ -12,7 +17,7 @@ export function AISummaryCards({ summary }: AISummaryCardsProps) {
     const totalCalls = summary.reduce((sum, s) => sum + s.count, 0)
 
     return (
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="card">
                 <p className="text-sm text-headline">总调用次数</p>
                 <p className="text-2xl font-bold text-primary">
@@ -25,22 +30,6 @@ export function AISummaryCards({ summary }: AISummaryCardsProps) {
                     {formatNumber(totalTokens)}
                 </p>
             </div>
-            {summary.map((s) => (
-                <div key={s.project} className="card">
-                    <p className="text-sm text-headline">
-                        {taskAILabels[s.project as keyof typeof taskAILabels] ||
-                            s.project}{' '}
-                        调用
-                    </p>
-                    <p className="text-2xl font-bold text-primary">
-                        {formatNumber(s.count)}
-                    </p>
-                    <p className="text-xs text-muted mt-1">
-                        {formatNumber(s.totalPromptTokens)} 输入 /{' '}
-                        {formatNumber(s.totalCompletionTokens)} 输出
-                    </p>
-                </div>
-            ))}
         </div>
     )
 }

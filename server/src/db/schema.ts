@@ -360,3 +360,44 @@ export const weeklyMessages = sqliteTable(
         ),
     }),
 )
+
+// ===== 看图说话：采集图片与练习提交 =====
+export const pictureImages = sqliteTable('picture_images', {
+    id: integer('id').primaryKey({ autoIncrement: true }),
+    unsplashId: text('unsplash_id').notNull().unique(),
+    filePath: text('file_path').notNull(),
+    width: integer('width').notNull(),
+    height: integer('height').notNull(),
+    sourceDescription: text('source_description'),
+    thumbnailUrl: text('thumbnail_url'),
+    draftContent: text('draft_content'),
+    keywords: text('keywords'),
+    createdAt: text('created_at')
+        .notNull()
+        .$defaultFn(() => new Date().toISOString()),
+})
+
+export const phototalkSubmissions = sqliteTable(
+    'picture_saying_submissions',
+    {
+        id: integer('id').primaryKey({ autoIncrement: true }),
+        imageId: integer('image_id')
+            .notNull()
+            .references(() => pictureImages.id, { onDelete: 'cascade' }),
+        content: text('content').notNull(),
+        score: integer('score'),
+        aiResult: text('ai_result'),
+        scoredAt: text('scored_at'),
+        createdAt: text('created_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+        updatedAt: text('updated_at')
+            .notNull()
+            .$defaultFn(() => new Date().toISOString()),
+    },
+    (table) => ({
+        imageIdIdx: index('picture_saying_submissions_image_id_idx').on(
+            table.imageId,
+        ),
+    }),
+)

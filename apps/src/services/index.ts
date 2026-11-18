@@ -15,6 +15,8 @@ export type {
     LibraryGenerateResult,
 } from './library'
 export { optionsAPI, remarkApi, quotesApi } from './options'
+export { phototalkApi } from './phototalk'
+export type { PictureScoreResponse } from './phototalk'
 export { pointsApi } from './points'
 export { studynotesApi } from './studynotes'
 export { systemAPI } from './system'

@@ -22,6 +22,7 @@ import { exchangesRouter } from './routes/exchanges'
 import { lessonsRouter } from './routes/lessons'
 import { libraryRouter } from './routes/library'
 import { rulesRouter } from './routes/options'
+import { phototalkRouter } from './routes/phototalk'
 import { pointsRouter } from './routes/points'
 import { studynotesRouter } from './routes/studynotes'
 import { tasksRouter } from './routes/tasks'
@@ -90,7 +91,7 @@ const CONTENT_SECURITY_POLICY = [
     "font-src 'self' https: data:",
     "form-action 'self'",
     "frame-ancestors 'none'",
-    "img-src 'self' data: blob:",
+    "img-src 'self' data: blob: https://images.unsplash.com",
     "object-src 'none'",
     "script-src 'self'",
     "style-src 'self' 'unsafe-inline'",
@@ -170,6 +171,7 @@ app.use('/api/lessons', requireApiKey, lessonsRouter)
 app.use('/api/ai-usage', requireApiKey, aiUsageRouter)
 app.use('/api/options', requireApiKey, rulesRouter)
 app.use('/api/library', requireApiKey, libraryRouter)
+app.use('/api/phototalk', requireApiKey, phototalkRouter)
 app.use('/api/weekly', requireApiKey, weeklyRouter)
 app.use('/api/study', requireApiKey, studynotesRouter)
 
